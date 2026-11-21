@@ -120,12 +120,13 @@ emu.register_frame_done(function()
         end
       end
       if best then
-        local want = math.floor(math.atan(best[2], best[1]) / (2 * math.pi) * 256) % 256
+        -- point the stick at it (8 ways), fire when the nose is round
+        local d = math.floor((math.atan(best[1], -best[2]) / (2 * math.pi) * 8 + 8.5)) % 8
+        if bd > 300 or ispod then for _, n in ipairs(DIRF[d]) do held[n] = true end end
+        local want = (0xC0 + d * 0x20) % 256
         local diff = (want - ah + 128) % 256 - 128
-        if diff > 6 then held["P1 Right"] = true elseif diff < -6 then held["P1 Left"] = true end
-        if math.abs(diff) < 24 and bd > 900 then held["P1 Up"] = true end
-        if bd < 400 then held["P1 Down"] = true end
-        if not ispod and math.abs(diff) < 12 then held["P1 Button 1"] = true end
+        if not ispod and math.abs(diff) < 20 then held["P1 Button 1"] = true
+          for _, n in ipairs(DIRF[d]) do held[n] = true end end
       end
     end
     if f % 600 == 0 then

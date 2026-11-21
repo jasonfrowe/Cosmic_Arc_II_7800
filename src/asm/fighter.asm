@@ -2,10 +2,12 @@
 ; The fighter (M2), the shots that fly at any angle, and the Ark's
 ; auto-turret.
 ;
-; Button 2 launches the fighter from the bay under the Ark. Out, the
-; joystick flies it (left/right turn, up thrusts, down brakes; it keeps
-; its speed and wraps at the screen's edges), button 1 fires twin blasters,
-; button 2 calls it home (it flies itself in and docks).
+; Button 2 launches the fighter from the bay under the Ark. Out, it flies
+; the way the joystick points (8 ways): it thrusts that way and its nose
+; swings round to face it; let go and it eases to a stop. It keeps some
+; momentum and wraps at the screen's edges. Button 1 fires twin blasters
+; where the nose points, button 2 calls it home (it flies itself in and
+; docks).
 ; The tether drains while it's out and charges while it's docked: run dry
 ; and it comes home on its own. Damage comes off the tether too: run dry
 ; that way and it's destroyed, and the Ark builds another.
@@ -24,8 +26,10 @@ FT_TETH   = 96      ; a full tether
 FT_LAUNCH = 24      ; tether needed to launch
 FT_DRAIN  = 8       ; frames a tether point lasts, out
 FT_CHARGE = 2       ; frames a tether point takes to charge, docked
-FT_ROT    = $0380   ; turn a frame (16-bit angle)
-FT_THRUST = $0010   ; thrust a frame (8.8 square units)
+FT_TURN   = 16      ; the nose turns this much a frame towards the stick
+FT_SPEED  = $0180   ; top speed (8.8 square units a frame), the stick's way
+FT_GRIP   = 3       ; the velocity closes 1/2^FT_GRIP of the gap to the
+                    ;   stick's (top speed that way, or 0 let go) a frame
 FT_SHOT   = $0300   ; blaster speed (plus the fighter's own)
 FT_GAP    = 10      ; frames between blaster pairs
 FT_SHLIFE = 36
@@ -96,6 +100,7 @@ sp_frame8 = $24E3
 sp_pay    = $24E4   ; energy a kill pays (by who made it)
 ft_px     = $24E5   ; blaster side offset
 ft_py     = $24E6
+ft_want   = $23F1   ; the way the stick points
 sh_slot   = $24E8   ; the shot loop's slot
 
 ; ---------------------------------------------------------------------------
@@ -216,70 +221,48 @@ ft_o_home
 ft_o_b2
     lda ft_b2
     bne ft_o_home
-    ; turn
     ldx sp_joy
     cpx #8
-    bcs ft_o_move
-    lda ft_turn,x
-    beq ft_o_push
-    bmi ft_o_left
+    bcs ft_o_coast
+    ; the stick's way: 0 up = $C0, then $20 a step clockwise
+    txa
+    asl
+    asl
+    asl
+    asl
+    asl
     clc
-    lda ft_al
-    adc #<FT_ROT
-    sta ft_al
+    adc #$C0
+    sta ft_want
+    ; the nose swings round to it
+    sta v_t2
+    lda #FT_TURN
+    sta v_t3
     lda ft_ah
-    adc #>FT_ROT
+    jsr steer
     sta ft_ah
-    jmp ft_o_push
-ft_o_left
-    sec
-    lda ft_al
-    sbc #<FT_ROT
+    lda #0
     sta ft_al
-    lda ft_ah
-    sbc #>FT_ROT
-    sta ft_ah
-ft_o_push
-    ldx sp_joy
-    lda ft_push,x
-    beq ft_o_move
-    cmp #1
-    bne ft_o_brake
-    lda #<FT_THRUST
+    ; the velocity it wants: top speed the stick's way
+    lda #<FT_SPEED
     sta v_t0
-    lda #>FT_THRUST
+    lda #>FT_SPEED
     sta v_t1
-    lda ft_ah
+    lda ft_want
     jsr vec_rot
-    clc
-    lda ft_vxl
-    adc vx_l
-    sta ft_vxl
-    lda ft_vxh
-    adc vx_h
-    sta ft_vxh
-    clc
-    lda ft_vyl
-    adc vy_l
-    sta ft_vyl
-    lda ft_vyh
-    adc vy_h
-    sta ft_vyh
-    jmp ft_o_move
-ft_o_brake
-    ldy #3                  ; v -= v/8
-    jsr ft_damp
-ft_o_move
-    ldy #6                  ; a little drag: v -= v/64
-    jsr ft_damp
+    jmp ft_o_grip
+ft_o_coast
+    lda #0                  ; let go: it wants to stop
+    sta vx_l
+    sta vx_h
+    sta vy_l
+    sta vy_h
+ft_o_grip
+    jsr ft_grip
     jsr ft_clamp
     jsr ft_move
     jmp ft_fire             ; (it docks only when called home: button 2)
 
-; per joystick direction (0 up, clockwise): turn (-1 left, +1 right) and
-; push (1 thrust, 2 brake)
-ft_turn  .byte 0, 1, 1, 1, 0, -1, -1, -1
-ft_push  .byte 1, 1, 0, 2, 2, 2, 0, 1
 
 ; C = 1: the fighter's centre is in the bay's box
 ft_inbay
@@ -345,34 +328,36 @@ ft_homing
 ft_h_r
     rts
 
-; v -= v >> Y (arithmetic), both axes
-ft_damp
-    sty vec_tmp
+; the velocity closes 1/2^FT_GRIP of the gap to (vx, vy), both axes
+ft_grip
     ldx #0
-ft_dp_c
-    lda ft_vxl,x
+ft_gr_c
+    sec
+    lda vx_l,x              ; (vx_l, vx_h, vy_l, vy_h: contiguous)
+    sbc ft_vxl,x
     sta v_t0
-    lda ft_vxh,x
+    lda vx_h,x
+    sbc ft_vxh,x
     sta v_t1
-    ldy vec_tmp
-ft_dp_s
+    ldy #FT_GRIP
+ft_gr_s
     lda v_t1
     cmp #$80
     ror v_t1
     ror v_t0
     dey
-    bne ft_dp_s
-    sec
+    bne ft_gr_s
+    clc
     lda ft_vxl,x
-    sbc v_t0
+    adc v_t0
     sta ft_vxl,x
     lda ft_vxh,x
-    sbc v_t1
+    adc v_t1
     sta ft_vxh,x
     inx
     inx
     cpx #4
-    bne ft_dp_c
+    bne ft_gr_c
     rts
 
 ; |vx| <= $00C0 pixels, |vy| <= $0180 lines (the same speed, square)

@@ -138,6 +138,17 @@ sp_msgtm  = $24F1   ; frames a timed message has left (0: it stays)
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
 
 ; ---------------------------------------------------------------------------
+; mu_switch: play song A, unless it's already playing
+mu_song   = $24FF
+mu_switch
+    cmp mu_song
+    beq mu_sw_r
+    sta mu_song
+    jmp mus_play
+mu_sw_r
+    rts
+
+; ---------------------------------------------------------------------------
 sp_new
     lda #EN_MAX
     sta sp_energy
@@ -152,6 +163,8 @@ sp_new
     jsr sp_clear
     jsr ft_new
     jsr pr_new
+    lda #MUS_ROCKS
+    jsr mu_switch
     jmp sp_nextwave
 
 sp_clear
@@ -885,6 +898,18 @@ sp_w_pr
     sta sp_pwin
     jsr sp_msg_pirates
 sp_w_rocks
+    ; the pirates gone and their window shut: back to the rocks' music
+    lda mu_song
+    cmp #MUS_PIRATES
+    bne sp_w_rk2
+    lda pr_live
+    ora sp_praid
+    ora sp_pgun
+    ora sp_pwin
+    bne sp_w_rk2
+    lda #MUS_ROCKS
+    jsr mu_switch
+sp_w_rk2
     lda sp_left
     bne sp_w_spawn
     lda sp_live
@@ -910,7 +935,9 @@ sp_w_e
     jmp sp_msg_clear
 sp_w_spawn
     dec sp_spawn
-    bne sp_w_r
+    beq sp_w_r_far938
+    jmp sp_w_r
+sp_w_r_far938
     lda sp_gap
     sta sp_spawn
     ldx #NR-1
@@ -1119,6 +1146,8 @@ sp_msg_clear
     ldx #10
     jmp sp_msgcopy
 sp_msg_pirates
+    lda #MUS_PIRATES
+    jsr mu_switch
     lda #90
     sta sp_msgtm
     lda #<tx_pirates

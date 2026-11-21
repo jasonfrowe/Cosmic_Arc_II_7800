@@ -85,14 +85,20 @@
   asm
   jsr snd_init
   jsr hw_init
-  lda #MUS_THEME
-  jsr mus_play
+  lda #$FF
+  sta mu_song
+  lda #MUS_TITLE
+  jsr mu_switch
 end
   fireheld = 1 : fire2held = 1
   if hw_math = 0 then goto hwcheck
 
   rem ======================================================================
 title
+  asm
+  lda #MUS_TITLE
+  jsr mu_switch
+end
   gosub drawstars
 titleloop
   restorescreen

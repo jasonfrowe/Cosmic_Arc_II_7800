@@ -2,9 +2,12 @@
 """The soundtrack and the sound effects: writes src/gen/music.asm.
 
 From Super Mega Pinball 7800's tools/music.py (the same stream format, see
-src/asm/sound.asm). For now one song: the M0 test theme, a sketch in
-D minor that puts the lead and bass on POKEY 1 ($0450) and the arpeggios
-and drums on POKEY 2 ($0440), so the boot screen can solo either chip.
+src/asm/sound.asm). Lead and bass on POKEY 1 ($0450), arpeggios and drums
+on POKEY 2 ($0440). The songs:
+
+  MUS_TITLE    the Arc theme, D minor: the title and the hardware check
+  MUS_ROCKS    deep space, A minor, driving: rocks
+  MUS_PIRATES  E Phrygian, faster, a menacing bass: pirates about
 """
 
 from __future__ import annotations
@@ -46,6 +49,7 @@ INSTR = [
     ("arpmaj", [7, 7, 6, 6, 6, 5, 5, 5, 5, 4], [0, 0, 4, 4, 7, 7, 12, 12]),
     ("pluck", [13, 11, 9, 7, 6, 5, 4, 3, 2, 0], None),
     ("pad", [3, 4, 5, 6, 6, 6, 6, 5], None),
+    ("stab", [14, 12, 9, 7, 5, 4, 3, 2, 1, 0], None),
 ]
 INS = {n: i for i, (n, _, _) in enumerate(INSTR)}
 
@@ -125,41 +129,123 @@ class Stream:
 
 
 
-def song_theme():
-    v0, v1, v2, v3 = Stream("mt_v0"), Stream("mt_v1"), Stream("mt_v2"), Stream("mt_v3")
-    seq = parse(LEAD)
-    assert sum(d for _, d in seq) == 16 * len(FORM)
-    v0.ins("lead")
+ROOT_OF.update({"F": "F", "G": "G", "E": "E", "Em": "E", "B": "B"})
+
+
+def bars(text):
+    """One bar a line: check each is 16 sixteenths."""
+    out = []
+    for ln in text.strip().splitlines():
+        seq = parse(ln)
+        assert sum(d for _, d in seq) == 16, ln
+        out += seq
+    return out
+
+
+def bass_low(r):
+    """The bass's root and octave: low roots an octave down."""
+    if r in ("A", "A#", "G", "B", "G#"):
+        return note(r + "1"), note(r + "2")
+    return note(r + "2"), note(r + "3")
+
+
+def song(pre, form, lead, lead_ins, bass_bar, harm_bar, drums):
+    """A looping song: form (chords a bar), the lead (bars), a bass bar and a
+    harmony bar for a chord, drum phrase names a bar."""
+    v0, v1, v2, v3 = (Stream(f"{pre}_v{k}") for k in range(4))
+    seq = bars(lead)
+    assert sum(d for _, d in seq) == 16 * len(form), pre
+    v0.ins(lead_ins)
     v0.mark("loop")
     v0.notes(seq)
     v0.jump("loop")
-
     v1.ins("bass")
     v1.mark("loop")
-    for ch in FORM:
-        r = ROOT_OF[ch]
-        lo, hi = note(r + "2"), note(r + "3")
-        if r in ("A", "A#", "G"):
-            lo, hi = note(r + "1"), note(r + "2")
-        v1.notes([(lo, 4), (lo, 2), (hi, 2), (lo, 4), (hi, 2), (lo, 2)])
+    for ch in form:
+        v1.notes(bass_bar(ch))
     v1.jump("loop")
-
     v2.mark("loop")
     cur = None
-    for ch in FORM:
+    for ch in form:
         ins = "arpmin" if ch in MINOR else "arpmaj"
         if ins != cur:
             v2.ins(ins)
             cur = ins
-        n = note(ROOT_OF[ch] + "4")
-        v2.notes([(n, 8), (n, 8)])
+        v2.notes(harm_bar(note(ROOT_OF[ch] + "4")))
     v2.jump("loop")
-
     v3.mark("loop")
-    for i in range(len(FORM)):
-        v3.call("drum_fill" if i % 4 == 3 else "drum_main")
+    for i in range(len(form)):
+        v3.call(drums(i))
     v3.jump("loop")
     return [v0, v1, v2, v3]
+
+
+def song_title():
+    def bass(ch):
+        lo, hi = bass_low(ROOT_OF[ch])
+        return [(lo, 4), (lo, 2), (hi, 2), (lo, 4), (hi, 2), (lo, 2)]
+    return song("mt", FORM, LEAD.strip().replace("\n\n", "\n"), "lead", bass,
+                lambda n: [(n, 8), (n, 8)],
+                lambda i: "drum_fill" if i % 4 == 3 else "drum_main")
+
+
+# Deep space, rocks: A minor, driving eighths in the bass
+ROCKS_FORM = ["Am", "Am", "F", "G", "Am", "Am", "F", "E",
+              "Dm", "Dm", "Am", "Am", "F", "G", "E", "E"]
+ROCKS_LEAD = """
+A4:2 C5:2 E5:2 A5:4 G5:2 E5:2 C5:2
+D5:2 E5:4 C5:2 A4:6 r:2
+F4:2 A4:2 C5:2 F5:4 E5:2 C5:2 A4:2
+G4:2 B4:2 D5:2 G5:6 r:4
+A5:2 G5:2 E5:2 A5:4 C6:2 B5:2 A5:2
+E5:4 D5:2 C5:2 E5:8
+F5:2 E5:2 C5:2 A4:4 C5:2 F5:4
+E5:4 G#5:4 B5:4 G#5:4
+D5:2 F5:2 A5:4 D6:4 C6:2 A5:2
+F5:4 E5:2 D5:2 A4:8
+C5:2 E5:2 A5:4 E5:2 C5:2 A4:4
+B4:2 C5:2 D5:2 E5:10
+F5:2 A5:2 C6:4 A5:2 F5:2 C5:4
+G5:2 B5:2 D6:4 B5:2 G5:2 D5:4
+E5:2 G#5:2 B5:2 E6:4 D6:2 B5:2 G#5:2
+B5:4 G#5:4 E5:8
+"""
+DRUM_ROCK = "kick:2 hat:2 snare:2 hat:2 kick:2 hat:2 snare:2 hat:1 hat:1"
+DRUM_ROCKFILL = "kick:2 hat:2 snare:2 hat:2 snare:1 snare:1 tom:2 tom:2 snare:2"
+
+
+def song_rocks():
+    def bass(ch):
+        lo, hi = bass_low(ROOT_OF[ch])
+        return [(lo, 2), (hi, 2)] * 4
+    return song("mr", ROCKS_FORM, ROCKS_LEAD, "lead", bass,
+                lambda n: [(n, 4)] * 4,
+                lambda i: "drum_rockfill" if i % 4 == 3 else "drum_rock")
+
+
+# Pirates: E Phrygian (the F over E), stabs, a chugging bass, toms
+PIR_FORM = ["Em", "F", "Em", "F", "Dm", "C", "B", "B"]
+PIR_LEAD = """
+E5:2 r:2 E5:2 r:2 F5:2 E5:2 B4:4
+F5:2 r:2 F5:2 r:2 G5:2 F5:2 C5:4
+E5:2 G5:2 B5:4 A5:2 G5:2 F5:4
+F5:2 A5:2 C6:4 B5:2 A5:2 G5:2 F5:2
+D5:2 F5:2 A5:2 D6:2 C6:4 A5:4
+C5:2 E5:2 G5:2 C6:2 B5:4 G5:4
+B4:2 D#5:2 F#5:2 B5:2 A5:2 F#5:2 D#5:4
+B5:4 A5:2 G5:2 F#5:2 E5:2 D#5:4
+"""
+DRUM_PIR = "kick:2 kick:2 snare:2 hat:2 kick:2 kick:2 snare:2 tom:2"
+DRUM_PIRFILL = "tom:2 tom:2 tom:2 tom:2 snare:2 snare:2 snare:2 snare:2"
+
+
+def song_pirates():
+    def bass(ch):
+        lo, hi = bass_low(ROOT_OF[ch])
+        return [(lo, 2), (lo, 2), (hi, 2), (lo, 2)] * 2
+    return song("mp", PIR_FORM, PIR_LEAD, "stab", bass,
+                lambda n: [(n, 2)] * 8,
+                lambda i: "drum_pirfill" if i % 4 == 3 else "drum_pir")
 
 
 # ---------------------------------------------------------------------------
@@ -200,19 +286,23 @@ def f16(n):
 
 def main():
     out = ["; Generated by tools/music.py. Do not edit.", ""]
-    out.append("MUS_THEME = 0")
-    songs = [("theme", 7, 15)]
+    out.append("MUS_TITLE = 0")
+    out.append("MUS_ROCKS = 1")
+    out.append("MUS_PIRATES = 2")
+    songs = [("title", 7, 15), ("rocks", 6, 15), ("pirates", 5, 15)]
     out.append("song_lo .byte " + ",".join(f"<song_{i}" for i in range(len(songs))))
     out.append("song_hi .byte " + ",".join(f">song_{i}" for i in range(len(songs))))
-    pre = {"theme": "mt"}
+    pre = {"title": "mt", "rocks": "mr", "pirates": "mp"}
     for i, (nm, speed, mask) in enumerate(songs):
         p = pre[nm]
         out.append(f"song_{i} .byte {speed},{mask}")
         out.append("    .word " + ",".join(f"{p}_v{k}" for k in range(4)))
-    for s in song_theme():
+    for s in song_title() + song_rocks() + song_pirates():
         out.append(s.label)
         out += s.lines
-    for name, txt in (("drum_main", DRUM_MAIN), ("drum_fill", DRUM_FILL)):
+    for name, txt in (("drum_main", DRUM_MAIN), ("drum_fill", DRUM_FILL),
+                      ("drum_rock", DRUM_ROCK), ("drum_rockfill", DRUM_ROCKFILL),
+                      ("drum_pir", DRUM_PIR), ("drum_pirfill", DRUM_PIRFILL)):
         seq = drum_parse(txt)
         assert sum(d for _, d in seq) == 16, name
         out.append(name)

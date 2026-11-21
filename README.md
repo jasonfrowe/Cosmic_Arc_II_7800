@@ -28,8 +28,8 @@ tools/play.sh      # run it in the a7800 fork (SaveKey in port 2)
 
 Controls:
 - **The Ark:** the joystick aims, button 1 fires, button 2 launches the fighter.
-- **The fighter:** left/right turn, up thrusts, down brakes, button 1 fires,
-  button 2 calls it home (or fly it into the bay under the Ark).
+- **The fighter:** it flies the way the joystick points, button 1 fires,
+  button 2 calls it home.
 - On the title, button 2 opens the hardware check.
 
 ## Features (planned)

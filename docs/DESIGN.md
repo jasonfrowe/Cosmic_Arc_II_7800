@@ -170,9 +170,12 @@ limps on to the destination. It isn't game over unless the hull is gone.
 
 ### 4.3 Fighter mode
 
-- 16 headings, thrust with inertia (Spacewar's flight model on the
-  MathUnit), button 1 fires twin blasters. Left/right turn, up thrusts,
-  down brakes. It wraps at the screen's edges.
+- **Directional**: the fighter flies the way the stick points (8 ways),
+  and its nose (16 headings) swings round to face that way. Let go and it eases to a stop.
+  Its velocity closes an eighth of the gap to top speed in the stick's
+  direction each frame, so it has some weight but goes where it's pointed. Button 1
+  fires twin blasters where the nose points. It wraps at the screen's edges.
+  (The first version used asteroid-style turn and thrust, which didn't work well.)
 - Button 2 recalls the fighter (it flies home on autopilot and docks). Only
   button 2 docks it: flying into the bay doesn't, since that's too easy to do by
   mistake. A dry tether also brings it home.
@@ -470,7 +473,17 @@ and loads whole.
   (OPL) are the starting point for the title and combat themes.
 - TIA for SFX, so the music never drops out (Gamma Force's split).
 
-### 7.8 Assets carried over
+### 7.8 Music so far
+
+| Song | Where | |
+|---|---|---|
+| `MUS_TITLE` | the title, the hardware check | the Arc theme, D minor |
+| `MUS_ROCKS` | deep space | A minor, driving eighths in the bass |
+| `MUS_PIRATES` | from "PIRATES!" until the pirates are gone and the window has closed | E Phrygian, faster, stabs, a chugging bass, toms |
+
+The songs are written in `tools/music.py`, a bar a line (each checked to be 16 sixteenths).
+
+### 7.9 Assets carried over
 
 From `RP6502-Cosmic-Arc/Sprites`: asteroids, beasties, lander (the shuttle),
 laser, beam, mothership, main-screen tiles. They get halved horizontally for 160A and
