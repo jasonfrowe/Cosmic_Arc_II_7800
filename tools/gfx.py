@@ -47,10 +47,11 @@ def art(text):
 
 
 # ---------------------------------------------------------------------------
-# The Ark: a saucer, 48 x 24, its hull's middle line (row 12) at the
-# sprite's centre. a hull, b stripes and rim, c lights and dome. The bay
-# underneath is where the fighter (M2) launches and docks.
-ARK = [""] * 3 + [
+# The Ark: a saucer, 48 x 32 (two 16-line zones: drawn at y 80, on a zone
+# boundary, it costs one object a zone), its hull's middle line on row 15.
+# a hull, b stripes and rim, c lights and dome. The bay underneath is where
+# the fighter (M2) launches and docks.
+ARK = [""] * 6 + [
     "cccccc",
     "cccccccccccc",
     "ccc.cc.cc.cc.ccc",
@@ -70,7 +71,7 @@ ARK = [""] * 3 + [
     "bb" + "." * 10 + "bb",
 ]
 ARK = [r if r else "." * 48 for r in ARK]
-ARK += ["." * 48] * (24 - len(ARK))
+ARK += ["." * 48] * (32 - len(ARK))
 
 # Asteroids: a dark, b body, c highlight.
 ROCK_L = art("""
@@ -195,7 +196,8 @@ def font():
     sp = src.load()
     first, last = 32, 95
     n = last - first + 1
-    im = Image.new("P", (n * 8, 8), 0)
+    # 16 lines a glyph (a 16-line zone), the letter in the top 8
+    im = Image.new("P", (n * 8, 16), 0)
     im.putpalette(PNG_PALETTE)
     px = im.load()
     for i in range(n):

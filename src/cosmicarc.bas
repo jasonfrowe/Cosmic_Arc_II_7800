@@ -11,7 +11,11 @@
   rem tools/a78header.py then adds the second POKEY ($0440) and the math
   rem unit ("ACM") to the header.
   set romsize 272k
-  set zoneheight 8
+  rem 16-line zones: a zone's display list has room for 31 objects, and a
+  rem 16-line sprite touches 2 zones, not 3 (8-line zones overflowed in busy
+  rem waves and wrecked the zone below). zoneprotection drops what won't fit.
+  set zoneheight 16
+  set zoneprotection on
   set screenheight 192
   set doublewide on
   displaymode 160A
@@ -89,10 +93,10 @@ title
   gosub drawstars
 titleloop
   restorescreen
-  plotsprite ark 1 56 83
-  plotchars 'COSMIC ARC II' 0 28 4
-  plotchars 'PRESS FIRE' 0 40 17
-  plotchars 'BUTTON 2: HW CHECK' 5 8 20
+  plotsprite ark 1 56 80
+  plotchars 'COSMIC ARC II' 0 28 2
+  plotchars 'PRESS FIRE' 0 40 8
+  plotchars 'BUTTON 2: HW CHECK' 5 8 10
   drawscreen
   if !joy0fire0 then fire2held = 0
   if joy0fire0 && !fire2held then fire2held = 1 : goto hwcheck
@@ -132,7 +136,7 @@ end
   if sp_energy < 25 then P7C1 = $36
 
   restorescreen
-  if sp_state <> 2 then plotsprite ark 1 56 83 : plotsprite aim 3 sp_aimx sp_aimy
+  if sp_state <> 2 then plotsprite ark 1 56 80 : plotsprite aim 3 sp_aimx sp_aimy
   for i = 0 to 9
     t = rk_t[i]
     if t = 0 then goto rocknext
@@ -154,8 +158,8 @@ rocknext
 boltnext
   next
   plotchars hud_top 0 0 0 20
-  plotchars hud_bot 7 0 23 20
-  if sp_msglen then plotchars sp_msg 0 sp_msgx 6 sp_msglen
+  plotchars hud_bot 7 0 11 20
+  if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
 
   if sp_state <> 2 then goto gameloop
@@ -166,16 +170,19 @@ boltnext
   goto title
 
   rem ======================================================================
-  rem Two stars a row, then save the screen as the background
+  rem Stars (three a row, playfield rows 1-10), then save the screen as the
+  rem background
 drawstars
   clearscreen
-  for i = 1 to 22
-    t = rand & 127
-    t = t + (rand & 15)
+  for i = 1 to 10
+    t = rand & 63
     plotchars starch 5 t i 1
-    t = rand & 127
-    t = t + 16
+    t = rand & 63
+    t = t + 48
     plotchars starch 6 t i 1
+    t = rand & 63
+    t = t + 96
+    plotchars starch 5 t i 1
   next
   savescreen
   return
@@ -184,17 +191,17 @@ drawstars
   rem The hardware check (hwtest.asm): fire solos a POKEY, button 2 leaves
 hwcheck
   clearscreen
-  plotchars 'HARDWARE CHECK' 0 24 2
-  plotchars hw_l0 0 0 5 20
-  plotchars hw_l1 0 0 6 20
-  plotchars hw_l2 0 0 7 20
-  plotchars hw_l3 0 0 8 20
-  plotchars hw_l4 0 0 9 20
-  plotchars hw_l5 0 0 10 20
-  plotchars hw_l6 0 0 11 20
-  plotchars hw_l7 0 0 13 20
-  plotchars 'FIRE: SOLO A POKEY' 5 8 18
-  plotchars 'BUTTON 2: BACK' 5 24 20
+  plotchars 'HARDWARE CHECK' 0 24 0
+  plotchars hw_l0 0 0 1 20
+  plotchars hw_l1 0 0 2 20
+  plotchars hw_l2 0 0 3 20
+  plotchars hw_l3 0 0 4 20
+  plotchars hw_l4 0 0 5 20
+  plotchars hw_l5 0 0 6 20
+  plotchars hw_l6 0 0 7 20
+  plotchars hw_l7 0 0 8 20
+  plotchars 'FIRE: SOLO A POKEY' 5 8 10
+  plotchars 'BUTTON 2: BACK' 5 24 11
   drawscreen
   asm
   jsr hw_frame

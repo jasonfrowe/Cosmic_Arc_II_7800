@@ -103,15 +103,20 @@ at $2200.
 
 ## Display
 
-160A, 8-line zones, 192 lines (24 rows): row 0 and row 23 are the HUD, rows
-1-22 the playfield (y 8-183). Text is doublewide: 8 pixels a character, 20
-across. The font is ASCII 32-95, so a character's code is (ASCII - 32) * 2
-(`text.asm`). 7800basic's `alphachars` maps literal strings the same way.
+160A, **16-line zones**, 192 lines (12 rows): row 0 and row 11 are the HUD,
+rows 1-10 the playfield (y 16-175). Each zone's display list has room for 31
+objects (`$1880-$1FFF`). `set zoneprotection on` drops objects that won't fit,
+rather than letting them overflow into the next zone's list. Text is doublewide: 8 pixels a
+character, 20 across, with each glyph's 8 lines at the top of a 16-line
+character (`font.png` is 16 tall). The font is ASCII 32-95, so a character's
+code is (ASCII - 32) * 2 (`text.asm`). 7800basic's `alphachars` maps literal
+strings the same way.
 Stars are one-character objects saved with `savescreen`. Each frame does
 `restorescreen`, then the sprites (`plotsprite`), then the HUD (`plotchars`
 from RAM).
 
-Deep space geometry: the Ark is a 48 x 24 sprite at (56, 83), its centre
+Deep space geometry: the Ark is a 48 x 32 sprite at (56, 80), on a zone
+boundary so it costs one object a zone, its centre
 (the hull's middle line) at (80, 95), with the fighter's bay underneath. The 8
 lanes leave the centre straight up/down/across, or diagonally at exactly 1
 pixel across for 2 lines (45° on screen, since a 160A pixel is about two lines
@@ -127,6 +132,7 @@ Tests (in the emulator, headless):
 ```
 tools/test_aim.sh     # all 8 joystick directions aim the laser
 tools/test_lanes.sh   # every rock, split pieces too, within 1.5 px of its lane
+tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its list
 ```
 
 ## Pitfalls found so far
@@ -149,6 +155,14 @@ tools/test_lanes.sh   # every rock, split pieces too, within 1.5 px of its lane
 - 7800basic wants PNGs with small palettes: save them 2-bit (`bits=2`).
 - dasm has a line length limit: split long `.byte` lines (music.py does).
 - `sfx` uses X and Y: reload loop registers after calling it.
+- **Zone overflow.** With 8-line zones (15 objects each), busy waves overfilled
+  the zone under the Ark: rocks on the side lanes, the Ark's pieces, stars and
+  bolts all landed there. An overflow wrecks the *next* zone's list, so the
+  bottom of the Ark and everything near it vanished (found on hardware). Fixed
+  with 16-line zones (31 objects, and a sprite touches 2 zones, not 3), the Ark
+  on a zone boundary, and `zoneprotection`. `tools/test_zones.sh` watches
+  7800basic's `dlend` (zero page $65 on, one byte a zone). The fullest zone in
+  wave 22 went from 70/80 bytes to 40/160.
 - Don't work a moving thing's heading out again from its rounded velocity:
   the error builds up (small rocks drifted 4 px off their lanes, found on
   hardware). Keep the intent (the lane) and work out from that.

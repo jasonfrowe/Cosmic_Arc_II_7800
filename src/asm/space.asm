@@ -23,14 +23,14 @@
 ; hi-res pixels (twice 160A's), so a rock's speed looks the same in every
 ; direction: the math unit gets dx*2, and x velocity is halved after.
 ;
-; Playfield: y 8-183. Rows 0 and 23 (8 lines each) are the HUD.
+; Playfield: y 16-175. Zone rows 0 and 11 (16 lines each) are the HUD.
 ; ===========================================================================
 
 NR        = 10      ; rock slots (rocks and explosions)
 NB        = 4       ; bolt slots
 
-ARK_X     = 56      ; the Ark's sprite, 48 x 24
-ARK_Y     = 83
+ARK_X     = 56      ; the Ark's sprite, 48 x 32, on a zone boundary
+ARK_Y     = 80
 ARK_CX    = 80      ; its centre (the hull's middle line)
 ARK_CY    = 95
 ARK_HX0   = 57      ; its hit box: x 57-102, y 86-102
@@ -38,8 +38,8 @@ ARK_HX1   = 103
 ARK_HY0   = 86
 ARK_HY1   = 103
 
-PF_TOP    = 8
-PF_BOT    = 184
+PF_TOP    = 16
+PF_BOT    = 176
 
 EN_MAX    = 96      ; energy: 12 bar cells of 8
 
@@ -771,9 +771,9 @@ sp_w_new
 ; where a large rock (8 x 16; centre = corner + (4, 8)) enters on each
 ; lane, at the playfield's edge, its centre exactly on the line from the
 ; Ark's centre (80, 95): diagonals 1 pixel across for 2 lines, e.g. lane 1's
-; centre (119, 17) is 39 across for 78 up
-lane_x  .byte 76, 115, 152, 116, 76, 36, 0, 37
-lane_y  .byte 8, 9, 87, 167, 167, 167, 87, 9
+; centre (115, 25) is 35 across for 70 up
+lane_x  .byte 76, 111, 152, 112, 76, 40, 0, 41
+lane_y  .byte 16, 17, 87, 159, 160, 159, 87, 17
 
 ; ---------------------------------------------------------------------------
 ; The HUD text (character codes: (ASCII - 32) * 2, doublewide)
