@@ -138,17 +138,6 @@ sp_msgtm  = $24F1   ; frames a timed message has left (0: it stays)
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
 
 ; ---------------------------------------------------------------------------
-; mu_switch: play song A, unless it's already playing
-mu_song   = $24FF
-mu_switch
-    cmp mu_song
-    beq mu_sw_r
-    sta mu_song
-    jmp mus_play
-mu_sw_r
-    rts
-
-; ---------------------------------------------------------------------------
 sp_new
     lda #EN_MAX
     sta sp_energy

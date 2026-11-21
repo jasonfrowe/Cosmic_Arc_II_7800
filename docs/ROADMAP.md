@@ -33,7 +33,7 @@ then link them together.
 - [x] From hardware: the pirate window (small rocks only for 20 s after the first pirate), rocks hurt pirates (who dodge them on the math unit), the fighter docks only with button 2
 - [x] From hardware: directional fighter controls; music for the title, rocks and pirates
 - [ ] Tune on hardware: fighter handling, tether rates, turret rate, pirate damage
-- [ ] Move deep space into its own bank (bank 1 has 5.7K left)
+- [x] Deep space in its own bank (bank 2): bank 1 back to 10.4K free, bank 2 9.7K free
 
 ## M3: Planet slice
 - [ ] Horizontal smooth-scroll engine with a wrapping surface

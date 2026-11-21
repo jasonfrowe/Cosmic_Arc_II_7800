@@ -516,3 +516,14 @@ sfx_tick_n
     dex
     bpl sfx_tick_c
     rts
+
+; ---------------------------------------------------------------------------
+; mu_switch: play song A, unless it's already playing
+mu_song   = $24FF
+mu_switch
+    cmp mu_song
+    beq mu_sw_r
+    sta mu_song
+    jmp mus_play
+mu_sw_r
+    rts

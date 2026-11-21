@@ -43,12 +43,19 @@ mapper is `a78_p450_ta` in the emulator):
 
 | Bank | Where | Holds |
 |---|---|---|
-| 1 | $4000, fixed | the game, the engines, the music player and data |
-| 2-16 | $8000, switched (`sta $8000` with bank - 2) | one per mode / biome / music set (DESIGN.md 7.2) |
+| 1 | $4000, fixed | the BASIC (game flow), banks.asm, text, the sound player, music and effects, the SaveKey, the hardware check |
+| 2 | $8000, switched | deep space: space, fighter, pirates, vec, draw |
+| 3-16 | $8000, switched | to come: one per mode / biome / music set (DESIGN.md 7.2) |
 | 17 | $C000, fixed | graphics (MARIA reads them at any time), 7800basic's runtime |
 
-For now each switched bank holds only a signature, `"CA", n`, at $8000, which
-the boot check reads.
+`bank_in` (`banks.asm`, A = bank) switches a bank in (`sta $8000` with the
+bank - 2) and remembers it in `cur_bank`. Bank 2 goes in at boot and stays in,
+because the BASIC calls deep space straight (`sp_new`, `sp_frame`, `sp_draw`). The
+hardware check switches every bank through, then puts `cur_bank` back.
+What must stay in a fixed bank: anything the NMI runs (the music player, its
+data, the effects), anything called while another bank is in (`mu_switch`,
+`sfx`), and graphics. Each switched bank still starts with its "CA", n
+signature at $8000.
 
 Header (`tools/a78header.py` over what 7800basic writes):
 

@@ -288,8 +288,8 @@ hw_t_banks_ok
     inx
     cpx #15
     bne hw_t_banks_b
-    lda #0
-    sta $8000
+    lda cur_bank            ; put back the bank that was in
+    jsr bank_in
     ldx #5
     lda hw_banks
     bne hw_t_banks_f

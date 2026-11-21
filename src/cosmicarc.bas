@@ -83,6 +83,8 @@
   starch = 126
 
   asm
+  lda #BANK_SPACE         ; deep space's bank (docs/ENGINE.md: banks)
+  jsr bank_in
   jsr snd_init
   jsr hw_init
   lda #$FF
@@ -235,22 +237,27 @@ end
 
   rem Assembly files are copied flat into the build directory (tools/build.sh).
   inline mathunit.asm
+  inline banks.asm
   inline text.asm
   inline sound.asm
   inline music.asm
   inline savekey.asm
   inline hwtest.asm
-  inline vec.asm
-  inline space.asm
-  inline fighter.asm
-  inline pirates.asm
-  inline draw.asm
 
+  rem ======================================================================
+  rem  Bank 2: deep space (space.asm and the rest). In from the start: the
+  rem  BASIC calls it straight (sp_new, sp_frame, sp_draw).
+  rem ======================================================================
   bank 2
   rem signature, read at $8000 by hwtest.asm
   asm
   .byte "CA",2
 end
+  inline vec.asm
+  inline space.asm
+  inline fighter.asm
+  inline pirates.asm
+  inline draw.asm
 
   bank 3
   rem signature, read at $8000 by hwtest.asm
