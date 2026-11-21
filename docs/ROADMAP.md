@@ -19,7 +19,8 @@ then link them together.
 - [x] Ark in the centre, 8-way laser along 8 lanes, aim marker, energy bar
 - [x] Asteroid waves along the lanes, splitting large → medium → small; explosions; HUD (score, wave, energy)
 - [x] `tools/snap.sh` scripted input and an autopilot soak test; holds 60 fps with 9 rocks
-- [ ] Tune the balance on hardware (energy costs, wave speed and size)
+- [x] Balance and fire rate checked on hardware
+- [x] Fixes from hardware: down diagonals (input), rocks drifting off the diagonal lanes, a bigger Ark (48 x 24) with a fighter bay
 
 ## M2: Fighter
 - [ ] Launch, fly (16 headings, inertia), twin blasters, recall/dock, tether

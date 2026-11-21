@@ -47,23 +47,30 @@ def art(text):
 
 
 # ---------------------------------------------------------------------------
-# The Ark: a saucer, 32 x 16. a hull, b stripes, c lights and dome.
-ARK = art("""
-cccc
-cccccccc
-cc.cccc.cc
-cccccccccccc
-aaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaa
-aabbbbbbbbbbbbbbbbbbbbbbbbbbaa
-aaacaaacaaacaaacaaacaaacaaacaaaa
-aabbbbbbbbbbbbbbbbbbbbbbbbbbaa
-aaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaa
-bbbbbbbbbb
-cccccc
-cccc
-""")
+# The Ark: a saucer, 48 x 24, its hull's middle line (row 12) at the
+# sprite's centre. a hull, b stripes and rim, c lights and dome. The bay
+# underneath is where the fighter (M2) launches and docks.
+ARK = [""] * 3 + [
+    "cccccc",
+    "cccccccccccc",
+    "ccc.cc.cc.cc.ccc",
+    "c" * 20,
+    "b" * 28,
+    "a" * 34,
+    "a" * 40,
+    "aa" + "b" * 40 + "aa",
+    "a" + "aaac" * 11 + "a",
+    "a" * 48,
+    "aa" + "b" * 44 + "aa",
+    "a" * 44,
+    "a" * 38,
+    "b" * 32,
+    "b" * 8 + "." * 12 + "b" * 8,
+    "bbbb.cc" + "." * 6 + "cc.bbbb",
+    "bb" + "." * 10 + "bb",
+]
+ARK = [r if r else "." * 48 for r in ARK]
+ARK += ["." * 48] * (24 - len(ARK))
 
 # Asteroids: a dark, b body, c highlight.
 ROCK_L = art("""
@@ -215,7 +222,7 @@ def font():
 
 def main():
     GFX.mkdir(parents=True, exist_ok=True)
-    save("ark", ARK + ["." * 32] * (16 - len(ARK)), 32)
+    save("ark", ARK, 48)
     save("rock_l", ROCK_L)
     save("rock_m", ROCK_M)
     save("rock_s", ROCK_S)

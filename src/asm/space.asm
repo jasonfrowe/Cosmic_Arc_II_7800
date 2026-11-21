@@ -7,6 +7,12 @@
 ; sends both halves on down its lane, one faster than the other. (Pirates,
 ; M2, are what come in off the lanes and need the fighter.)
 ;
+; A rock keeps its lane (rk_ln), and its velocity comes from the lane, not
+; from a heading: straight, or exactly 1 pixel across for 2 lines on the
+; diagonals, so rounding can't walk it off the lane (it did: headings
+; worked out again at each split drifted small rocks 4 pixels aside).
+; A rock's centre is its corner + (4, 8) large, (4, 6) medium, (2, 4) small.
+;
 ;   sp_new     a new game: energy, score, wave 1
 ;   sp_frame   one step: input (sp_joy 0-7 / 8 none, sp_fire), bolts,
 ;              rocks, collisions, waves, the HUD text
@@ -23,14 +29,14 @@
 NR        = 10      ; rock slots (rocks and explosions)
 NB        = 4       ; bolt slots
 
-ARK_X     = 64      ; the Ark's sprite, 32 x 16
-ARK_Y     = 88
-ARK_CX    = 80      ; its centre
+ARK_X     = 56      ; the Ark's sprite, 48 x 24
+ARK_Y     = 83
+ARK_CX    = 80      ; its centre (the hull's middle line)
 ARK_CY    = 95
-ARK_HX0   = 66      ; its hit box: x 66-93, y 88-101
-ARK_HX1   = 94
-ARK_HY0   = 88
-ARK_HY1   = 102
+ARK_HX0   = 57      ; its hit box: x 57-102, y 86-102
+ARK_HX1   = 103
+ARK_HY0   = 86
+ARK_HY1   = 103
 
 PF_TOP    = 8
 PF_BOT    = 184
@@ -90,7 +96,6 @@ sp_t0     = $2395
 sp_t1     = $2396
 sp_t2     = $2397
 sp_t3     = $2398
-sp_ang    = $2399   ; 2
 sp_slot   = $239B
 sp_kids   = $239C
 sp_msglen = $239D   ; 0: no message
@@ -99,6 +104,7 @@ sp_ticks  = $239F   ; game loop passes (for frame-rate checks)
 hud_top   = $23A0   ; 20 characters
 hud_bot   = $23B8   ; 20
 sp_msg    = $23D0   ; 20
+rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
 
 ; ---------------------------------------------------------------------------
 sp_new
@@ -263,8 +269,8 @@ sp_in_fire
 ; aim marker / bolt start, from the Ark's centre, on the lane (diagonals:
 ; 1 pixel across for 2 lines, as the bolts and the rocks move); bolt steps
 ; a frame
-aim_ox  .byte 0, 7, 22, 7, 0, -7, -22, -7
-aim_oy  .byte -14, -14, 0, 14, 14, 14, 0, -14
+aim_ox  .byte 0, 9, 30, 9, 0, -9, -30, -9
+aim_oy  .byte -18, -18, 0, 18, 18, 18, 0, -18
 bolt_dx .byte 0, 2, 3, 2, 0, -2, -3, -2
 bolt_dy .byte -5, -4, 0, 4, 5, 4, 0, -4
 
@@ -386,11 +392,11 @@ sp_h_b
     ; the bolt's middle (x+2, y+2) inside the rock's box
     lda bl_x,y
     clc
-    adc #2
+    adc #3                  ; (a pixel of slack either side)
     sec
     sbc rk_x,x
     ldx sp_t3
-    cmp rock_w-1,x
+    cmp rock_w2-1,x
     bcs sp_h_bn
     ldx sp_slot
     lda bl_y,y
@@ -418,8 +424,9 @@ sp_h_next
 sp_h_done
     rts
 
-rock_w  .byte 8, 7, 4
+rock_w  .byte 8, 8, 4
 rock_h  .byte 16, 12, 8
+rock_w2 .byte 10, 10, 6      ; widths with the bolt's slack
 rock_dmg .byte 16, 12, 8
 ; points, BCD: large 20, medium 50, small 100 (middle byte / low byte)
 rock_pm .byte $00, $00, $01
@@ -496,21 +503,6 @@ sp_rh_e
     bcs sp_rh_boom          ; a small one just goes
     ; the children go on down the lane, one faster than the other
     inc sp_kids             ; their size
-    ; the parent's heading: atan2(vy, 2 vx)
-    lda rk_vxl,x
-    asl
-    sta M_X
-    lda rk_vxh,x
-    rol
-    sta M_X+1
-    lda rk_vyl,x
-    sta M_Y
-    lda rk_vyh,x
-    sta M_Y+1
-    lda M_ANG
-    sta sp_ang
-    lda M_ANG+1
-    sta sp_ang+1
     lda #$00
     jsr sp_kid
     lda #$30
@@ -519,8 +511,8 @@ sp_rh_e
 sp_rh_boom
     jmp sp_boom
 
-; one child of rock sp_slot, size sp_kids, heading sp_ang, speed this
-; wave's + $20 a size step + A
+; one child of rock sp_slot, size sp_kids, on its lane, speed this
+; wave's + $20 a size step + A. Its centre is its parent's.
 sp_kid
     sta sp_t2
     ldy #NR-1
@@ -534,20 +526,28 @@ sp_kid_go
     tya
     tax
     ldy sp_slot
-    lda sp_kids
-    sta rk_t,x
+    lda rk_ln,y
+    sta rk_ln,x
     lda rk_x,y
-    clc
-    adc #1
     sta rk_x,x
     lda rk_y,y
-    clc
-    adc #2
     sta rk_y,x
-    lda #0
+    lda rk_xl,y
     sta rk_xl,x
+    lda rk_yl,y
     sta rk_yl,x
-    lda sp_kids
+    ldy sp_kids
+    clc
+    lda rk_x,x
+    adc kid_dx-2,y
+    sta rk_x,x
+    clc
+    lda rk_y,x
+    adc #2                  ; (large -> medium and medium -> small both 2 lines)
+    sta rk_y,x
+    tya
+    sta rk_t,x
+    ; speed: this wave's + $20 a size step + A
     sec
     sbc #1
     asl
@@ -559,34 +559,112 @@ sp_kid_go
     adc sp_t2
     clc
     adc sp_spdl
-    sta M_X
+    sta sp_t0
     lda sp_spdh
     adc #0
-    sta M_X+1
-    lda #0
-    sta M_Y
-    sta M_Y+1
-    lda sp_ang
-    sta M_T
-    lda sp_ang+1
-    sta M_T+1
-    jmp sp_setvel
+    sta sp_t1
+    jmp sp_lanevel
 
-; velocity of rock X from the math unit's turned vector (square units):
-; vx = XR / 2, vy = YR
-sp_setvel
-    lda M_XR+1
-    cmp #$80
-    ror
-    sta rk_vxh,x
-    lda M_XR
-    ror
-    sta rk_vxl,x
-    lda M_YR
+; the children's corners from the parent's: medium 0 across, small 2
+kid_dx  .byte 0, 2
+
+; rock X's velocity down its lane at speed sp_t0/sp_t1 (8.8, square units:
+; lines, or hi-res pixels across, a frame). Vertical lanes: vy = s.
+; Across: vx = s/2 pixels. Diagonals: vy = s * 181/256 (s / sqrt 2, on the
+; math unit), made even, and vx = vy/2 exactly.
+sp_lanevel
+    ldy rk_ln,x
+    lda #0
+    sta sp_t2               ; |vx| low, high in sp_t3
+    sta sp_t3
     sta rk_vyl,x
-    lda M_YR+1
+    sta rk_vyh,x
+    lda lane_kind,y
+    beq sp_lv_vert
+    cmp #1
+    beq sp_lv_across
+    ; diagonal
+    lda sp_t0
+    sta M_A
+    lda sp_t1
+    sta M_A+1
+    lda #181
+    sta M_B
+    lda #0
+    sta M_B+1
+    sta M_CTRL
+    lda M_P+1
+    and #$FE
+    sta rk_vyl,x
+    lda M_P+2
+    sta rk_vyh,x
+    lsr
+    sta sp_t3
+    lda rk_vyl,x
+    ror
+    sta sp_t2
+    jmp sp_lv_sign
+sp_lv_vert
+    lda sp_t0
+    sta rk_vyl,x
+    lda sp_t1
+    sta rk_vyh,x
+    jmp sp_lv_sign
+sp_lv_across
+    lda sp_t1
+    lsr
+    sta sp_t3
+    lda sp_t0
+    ror
+    sta sp_t2
+sp_lv_sign
+    ; inwards: the lane's outward direction turned round
+    lda sp_t2
+    sta rk_vxl,x
+    lda sp_t3
+    sta rk_vxh,x
+    lda lane_sx,y
+    beq sp_lv_x0
+    bpl sp_lv_y
+    jsr sp_negx
+    jmp sp_lv_y
+sp_lv_x0
+    lda #0
+    sta rk_vxl,x
+    sta rk_vxh,x
+sp_lv_y
+    lda lane_sy,y
+    bmi sp_lv_ny
+    bne sp_lv_r
+    lda #0
+    sta rk_vyl,x
+    sta rk_vyh,x
+sp_lv_r
+    rts
+sp_lv_ny
+    sec
+    lda #0
+    sbc rk_vyl,x
+    sta rk_vyl,x
+    lda #0
+    sbc rk_vyh,x
     sta rk_vyh,x
     rts
+sp_negx
+    sec
+    lda #0
+    sbc rk_vxl,x
+    sta rk_vxl,x
+    lda #0
+    sbc rk_vxh,x
+    sta rk_vxh,x
+    rts
+
+; per lane (0 up, clockwise): 0 vertical, 1 across, 2 diagonal; and the
+; signs of a rock's velocity (inwards: towards the Ark)
+lane_kind .byte 0, 2, 1, 2, 0, 2, 1, 2
+lane_sx   .byte 0, -1, -1, -1, 0, 1, 1, 1
+lane_sy   .byte 1, 1, 0, -1, -1, -1, 0, 1
 
 ; ---- waves: spawning, clear, next ----
 sp_waves
@@ -652,50 +730,24 @@ sp_w_new
     ; a lane, 0-7 (0 up, clockwise): its start at the playfield's edge
     lda M_RND
     and #7
+    sta rk_ln,x
     tay
     lda lane_x,y
     sta rk_x,x
     lda lane_y,y
     sta rk_y,x
-    ; heading: at the Ark's centre
-    sec
-    lda #ARK_CX-4
-    sbc rk_x,x
-    sta sp_t0
-    lda #0
-    sbc #0
-    sta sp_t1
-    asl sp_t0               ; x in square units
-    rol sp_t1
-    lda sp_t0
-    sta M_X
-    lda sp_t1
-    sta M_X+1
-    sec
-    lda #ARK_CY-8
-    sbc rk_y,x
-    sta M_Y
-    lda #0
-    sbc #0
-    sta M_Y+1
-    lda M_ANG
-    sta M_T
-    lda M_ANG+1
-    sta M_T+1
     lda sp_spdl
-    sta M_X
+    sta sp_t0
     lda sp_spdh
-    sta M_X+1
-    lda #0
-    sta M_Y
-    sta M_Y+1
-    jmp sp_setvel
+    sta sp_t1
+    jmp sp_lanevel
 
-; where a large rock (8 x 16) enters on each lane: on the line from the
-; Ark's centre (80, 95) through the lane's direction (in square units:
-; diagonals are 1 pixel across for 2 lines), at the playfield's edge
-lane_x  .byte 76, 115, 152, 115, 76, 37, 0, 37
-lane_y  .byte PF_TOP, PF_TOP, 87, PF_BOT-16, PF_BOT-16, PF_BOT-16, 87, PF_TOP
+; where a large rock (8 x 16; centre = corner + (4, 8)) enters on each
+; lane, at the playfield's edge, its centre exactly on the line from the
+; Ark's centre (80, 95): diagonals 1 pixel across for 2 lines, e.g. lane 1's
+; centre (119, 17) is 39 across for 78 up
+lane_x  .byte 76, 115, 152, 116, 76, 36, 0, 37
+lane_y  .byte 8, 9, 87, 167, 167, 167, 87, 9
 
 ; ---------------------------------------------------------------------------
 ; The HUD text (character codes: (ASCII - 32) * 2, doublewide)

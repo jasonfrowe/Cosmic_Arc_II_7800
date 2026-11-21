@@ -89,7 +89,7 @@ title
   gosub drawstars
 titleloop
   restorescreen
-  plotsprite ark 1 64 88
+  plotsprite ark 1 56 83
   plotchars 'COSMIC ARC II' 0 28 4
   plotchars 'PRESS FIRE' 0 40 17
   plotchars 'BUTTON 2: HW CHECK' 5 8 20
@@ -132,7 +132,7 @@ end
   if sp_energy < 25 then P7C1 = $36
 
   restorescreen
-  if sp_state <> 2 then plotsprite ark 1 64 88 : plotsprite aim 3 sp_aimx sp_aimy
+  if sp_state <> 2 then plotsprite ark 1 56 83 : plotsprite aim 3 sp_aimx sp_aimy
   for i = 0 to 9
     t = rk_t[i]
     if t = 0 then goto rocknext
@@ -155,7 +155,7 @@ boltnext
   next
   plotchars hud_top 0 0 0 20
   plotchars hud_bot 7 0 23 20
-  if sp_msglen then plotchars sp_msg 0 sp_msgx 11 sp_msglen
+  if sp_msglen then plotchars sp_msg 0 sp_msgx 6 sp_msglen
   drawscreen
 
   if sp_state <> 2 then goto gameloop

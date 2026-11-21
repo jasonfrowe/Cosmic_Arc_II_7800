@@ -111,12 +111,23 @@ Stars are one-character objects saved with `savescreen`. Each frame does
 `restorescreen`, then the sprites (`plotsprite`), then the HUD (`plotchars`
 from RAM).
 
-Deep space geometry: the Ark's centre is (80, 95). The 8 lanes leave it
-straight up/down/across, or diagonally at 1 pixel across for 2 lines (45° on
-screen, since a 160A pixel is about two lines wide). Rocks enter on a lane
-and fly at the centre, and bolts start from the aim marker on the same lane.
-The math unit works in "square" units (x doubled) so speeds look the same in
-every direction.
+Deep space geometry: the Ark is a 48 x 24 sprite at (56, 83), its centre
+(the hull's middle line) at (80, 95), with the fighter's bay underneath. The 8
+lanes leave the centre straight up/down/across, or diagonally at exactly 1
+pixel across for 2 lines (45° on screen, since a 160A pixel is about two lines
+wide). Rocks enter on a lane with their centre exactly on its line. A rock keeps
+its lane (`rk_ln`), and its velocity comes from the lane, not from a heading.
+Diagonal speeds are s/√2 on the math unit, with vy made even and vx = vy/2
+exactly, so rounding can't move a rock off its lane. When a rock splits, the
+pieces start at their parent's centre on the same lane. Bolts start from the
+aim marker on the lane, and a bolt hit allows a pixel of slack either side.
+
+Tests (in the emulator, headless):
+
+```
+tools/test_aim.sh     # all 8 joystick directions aim the laser
+tools/test_lanes.sh   # every rock, split pieces too, within 1.5 px of its lane
+```
 
 ## Pitfalls found so far
 
@@ -138,6 +149,9 @@ every direction.
 - 7800basic wants PNGs with small palettes: save them 2-bit (`bits=2`).
 - dasm has a line length limit: split long `.byte` lines (music.py does).
 - `sfx` uses X and Y: reload loop registers after calling it.
+- Don't work a moving thing's heading out again from its rounded velocity:
+  the error builds up (small rocks drifted 4 px off their lanes, found on
+  hardware). Keep the intent (the lane) and work out from that.
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 
