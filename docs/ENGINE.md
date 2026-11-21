@@ -148,6 +148,7 @@ tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its li
                       # and the game loop never stalls (4+ frames)
 tools/test_waves.sh   # 11 waves: none clears with a pirate about; the rocks'
                       # music comes back after the pirates are destroyed
+tools/test_edges.sh   # pirates never leave the screen or wrap (84,000 samples)
 ```
 
 `tools/fixbranches.py` turns each "Branch out of range" in the last build's

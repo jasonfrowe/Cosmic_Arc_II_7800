@@ -48,6 +48,10 @@ MISS_LIFE = 200     ; pairs of frames a missile lasts
 MISS_MAX  = 2       ; missiles in the air from all gunships
 RAID_GAP  = 70      ; frames between a raider's shots, + up to 63
 GUN_GAP   = 150     ; frames between a gunship's missiles
+PR_XMIN   = 4       ; pirates' centres stay inside this box
+PR_XMAX   = 155
+PR_YMIN   = PF_TOP+4
+PR_YMAX   = PF_BOT-6
 R_AVOID   = 40      ; pirates sidestep a rock due closer than this (square)
 
 ; ---- RAM ----
@@ -372,6 +376,7 @@ pr_fr_tr
     lda pr_y,x
     adc pr_vyh,x
     sta pr_y,x
+    jsr pr_keepin
     ; a raider shoots
     lda pr_t,x
     cmp #PR_RAID
@@ -393,6 +398,44 @@ pr_fr_n
     bmi pr_fr_r
     jmp pr_fr_l
 pr_fr_r
+    rts
+
+; pirate X stays on the screen: it mustn't wrap round the edges (the fighter
+; couldn't get at it). A byte past 0 reads as big: 208 and up is off the
+; left (or top), the rest off the right (or bottom).
+pr_keepin
+    lda pr_x,x
+    cmp #PR_XMIN
+    bcc pr_ki_x0
+    cmp #PR_XMAX+1
+    bcc pr_ki_y
+    cmp #208
+    bcs pr_ki_x0
+    lda #PR_XMAX
+    bne pr_ki_xs
+pr_ki_x0
+    lda #PR_XMIN
+pr_ki_xs
+    sta pr_x,x
+    lda #0
+    sta pr_xl,x
+pr_ki_y
+    lda pr_y,x
+    cmp #PR_YMIN
+    bcc pr_ki_y0
+    cmp #PR_YMAX+1
+    bcc pr_ki_r
+    cmp #224
+    bcs pr_ki_y0
+    lda #PR_YMAX
+    bne pr_ki_ys
+pr_ki_y0
+    lda #PR_YMIN
+pr_ki_ys
+    sta pr_y,x
+    lda #0
+    sta pr_yl,x
+pr_ki_r
     rts
 
 ; raider X shoots at the Ark (if it's on the screen)

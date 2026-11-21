@@ -194,48 +194,17 @@ a.....a.
 # ---------------------------------------------------------------------------
 # M2: the fighter, pirates, shots, pods.
 
-# The fighter: 16 headings (0 east, then clockwise: 4 down, 8 west, 12 up),
-# 8 x 12, rendered from a polygon in square units (x in hi-res pixels, y in
-# lines) and sampled down to 160A pixels. b hull, c cockpit.
-FIGHTER = [(9, 0), (-6, -7), (-3, 0), (-6, 7)]
-COCKPIT = (2, 0)
-
-
-def inside(poly, x, y):
-    n, c = len(poly), False
-    for i in range(n):
-        (x1, y1), (x2, y2) = poly[i], poly[(i + 1) % n]
-        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
-            c = not c
-    return c
-
-
-def fighter_frames():
-    import math
+# The fighter: the saucer from Cosmic Arc (RP6502)'s lander, 8 x 7 (each
+# 160A pixel two of the RP6502's): a dome above and below, the hull, and a
+# rim of lights that runs round in four frames. a rim, b hull, c lights.
+def saucer_frames():
     frames = []
-    for k in range(16):
-        a = k * math.pi / 8
-        ca, sa = math.cos(a), math.sin(a)
-        rot = [(x * ca - y * sa, x * sa + y * ca) for x, y in FIGHTER]
-        rows = []
-        for py in range(12):
-            row = ""
-            for px in range(8):
-                hits = 0
-                for sx in range(4):
-                    for sy in range(4):
-                        hx = px * 2 + (sx + 0.5) / 2 - 8      # hi-res x, centre 8
-                        hy = py + (sy + 0.5) / 4 - 6          # line, centre 6
-                        hits += inside(rot, hx, hy)
-                row += "b" if hits >= 6 else "."
-            rows.append(row)
-        cx, cy = COCKPIT
-        hx, hy = cx * ca - cy * sa, cx * sa + cy * ca
-        px, py = int((hx + 8) // 2), int(hy + 6)
-        r = list(rows[py])
-        r[px] = "c"
-        rows[py] = "".join(r)
-        frames.append(rows)
+    for k in range(4):
+        rim = ["a"] * 8
+        for d in (0, 1):
+            rim[(k * 2 + d) % 8] = "c"
+        frames.append(["...bb...", ".bbbbbb.", "bbbbbbbb", "".join(rim),
+                       "bbbbbbbb", ".bbbbbb.", "...bb..."])
     return frames
 
 
@@ -329,8 +298,8 @@ def main():
     save("aim", AIM)
     for i, b in enumerate(BOOM):
         save(f"boom{i}", b)
-    for i, fr in enumerate(fighter_frames()):
-        save(f"fighter{i:02d}", fr)
+    for i, fr in enumerate(saucer_frames()):
+        save(f"saucer{i}", fr)
     for i, fr in enumerate(RAIDER):
         save(f"raider{i}", fr)
     save("gunship", GUNSHIP)

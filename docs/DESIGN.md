@@ -170,11 +170,13 @@ limps on to the destination. It isn't game over unless the hull is gone.
 
 ### 4.3 Fighter mode
 
-- **Directional**: the fighter flies the way the stick points (8 ways),
-  and its nose (16 headings) swings round to face that way. Let go and it eases to a stop.
+- **The saucer** from Cosmic Arc (RP6502)'s lander, 8 x 7 with a rim of
+  lights that runs round. (A wedge with 16 headings came first. The saucer looks the part.)
+- **Directional**: the fighter flies the way the stick points (8 ways).
+  Let go and it eases to a stop.
   Its velocity closes an eighth of the gap to top speed in the stick's
   direction each frame, so it has some weight but goes where it's pointed. Button 1
-  fires twin blasters where the nose points. It wraps at the screen's edges.
+  fires twin blasters the way the stick last pointed. It wraps at the screen's edges.
   (The first version used asteroid-style turn and thrust, which didn't work well.)
 - Button 2 recalls the fighter (it flies home on autopilot and docks). Only
   button 2 docks it: flying into the bay doesn't, since that's too easy to do by
@@ -221,6 +223,9 @@ parked gunship leaves its spot and returns afterwards. In a test with raiders
 among dense large rocks, this cut rock hits on pirates from 19 to about 1 a
 minute per pirate. The fighter has no autopilot for this: dodging is the
 player's job.
+
+Pirates never leave the screen or wrap round its edges: the fighter couldn't
+get at them. Their centres stay inside the playfield (`pr_keepin`).
 
 ### 4.7 Enemies
 

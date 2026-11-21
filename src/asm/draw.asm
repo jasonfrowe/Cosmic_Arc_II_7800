@@ -239,7 +239,8 @@ dr_pd_n
     dex
     bpl dr_pd_l
 
-    ; the fighter (it blinks for a moment after a hit)
+    ; the fighter: the saucer, its lights running round (it blinks for a
+    ; moment after a hit)
     jsr ft_isout
     bcc dr_r
     lda ft_flash
@@ -251,17 +252,12 @@ dr_pd_n
     sta temp4
     sec
     lda ft_y
-    sbc #6
+    sbc #3
     sta temp5
-    lda ft_ah               ; 16 headings
-    clc
-    adc #8
+    lda sp_frame8
     lsr
-    lsr
-    lsr
-    lsr
-    asl                     ; (two bytes wide)
-    PLOT fighter00, 6
+    and #6                  ; frame 0-3, two bytes wide
+    PLOT saucer0, 6
 dr_r
     rts
 

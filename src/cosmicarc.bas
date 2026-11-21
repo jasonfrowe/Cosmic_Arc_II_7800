@@ -74,7 +74,7 @@
   P3C1 = $98 : P3C2 = $9A : P3C3 = $0F
   P4C1 = $04 : P4C2 = $36 : P4C3 = $1E
   P5C1 = $06
-  P6C1 = $06 : P6C2 = $0C : P6C3 = $AE
+  P6C1 = $D4 : P6C2 = $DC : P6C3 = $0F
   P7C1 = $C8
 
   characterset font
@@ -358,22 +358,10 @@ end
   incgraphic gfx/boom0.png 160A 0 1 2 3
   incgraphic gfx/boom1.png 160A 0 1 2 3
   incgraphic gfx/boom2.png 160A 0 1 2 3
-  incgraphic gfx/fighter00.png 160A 0 1 2 3
-  incgraphic gfx/fighter01.png 160A 0 1 2 3
-  incgraphic gfx/fighter02.png 160A 0 1 2 3
-  incgraphic gfx/fighter03.png 160A 0 1 2 3
-  incgraphic gfx/fighter04.png 160A 0 1 2 3
-  incgraphic gfx/fighter05.png 160A 0 1 2 3
-  incgraphic gfx/fighter06.png 160A 0 1 2 3
-  incgraphic gfx/fighter07.png 160A 0 1 2 3
-  incgraphic gfx/fighter08.png 160A 0 1 2 3
-  incgraphic gfx/fighter09.png 160A 0 1 2 3
-  incgraphic gfx/fighter10.png 160A 0 1 2 3
-  incgraphic gfx/fighter11.png 160A 0 1 2 3
-  incgraphic gfx/fighter12.png 160A 0 1 2 3
-  incgraphic gfx/fighter13.png 160A 0 1 2 3
-  incgraphic gfx/fighter14.png 160A 0 1 2 3
-  incgraphic gfx/fighter15.png 160A 0 1 2 3
+  incgraphic gfx/saucer0.png 160A 0 1 2 3
+  incgraphic gfx/saucer1.png 160A 0 1 2 3
+  incgraphic gfx/saucer2.png 160A 0 1 2 3
+  incgraphic gfx/saucer3.png 160A 0 1 2 3
   incgraphic gfx/raider0.png 160A 0 1 2 3
   incgraphic gfx/raider1.png 160A 0 1 2 3
   incgraphic gfx/gunship.png 160A 0 1 2 3

@@ -2,12 +2,12 @@
 ; The fighter (M2), the shots that fly at any angle, and the Ark's
 ; auto-turret.
 ;
-; Button 2 launches the fighter from the bay under the Ark. Out, it flies
-; the way the joystick points (8 ways): it thrusts that way and its nose
-; swings round to face it; let go and it eases to a stop. It keeps some
-; momentum and wraps at the screen's edges. Button 1 fires twin blasters
-; where the nose points, button 2 calls it home (it flies itself in and
-; docks).
+; Button 2 launches the fighter (the saucer from Cosmic Arc, RP6502) from
+; the bay under the Ark. Out, it flies the way the joystick points (8
+; ways); let go and it eases to a stop. It keeps some momentum and wraps at
+; the screen's edges. Button 1 fires twin blasters the way the stick last
+; pointed (ft_ah), button 2 calls it home (it
+; flies itself in and docks).
 ; The tether drains while it's out and charges while it's docked: run dry
 ; and it comes home on its own. Damage comes off the tether too: run dry
 ; that way and it's destroyed, and the Ark builds another.
@@ -26,7 +26,6 @@ FT_TETH   = 96      ; a full tether
 FT_LAUNCH = 24      ; tether needed to launch
 FT_DRAIN  = 8       ; frames a tether point lasts, out
 FT_CHARGE = 2       ; frames a tether point takes to charge, docked
-FT_TURN   = 16      ; the nose turns this much a frame towards the stick
 FT_SPEED  = $0180   ; top speed (8.8 square units a frame), the stick's way
 FT_GRIP   = 3       ; the velocity closes 1/2^FT_GRIP of the gap to the
                     ;   stick's (top speed that way, or 0 let go) a frame
@@ -234,13 +233,7 @@ ft_o_b2
     clc
     adc #$C0
     sta ft_want
-    ; the nose swings round to it
-    sta v_t2
-    lda #FT_TURN
-    sta v_t3
-    lda ft_ah
-    jsr steer
-    sta ft_ah
+    sta ft_ah               ; the blasters fire this way from now
     lda #0
     sta ft_al
     ; the velocity it wants: top speed the stick's way
