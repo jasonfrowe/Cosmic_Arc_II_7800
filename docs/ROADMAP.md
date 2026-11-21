@@ -6,11 +6,11 @@ then link them together.
 ## M0: Skeleton ✅ (2026-11-21)
 - [x] Build script (vendored 7800basic + asm, from Gamma Force), CMake wrapper, `tools/play.sh` (`-nomouse`), `tools/snap.sh`
 - [x] 272K SuperGame layout, `.a78` header: MathUnit (`ACM`), POKEYs $0450 + $0440, SaveKey
-- [x] a7800 fork: second POKEY for SuperGame carts; commit the $0440 device change
+- [x] a7800 fork: second POKEY for SuperGame carts; commit the $0440 device change (pushed to `cordic`)
 - [x] a7800 fork: SaveKey (24LC256) on port 2
 - [x] `src/asm/mathunit.asm` from the FPGA repo's `docs/MATHUNIT.md`
 - [x] Boots to a hardware check and plays a dual-POKEY test tune (verified by soloing each POKEY)
-- [ ] Run the M0 ROM on the real AstroCart (with and without a SaveKey)
+- [x] Run the M0 ROM on the real AstroCart (with and without a SaveKey): all OK, both POKEYs
 - [ ] js7800_astrocart: second POKEY on SuperGame carts (for the browser build)
 
 ## M1: Deep space slice (Mothership)
