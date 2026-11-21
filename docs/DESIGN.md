@@ -68,10 +68,10 @@ One warp is one **turn** and advances the stardate clock by one.
 
 ### 3.2 A seeded galaxy
 
-**New Game** asks for a seed (or takes the frame count when Start is
-pressed) and builds the galaxy into RAM with the MathUnit's random generator
-(xorshift, `$043E`). The same seed always makes the same galaxy, so a seed
-can be shared like a course code. The generator has to satisfy these rules,
+**New Game** takes its seed from the timing of the button press (the frame
+count and the MathUnit generator's state when the press comes), and builds the galaxy into RAM with the MathUnit's random generator
+(xorshift, `$043E`). The same seed always makes the same galaxy. The seed shows on the pause
+screen, but it can't be typed in. The generator has to satisfy these rules,
 and otherwise re-rolls:
 
 - Every sector can be reached from sector 1 (one-way warps may not cut
@@ -365,8 +365,12 @@ Gaps in our tools, to close in M0:
    (`hiscore.cpp`) but logs "SaveKey ... not supported". Add a 24LC256 SaveKey
    on joystick port 2 to the fork. A save slot of about 350 bytes (§7.5) needs its
    own reserved range in the SaveKey address map. **Fallback** for players
-   without a SaveKey: the AstroCart's built-in High Score Cart, if a
-   compact save (seed + state) fits in the space a game gets there.
+   without a SaveKey: the High Score Cart (the AstroCart has one built in).
+   It has 2K in all, shared with every other HSC game through the HSC
+   ROM's table directory. M6 checks whether a save of about 290 bytes fits
+   there without disturbing other games' tables. If it doesn't, the save
+   gets cut down to what fits (seed, ship, manifest, stardate, with the
+   galaxy's changes reset), or Continue needs a SaveKey.
 3. **MathUnit docs.** `Spacewar_7800/docs/MATHUNIT.md` lists offsets that
    don't match version 2. Use the FPGA repo's `docs/MATHUNIT.md` and write
    one register include file (`src/asm/mathunit.inc`) for this project.
@@ -445,10 +449,10 @@ Fighter and pirate art from Spacewar.
 | 4 | Hardware | AstroCart V4 FPGA design is the reference: large SuperGame carts, dual POKEY and MathUnit together are fine |
 | 5 | Controller | Two-button joystick required |
 | 6 | Manifest | About 24 species to start; adjust for ROM, sprites and balance. Art from the RP6502 game |
+| 7 | Seed | From the timing of the New Game button press; no seed entry |
+| 8 | Saves | SaveKey first; fall back to the High Score Cart if the data fits (§7.3) |
+| 9 | Name | "Arc", as in the RP6502 game |
 
 ## Open questions
 
-1. **Seed entry**: let the player type a seed (a 4-character code on the
-   New Game screen), or only take it from the timing of the button press?
-2. **HSC fallback save**: worth it, or require a SaveKey for Continue?
-3. **Name**: "Arc" (as in the RP6502 repo) throughout?
+None at the moment.

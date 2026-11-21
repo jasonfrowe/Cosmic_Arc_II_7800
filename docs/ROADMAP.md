@@ -39,6 +39,7 @@ then link them together.
 
 ## M6: Save / continue
 - [ ] SaveKey save slot, saved on docking; Continue on the title
+- [ ] HSC fallback: measure the free space; full or reduced save
 
 ## M7: Full game
 - [ ] All tiers, biomes, 24 species, carrier
