@@ -67,6 +67,9 @@ WV_GUN_FROM = 4     ; a gunship from this wave
 WV_GUN2_FROM = 8    ; two from this one
 PR_FIRST  = 200     ; frames into a wave before the first pirate
 PR_GAP    = 180     ; frames between pirates
+PR_WINDOW = 150     ; when the wave's first pirate comes, new rocks are small
+                    ;   ones (the Ark can see to them) for this many 8-frame
+                    ;   steps (20 s): the time to launch the fighter
 ; rock_dmg (below): energy a rock costs when it hits the Ark
 BOLT_LIFE = 40
 
@@ -130,6 +133,8 @@ hud_top   = $23A0   ; 20 characters
 hud_bot   = $23B8   ; 10
 hud_bot2  = $24D0   ; 10 (fighter.asm's page)
 sp_msg    = $23D0   ; 20
+sp_pwin   = $24F0   ; the pirate window: 8-frame steps left
+sp_msgtm  = $24F1   ; frames a timed message has left (0: it stays)
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
 
 ; ---------------------------------------------------------------------------
@@ -238,6 +243,9 @@ sp_nw_r
     bcc sp_nw_np
     inc sp_pgun
 sp_nw_np
+    lda #0
+    sta sp_pwin
+    sta sp_msgtm
     lda #PR_FIRST
     sta sp_ptm
     lda #ST_START
@@ -250,6 +258,20 @@ sp_nw_np
 sp_frame
     inc sp_ticks
     inc sp_frame8
+    lda sp_msgtm            ; a timed message runs out
+    beq sp_f_mt
+    dec sp_msgtm
+    bne sp_f_mt
+    lda #0
+    sta sp_msglen
+sp_f_mt
+    lda sp_pwin             ; the pirate window closes
+    beq sp_f_pw
+    lda sp_frame8
+    and #7
+    bne sp_f_pw
+    dec sp_pwin
+sp_f_pw
     lda sp_flash
     beq sp_f_nf
     dec sp_flash
@@ -278,6 +300,7 @@ sp_f_go
     jsr pd_frame
     jsr sp_hits
     jsr pr_bolthits
+    jsr pr_rockhits
     jsr sp_waves
     jmp sp_hud
 
@@ -855,6 +878,12 @@ sp_w_gun
     lda #PR_GUN
 sp_w_pr
     jsr pr_spawn
+    ; the wave's first pirate: open the window, warn
+    lda sp_pwin
+    bne sp_w_rocks
+    lda #PR_WINDOW
+    sta sp_pwin
+    jsr sp_msg_pirates
 sp_w_rocks
     lda sp_left
     bne sp_w_spawn
@@ -896,6 +925,10 @@ sp_w_f
 sp_w_new
     dec sp_left
     lda #RK_L
+    ldy sp_pwin
+    beq sp_w_type
+    lda #RK_S               ; the pirate window: small rocks only
+sp_w_type
     sta rk_t,x
     lda #0
     sta rk_xl,x
@@ -909,6 +942,18 @@ sp_w_new
     sta rk_x,x
     lda lane_y,y
     sta rk_y,x
+    lda rk_t,x
+    cmp #RK_S
+    bne sp_w_spd
+    clc                     ; a small rock's corner: its centre on the lane
+    lda rk_x,x
+    adc #2
+    sta rk_x,x
+    clc
+    lda rk_y,x
+    adc #4
+    sta rk_y,x
+sp_w_spd
     lda sp_spdl
     sta sp_t0
     lda sp_spdh
@@ -1072,6 +1117,13 @@ sp_msg_clear
     lda #<tx_clear
     ldy #>tx_clear
     ldx #10
+    jmp sp_msgcopy
+sp_msg_pirates
+    lda #90
+    sta sp_msgtm
+    lda #<tx_pirates
+    ldy #>tx_pirates
+    ldx #8
     jmp sp_msgcopy
 sp_msg_over
     lda #<tx_lost

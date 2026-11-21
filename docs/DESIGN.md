@@ -173,8 +173,9 @@ limps on to the destination. It isn't game over unless the hull is gone.
 - 16 headings, thrust with inertia (Spacewar's flight model on the
   MathUnit), button 1 fires twin blasters. Left/right turn, up thrusts,
   down brakes. It wraps at the screen's edges.
-- Button 2 recalls the fighter (it flies home on autopilot), or fly
-  into the docking bay to dock at once and recharge it.
+- Button 2 recalls the fighter (it flies home on autopilot and docks). Only
+  button 2 docks it: flying into the bay doesn't, since that's too easy to do by
+  mistake. A dry tether also brings it home.
 - **Tether energy** drains while the fighter is out (a full tether lasts
   about 13 s) and recharges only when docked (about 3 s). At zero the fighter
   is forced to recall. This makes the launch → intercept → dock → defend rhythm.
@@ -196,7 +197,26 @@ limps on to the destination. It isn't game over unless the hull is gone.
 | destroy a pirate carrier's shield generator | heavy single shots that split big rocks |
 | grab salvage pods before they drift off-screen | protecting itself (the auto-turret is weak) |
 
-### 4.5 Enemies
+### 4.5 The pirate window
+
+When a wave's first pirate arrives, "PIRATES!" flashes up, and for the next
+20 seconds new rocks are **small ones only**, which the auto-turret and the
+Ark can handle. That's the window to launch the fighter and engage. After it,
+large rocks come back. (`PR_WINDOW` in `space.asm`.)
+
+### 4.6 Rocks are everyone's hazard
+
+A rock hurts whatever it hits: the Ark, the fighter, a raider or a gunship. A
+pirate hit by one takes a hit, and a missile is destroyed. Pirates look ahead
+on the MathUnit: they work out where they and every rock will be now, 8 and
+16 frames on. If a rock will pass closer than `R_AVOID`, they sidestep across
+its path, to the side they're already on, turning twice as fast as normal. A
+parked gunship leaves its spot and returns afterwards. In a test with raiders
+among dense large rocks, this cut rock hits on pirates from 19 to about 1 a
+minute per pirate. The fighter has no autopilot for this: dodging is the
+player's job.
+
+### 4.7 Enemies
 
 - **Asteroids**: large → 2 medium → 2 small (art from the RP6502 game).
 - **Raider**: fast, flanks the Ark, strafes and runs. Spacewar AI with lead-angle aiming.

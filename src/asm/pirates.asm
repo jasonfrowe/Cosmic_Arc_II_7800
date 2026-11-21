@@ -16,6 +16,14 @@
 ;   pr_spawn  A = type, from an edge
 ;   pr_shothit  shot X against the pirates (from sh_hits)
 ;   pr_bolthits the Ark's laser bolts against the pirates
+;   pr_rockhits rocks against the pirates
+;
+; Rocks are a hazard to pirates as much as to the fighter: a rock that hits
+; a raider or gunship breaks up and costs it a hit (a missile, its life).
+; So pirates look ahead (pr_avoid): their place and every rock's 16 frames
+; on, on the math unit; a rock due closer than R_AVOID and they turn away
+; from it, twice as fast as they'd turn otherwise (a parked gunship leaves
+; its spot, and comes back after).
 ; ===========================================================================
 
 PR_RAID   = 1
@@ -40,6 +48,7 @@ MISS_LIFE = 200     ; pairs of frames a missile lasts
 MISS_MAX  = 2       ; missiles in the air from all gunships
 RAID_GAP  = 70      ; frames between a raider's shots, + up to 63
 GUN_GAP   = 150     ; frames between a gunship's missiles
+R_AVOID   = 40      ; pirates sidestep a rock due closer than this (square)
 
 ; ---- RAM ----
 pr_t      = $2460   ; [NP]
@@ -72,6 +81,19 @@ pr_slot   = $24EA
 pr_want   = $24EB
 pr_tt     = $24EC
 pr_miss   = $24ED
+pr_dodge  = $24F2   ; this pirate is turning from a rock
+av_best   = $24F3
+av_x      = $24F4
+av_y      = $24F5
+av_px     = $24F6
+av_py     = $24F7
+av_i      = $24F8
+av_flee   = $24F9
+av_min    = $24FA
+av_d0x    = $24FB
+av_d0y    = $24FC
+av_dvx    = $24FD
+av_dvy    = $24FE
 
 ; per type (raider, gunship, missile)
 pr_spl    .byte $40, $A0, $C0       ; speed, 8.8 square units a frame
@@ -284,6 +306,10 @@ pr_fr_aim
     jsr vec_angle
     sta pr_want
     ldx pr_slot
+    jsr pr_avoid            ; a rock coming: turn from it instead
+    ldx pr_slot
+    lda pr_dodge
+    bne pr_fr_steer
     lda pr_t,x
     cmp #PR_GUN
     bne pr_fr_steer
@@ -304,6 +330,10 @@ pr_fr_steer
     sta v_t2
     ldy pr_t,x
     lda pr_turn-1,y
+    ldy pr_dodge
+    beq pr_fr_tr
+    asl                     ; dodging: turn twice as fast
+pr_fr_tr
     sta v_t3
     lda pr_a,x
     jsr steer
@@ -495,6 +525,354 @@ pr_co_ram
     lda #1
     jmp pr_damage
 pr_co_r
+    rts
+
+; ---------------------------------------------------------------------------
+; pirate X (not a missile): any rock due within R_AVOID of it, now, 8 or 16
+; frames on (both moving as they are)? Then sidestep: pr_want = square
+; across the nearest such rock's path, to the side the pirate is already
+; on, and pr_dodge = 1.
+pr_avoid
+    lda #0
+    sta pr_dodge
+    lda pr_t,x
+    cmp #PR_MISS
+    bcc pr_av_go
+    rts
+pr_av_go
+    lda pr_vxl,x            ; the pirate's move over 16 frames
+    sta v_t0
+    lda pr_vxh,x
+    jsr av_fut
+    sta av_px
+    lda pr_vyl,x
+    sta v_t0
+    lda pr_vyh,x
+    jsr av_fut
+    sta av_py
+    lda #255
+    sta av_best
+    ldy #NR-1
+pr_av_l
+    lda rk_t,y
+    bne pr_av_t
+    jmp pr_av_n
+pr_av_t
+    cmp #RK_BOOM
+    bcc pr_av_rk
+    jmp pr_av_n
+pr_av_rk
+    sty av_i
+    ; d0: pirate - rock centre, now
+    tay                     ; (Y: the rock's size, X: its slot)
+    ldx av_i
+    clc
+    lda rk_x,x
+    adc rock_cx-1,y
+    sta av_x
+    clc
+    lda rk_y,x
+    adc rock_cy-1,y
+    sta av_y
+    ldx pr_slot
+    sec
+    lda pr_x,x
+    sbc av_x
+    sta av_d0x
+    sec
+    lda pr_y,x
+    sbc av_y
+    sta av_d0y
+    ; dv: the pirate's 16-frame move less the rock's
+    ldx av_i
+    lda rk_vxl,x
+    sta v_t0
+    lda rk_vxh,x
+    jsr av_fut
+    sta av_x
+    ldx av_i
+    lda rk_vyl,x
+    sta v_t0
+    lda rk_vyh,x
+    jsr av_fut
+    sta av_y
+    sec
+    lda av_px
+    sbc av_x
+    sta av_dvx
+    sec
+    lda av_py
+    sbc av_y
+    sta av_dvy
+    ; the nearest of d0, d0 + dv/2, d0 + dv
+    lda #255
+    sta av_min
+    lda av_d0x
+    sta av_x
+    lda av_d0y
+    sta av_y
+    jsr av_dist
+    lda av_dvx
+    cmp #$80
+    ror
+    clc
+    adc av_d0x
+    sta av_x
+    lda av_dvy
+    cmp #$80
+    ror
+    clc
+    adc av_d0y
+    sta av_y
+    jsr av_dist
+    clc
+    lda av_d0x
+    adc av_dvx
+    sta av_x
+    clc
+    lda av_d0y
+    adc av_dvy
+    sta av_y
+    jsr av_dist
+    lda av_min
+    cmp #R_AVOID
+    bcs pr_av_n2
+    cmp av_best
+    bcs pr_av_n2
+    sta av_best
+    ; which way to step: square across the rock's path, on the pirate's side
+    ldx av_i
+    lda rk_vxl,x
+    asl
+    sta M_X
+    lda rk_vxh,x
+    rol
+    sta M_X+1
+    lda rk_vyl,x
+    sta M_Y
+    lda rk_vyh,x
+    sta M_Y+1
+    lda M_ANG+1
+    sta av_x                ; the rock's heading
+    lda av_d0x              ; and the way from the rock to the pirate
+    asl
+    sta M_X
+    lda #0
+    bcc pr_av_sx
+    lda #$FF
+pr_av_sx
+    sta M_X+1
+    lda av_d0y
+    sta M_Y
+    bpl pr_av_sy
+    lda #$FF
+    bne pr_av_sy2
+pr_av_sy
+    lda #0
+pr_av_sy2
+    sta M_Y+1
+    sec
+    lda M_ANG+1
+    sbc av_x                ; the pirate's side of the path
+    bmi pr_av_left
+    clc
+    lda av_x
+    adc #$40
+    sta av_flee
+    jmp pr_av_n2
+pr_av_left
+    sec
+    lda av_x
+    sbc #$40
+    sta av_flee
+pr_av_n2
+    ldx pr_slot
+    ldy av_i
+pr_av_n
+    dey
+    bmi pr_av_end
+    jmp pr_av_l
+pr_av_end
+    lda av_best
+    cmp #255
+    beq pr_av_r
+    lda av_flee
+    sta pr_want
+    inc pr_dodge
+pr_av_r
+    rts
+
+; (av_x, av_y): a signed pirate - rock difference; its length (square
+; units) into av_min if it's less. Far apart (48+ either way): skipped.
+av_dist
+    lda av_x
+    jsr av_near
+    bcs av_ds_r
+    asl
+    sta M_X
+    lda #0
+    bcc av_ds_x
+    lda #$FF
+av_ds_x
+    sta M_X+1
+    lda av_y
+    jsr av_near
+    bcs av_ds_r
+    sta M_Y
+    stx M_Y+1               ; (av_near: X = $FF negative, 0 not)
+    lda M_LEN+1
+    bne av_ds_r
+    lda M_LEN
+    cmp av_min
+    bcs av_ds_r
+    sta av_min
+av_ds_r
+    ldx pr_slot
+    rts
+
+; a velocity (A = high byte, v_t0 = low, 8.8) times 16 -> A (whole pixels)
+av_fut
+    asl
+    asl
+    asl
+    asl
+    sta vec_tmp
+    lda v_t0
+    lsr
+    lsr
+    lsr
+    lsr
+    ora vec_tmp
+    rts
+
+; A = a signed difference: C = 1 if it's 48 or more either way; else A as
+; it was, X = $FF when it's negative (0 if not), and for x, C = the sign
+; once doubled (the BCC after the ASL)
+av_near
+    ldx #0
+    cmp #$80
+    bcc av_nr_p
+    ldx #$FF
+    cmp #$100-48
+    bcc av_nr_far
+    clc
+    rts
+av_nr_p
+    cmp #48
+    bcs av_nr_far
+    clc
+    rts
+av_nr_far
+    sec
+    rts
+
+; rocks against the pirates: a rock that hits one breaks up (no points),
+; and the pirate takes a hit (a missile is gone)
+pr_rockhits
+    ldx #NP-1
+pr_rh_l
+    stx pr_slot             ; (first: the skips below reload X from it)
+    lda pr_t,x
+    bne pr_rh_n_far679
+    jmp pr_rh_n
+pr_rh_n_far679
+    cmp #PR_BOOM
+    bcc pr_rh_n_far681
+    jmp pr_rh_n
+pr_rh_n_far681
+    stx pr_slot
+    sta pr_tt
+    ldy #NR-1
+pr_rh_r
+    lda rk_t,y
+    bne pr_rh_rd_far687
+    jmp pr_rh_rd
+pr_rh_rd_far687
+    cmp #RK_BOOM
+    bcc pr_rh_rd_far689
+    jmp pr_rh_rd
+pr_rh_rd_far689
+    sty av_i
+    tay
+    ; |pirate x - rock centre x| < pirate's half width + rock's
+    clc
+    lda rock_cx-1,y
+    sta av_x
+    lda rock_cy-1,y
+    sta av_y
+    ldy av_i
+    clc
+    lda rk_x,y
+    adc av_x
+    sta av_x                ; the rock's centre
+    clc
+    lda rk_y,y
+    adc av_y
+    sta av_y
+    sec
+    lda pr_x,x
+    sbc av_x
+    bcs pr_rh_dx
+    eor #$FF
+    adc #1
+pr_rh_dx
+    ldy pr_tt
+    sec
+    sbc pr_hw-1,y
+    bcc pr_rh_ox
+    ldy av_i
+    ldx rk_t,y
+    cmp rock_cx-1,x
+    ldx pr_slot
+    bcs pr_rh_rn
+pr_rh_ox
+    ldy av_i
+    sec
+    lda pr_y,x
+    sbc av_y
+    bcs pr_rh_dy
+    eor #$FF
+    adc #1
+pr_rh_dy
+    ldy pr_tt
+    sec
+    sbc pr_hh-1,y
+    bcc pr_rh_hit
+    ldy av_i
+    ldx rk_t,y
+    cmp rock_cy-1,x
+    ldx pr_slot
+    bcs pr_rh_rn
+pr_rh_hit
+    ldx av_i                ; the rock breaks up
+    jsr sp_boom
+    lda #SFX_BOOM
+    jsr sfx
+    ldx pr_slot
+    lda pr_tt
+    cmp #PR_MISS
+    bne pr_rh_dmg
+    jsr pr_kill_quiet
+    jmp pr_rh_n
+pr_rh_dmg
+    lda #0
+    sta sp_pay
+    lda #1
+    jsr pr_damage
+    jmp pr_rh_n
+pr_rh_rn
+    ldy av_i
+pr_rh_rd
+    dey
+    bmi pr_rh_r_far762
+    jmp pr_rh_r
+pr_rh_r_far762
+pr_rh_n
+    ldx pr_slot
+    dex
+    bmi pr_rh_l_far766
+    jmp pr_rh_l
+pr_rh_l_far766
     rts
 
 ; ---------------------------------------------------------------------------

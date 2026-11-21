@@ -12,6 +12,7 @@ local CX = {4, 4, 2}; local CY = {8, 6, 4}
 local D = {[0]={"P1 Up"},{"P1 Up","P1 Right"},{"P1 Right"},{"P1 Down","P1 Right"},
   {"P1 Down"},{"P1 Down","P1 Left"},{"P1 Left"},{"P1 Up","P1 Left"}}
 local f, most, waves = 0, {}, 0
+local lastticks, stalled, stall = nil, 0, 0   -- the game loop must keep running
 emu.register_frame_done(function()
   f = f + 1
   local m = manager:machine().devices[":maincpu"].spaces["program"]
@@ -31,6 +32,10 @@ emu.register_frame_done(function()
       for _, n in ipairs(D[a]) do hold[n] = true end
       hold["P1 Button 1"] = true
     end
+    local t = m:read_u8(0x239F)
+    if t == lastticks then stalled = stalled + 1 else stalled = 0 end
+    lastticks = t
+    if stalled > stall then stall = stalled end
     for z = 0, NZ - 1 do
       local v = m:read_u8(0x65 + z)
       if v > (most[z] or 0) then most[z] = v end
@@ -46,7 +51,8 @@ emu.register_frame_done(function()
     end
     print("zone fill (bytes): " .. line)
     print(string.format("wave %d; fullest zone %d: %d of %d bytes", m:read_u8(0x238A), wz, worst, CAP))
-    print(string.format("worst %d cap %d", worst, CAP))
+    print(string.format("longest stall %d frames", stall))
+    print(string.format("worst %d cap %d stall %d", worst, CAP, stall))
     manager:machine():exit()
   end
 end)

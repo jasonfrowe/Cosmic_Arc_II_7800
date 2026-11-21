@@ -5,10 +5,12 @@
 ; Button 2 launches the fighter from the bay under the Ark. Out, the
 ; joystick flies it (left/right turn, up thrusts, down brakes; it keeps
 ; its speed and wraps at the screen's edges), button 1 fires twin blasters,
-; button 2 calls it home (it flies itself), or fly it into the bay to dock.
+; button 2 calls it home (it flies itself in and docks).
 ; The tether drains while it's out and charges while it's docked: run dry
 ; and it comes home on its own. Damage comes off the tether too: run dry
 ; that way and it's destroyed, and the Ark builds another.
+; Flying into the bay doesn't dock it (too easy to do by mistake): only
+; button 2, or a dry tether, brings it home.
 ; While it's out the Ark's laser is the auto-turret's: slow, but it aims at
 ; any angle, at the nearest threat.
 ;
@@ -272,16 +274,7 @@ ft_o_move
     jsr ft_damp
     jsr ft_clamp
     jsr ft_move
-    jsr ft_fire
-    ; flown into the bay (not straight after launching): docked
-    lda ft_age
-    cmp #45
-    bcc ft_o_r
-    jsr ft_inbay
-    bcc ft_o_r
-    jmp ft_dock
-ft_o_r
-    rts
+    jmp ft_fire             ; (it docks only when called home: button 2)
 
 ; per joystick direction (0 up, clockwise): turn (-1 left, +1 right) and
 ; push (1 thrust, 2 brake)

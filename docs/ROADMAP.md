@@ -30,6 +30,7 @@ then link them together.
 - [x] Salvage pods from destroyed pirates: only the fighter picks them up, for Ark energy
 - [x] HUD: Ark energy and fighter tether bars
 - [x] `snap.lua` fighter autopilot (`AUTOFIGHTER`); all sprites drawn from assembly (`draw.asm`)
+- [x] From hardware: the pirate window (small rocks only for 20 s after the first pirate), rocks hurt pirates (who dodge them on the math unit), the fighter docks only with button 2
 - [ ] Tune on hardware: fighter handling, tether rates, turret rate, pirate damage
 - [ ] Move deep space into its own bank (bank 1 has 5.7K left)
 

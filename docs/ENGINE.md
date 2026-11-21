@@ -144,8 +144,13 @@ Tests (in the emulator, headless):
 ```
 tools/test_aim.sh     # all 8 joystick directions aim the laser
 tools/test_lanes.sh   # every rock, split pieces too, within 1.5 px of its lane
-tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its list
+tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its list,
+                      # and the game loop never stalls (4+ frames)
 ```
+
+`tools/fixbranches.py` turns each "Branch out of range" in the last build's
+log into the opposite branch round a `JMP`. Run it, then build again. The
+assembly runs long with macros like `PLOT`.
 
 ## Pitfalls found so far
 
@@ -178,6 +183,10 @@ tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its li
 - Don't work a moving thing's heading out again from its rounded velocity:
   the error builds up (small rocks drifted 4 px off their lanes, found on
   hardware). Keep the intent (the lane) and work out from that.
+- **A loop that skips a slot before saving its index**, then reloads the
+  index from where it's saved, keeps going back to an old slot forever. The game
+  hung with a pirate and an empty slot. Save the index first. The zone test now
+  fails if the game loop stalls (it passed while hung before).
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 
