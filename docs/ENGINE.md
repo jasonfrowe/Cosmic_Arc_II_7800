@@ -146,6 +146,8 @@ tools/test_aim.sh     # all 8 joystick directions aim the laser
 tools/test_lanes.sh   # every rock, split pieces too, within 1.5 px of its lane
 tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its list,
                       # and the game loop never stalls (4+ frames)
+tools/test_waves.sh   # 11 waves: none clears with a pirate about; the rocks'
+                      # music comes back after the pirates are destroyed
 ```
 
 `tools/fixbranches.py` turns each "Branch out of range" in the last build's
@@ -187,6 +189,10 @@ assembly runs long with macros like `PLOT`.
   index from where it's saved, keeps going back to an old slot forever. The game
   hung with a pirate and an empty slot. Save the index first. The zone test now
   fails if the game loop stalls (it passed while hung before).
+- **Counting live things once a frame and spawning later in that frame**: a
+  check later in the frame doesn't see the new one. A gunship spawned in the
+  frame the wave-clear check ran, so the wave cleared with it on screen. Count
+  a pirate as soon as it's placed (`pr_place`).
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

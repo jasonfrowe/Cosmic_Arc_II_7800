@@ -256,6 +256,8 @@ sp_nw_r
     bcc sp_nw_np
     inc sp_pgun
 sp_nw_np
+    lda #MUS_ROCKS          ; a new wave starts with the rocks' music
+    jsr mu_switch
     lda #0
     sta sp_pwin
     sta sp_msgtm
@@ -891,6 +893,8 @@ sp_w_gun
     lda #PR_GUN
 sp_w_pr
     jsr pr_spawn
+    lda #MUS_PIRATES        ; any pirate coming: their music
+    jsr mu_switch
     ; the wave's first pirate: open the window, warn
     lda sp_pwin
     bne sp_w_rocks
@@ -898,15 +902,17 @@ sp_w_pr
     sta sp_pwin
     jsr sp_msg_pirates
 sp_w_rocks
-    ; the pirates gone and their window shut: back to the rocks' music
+    ; the last pirate destroyed and none still to come: back to the rocks'
+    ; music, and the window shuts (large rocks again: nothing left to fight)
     lda mu_song
     cmp #MUS_PIRATES
     bne sp_w_rk2
     lda pr_live
     ora sp_praid
     ora sp_pgun
-    ora sp_pwin
     bne sp_w_rk2
+    lda #0
+    sta sp_pwin
     lda #MUS_ROCKS
     jsr mu_switch
 sp_w_rk2

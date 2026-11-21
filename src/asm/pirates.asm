@@ -187,8 +187,11 @@ pr_sp_x
     sta tg_x
 pr_sp_go
     lda pr_tt
-; a pirate of type A at (tg_x, tg_y), slot X
+; a pirate of type A at (tg_x, tg_y), slot X. It counts in pr_live at once:
+; a wave's clear check later in the same frame must see it (a gunship
+; spawned in the frame the wave cleared carried on into the next).
 pr_place
+    inc pr_live
     sta pr_t,x
     tay
     lda tg_x

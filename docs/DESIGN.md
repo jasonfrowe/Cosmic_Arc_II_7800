@@ -204,8 +204,11 @@ limps on to the destination. It isn't game over unless the hull is gone.
 
 When a wave's first pirate arrives, "PIRATES!" flashes up, and for the next
 20 seconds new rocks are **small ones only**, which the auto-turret and the
-Ark can handle. That's the window to launch the fighter and engage. After it,
-large rocks come back. (`PR_WINDOW` in `space.asm`.)
+Ark can handle. That's the window to launch the fighter and engage. It shuts
+after 20 seconds, or as soon as the last pirate is destroyed with none still to
+come, and then large rocks come back. (`PR_WINDOW` in `space.asm`.) The pirates'
+music plays while any are about or coming, and the rocks' music comes back when
+the last one goes. Each wave starts with the rocks' music.
 
 ### 4.6 Rocks are everyone's hazard
 

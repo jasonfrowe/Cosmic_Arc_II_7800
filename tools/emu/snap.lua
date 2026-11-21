@@ -5,6 +5,8 @@
 --   at those frames, e.g. "300:2502:0C" to solo POKEY 2 in the music mask.
 -- INPUTS (optional): "from-to:Field Name;..." holds a control down over a
 --   frame range, e.g. "300-305:P1 Button 1;400-900:P1 Right".
+-- WAVELOG (optional): energy held full; prints each change of game state or
+--   song with the pirate slots (tools/test_waves.sh).
 -- AUTOPLAY (optional, a frame): from then on, aim at the nearest rock and
 --   fire (deep space, space.asm's tables). Prints the wave, score and
 --   energy every 600 frames.
@@ -138,6 +140,19 @@ emu.register_frame_done(function()
   end
   for name, field in pairs(fields) do
     if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end
+  end
+  if os.getenv("WAVELOG") and f > 330 then
+    local m = mem()
+    m:write_u8(0x2386, 96)
+    local st, song = m:read_u8(0x238C), m:read_u8(0x24FF)
+    if st ~= (laststate or -1) or song ~= (lastsong or -1) then
+      local p = ""
+      for i = 0, 5 do p = p .. m:read_u8(0x2460 + i) .. " " end
+      print(string.format("frame %d: wave %d state %d song %d | pirate slots %s| pr_live %d pending %d/%d window %d rocks %d left %d",
+        f, m:read_u8(0x238A), st, song, p, m:read_u8(0x24E9), m:read_u8(0x24C1), m:read_u8(0x24C2),
+        m:read_u8(0x24F0), m:read_u8(0x2394), m:read_u8(0x238E)))
+      laststate, lastsong = st, song
+    end
   end
   if frames[f] then manager:machine().screens[":screen"]:snapshot() end
   if f > last then manager:machine():exit() end
