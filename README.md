@@ -8,10 +8,10 @@ navigate a 64-sector galaxy of warps, starports and pirates, trading
 Fuel Ore, Organics and Equipment for upgrades, to fill the Ark's manifest
 before the star Alpha Ro collapses.
 
-**Status:** M1 (deep-space slice) done: defend the Ark against asteroid waves
-with the 8-way laser. Button 2 on the title runs the hardware check.
+**Status:** M2 (the fighter) done: defend the Ark against asteroid waves
+and pirates, with the 8-way laser or by launching the fighter.
 
-![Deep space](docs/m1_deep_space.png)
+![The fighter](docs/m2_fighter.png)
 
 - [Design document](docs/DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -26,8 +26,11 @@ tools/build.sh     # -> build/cosmicarc.a78
 tools/play.sh      # run it in the a7800 fork (SaveKey in port 2)
 ```
 
-Controls: joystick aims, button 1 fires, button 2 (on the title) opens the
-hardware check.
+Controls:
+- **The Ark:** the joystick aims, button 1 fires, button 2 launches the fighter.
+- **The fighter:** left/right turn, up thrusts, down brakes, button 1 fires,
+  button 2 calls it home (or fly it into the bay under the Ark).
+- On the title, button 2 opens the hardware check.
 
 ## Features (planned)
 

@@ -23,7 +23,9 @@ file's path into a symbol name, so a `/` breaks it), runs the vendored
   example `POKES=300:2502:0C` solos POKEY 2.
 - `INPUTS="from-to:Field;..."`: hold a control over a frame range, for example
   `INPUTS="300-305:P1 Button 1;400-500:P1 Right"`.
-- `AUTOPLAY=frame`: from then on, aim at the nearest rock and fire. Every 600
+- `AUTOFIGHTER=frame`: launch the fighter and fly it at the nearest pirate
+  or pod, firing when lined up.
+- `AUTOPLAY=frame`: from then on, aim at the nearest rock or pirate and fire. Every 600
   frames it prints the wave, score, energy, the frames in which the game loop
   ran (600 = full speed) and the most rocks seen.
 
@@ -93,6 +95,7 @@ songs and effects are written in `tools/music.py`.
 | zero page $B6-$B8 | savekey.asm |
 | zero page $B9-$BC | hwtest.asm |
 | $2300-$23FF | space.asm: rocks, bolts, the HUD's text |
+| $2400-$24FF | fighter.asm, pirates.asm, vec.asm, draw.asm: the fighter, shots, pirates, pods |
 | $2500-$255F | sound.asm |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
@@ -126,6 +129,15 @@ Diagonal speeds are s/√2 on the math unit, with vy made even and vx = vy/2
 exactly, so rounding can't move a rock off its lane. When a rock splits, the
 pieces start at their parent's centre on the same lane. Bolts start from the
 aim marker on the lane, and a bolt hit allows a pixel of slack either side.
+
+Deep space's modules: `space.asm` (the Ark, rocks, waves, HUD), `fighter.asm`
+(the fighter, any-angle shots, the auto-turret), `pirates.asm` (raiders,
+gunships, missiles, pods), `vec.asm` (vectors and steering on the math unit;
+one-byte angles, $00 east, $40 down), `draw.asm` (every small sprite). The
+BASIC draws only the Ark, a tall sprite. `draw.asm` calls 7800basic's
+`plotsprite` directly: temp1/2 is the graphic plus frame × width, temp3 is the
+palette × 32 | the width's two's complement, temp4/5 are x and y, and temp6 is
+the mode | %01000000. That's what a BASIC `plotsprite` statement compiles to.
 
 Tests (in the emulator, headless):
 

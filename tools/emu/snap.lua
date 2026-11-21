@@ -23,6 +23,9 @@ for a, b, name in string.gmatch(os.getenv("INPUTS") or "", "(%d+)-(%d+):([^;]+)"
   table.insert(inputs, {tonumber(a), tonumber(b), name})
 end
 local autoplay = tonumber(os.getenv("AUTOPLAY") or "")
+-- AUTOFIGHTER (optional, a frame): from then on, launch the fighter and fly
+-- it at the nearest pirate (or pod), firing when lined up. Logs kills.
+local autofighter = tonumber(os.getenv("AUTOFIGHTER") or "")
 
 local fields = {}
 for tag, port in pairs(manager:machine():ioport().ports) do
@@ -41,6 +44,15 @@ local function aim()
     if t >= 1 and t <= 3 then
       local dx = (m:read_u8(0x230A + i) + 4 - 80) * 2
       local dy = m:read_u8(0x231E + i) + 6 - 95
+      local d = dx * dx + dy * dy
+      if d < bd then bd, best = d, {dx, dy} end
+    end
+  end
+  for i = 0, 5 do                               -- pirates and missiles
+    local t = m:read_u8(0x2460 + i)
+    if t >= 1 and t <= 3 then
+      local dx = (m:read_u8(0x2466 + i) - 80) * 2
+      local dy = m:read_u8(0x2472 + i) - 95
       local d = dx * dx + dy * dy
       if d < bd then bd, best = d, {dx, dy} end
     end
@@ -83,6 +95,44 @@ emu.register_frame_done(function()
         f, m:read_u8(0x238A), m:read_u8(0x2387), m:read_u8(0x2388), m:read_u8(0x2389),
         m:read_u8(0x2386), m:read_u8(0x238C), ran or 0, maxlive))
       ran, maxlive = 0, 0
+    end
+  end
+  if autofighter and f >= autofighter then
+    local m = mem()
+    local st = m:read_u8(0x2400)
+    if st == 0 and m:read_u8(0x240C) >= 40 and f % 20 == 0 then held["P1 Button 2"] = true end
+    if st == 1 then
+      local fx, fy, ah = m:read_u8(0x2401), m:read_u8(0x2403), m:read_u8(0x240A)
+      local best, bd, ispod
+      for i = 0, 5 do
+        local t = m:read_u8(0x2460 + i)
+        if t >= 1 and t <= 3 then
+          local dx, dy = (m:read_u8(0x2466 + i) - fx) * 2, m:read_u8(0x2472 + i) - fy
+          local d = dx * dx + dy * dy
+          if not bd or d < bd then bd, best, ispod = d, {dx, dy}, false end
+        end
+      end
+      for i = 0, 1 do
+        if m:read_u8(0x24AE + i) > 0 then
+          local dx, dy = (m:read_u8(0x24B0 + i) - fx) * 2, m:read_u8(0x24B4 + i) - fy
+          local d = dx * dx + dy * dy
+          if not bd or d < bd then bd, best, ispod = d, {dx, dy}, true end
+        end
+      end
+      if best then
+        local want = math.floor(math.atan(best[2], best[1]) / (2 * math.pi) * 256) % 256
+        local diff = (want - ah + 128) % 256 - 128
+        if diff > 6 then held["P1 Right"] = true elseif diff < -6 then held["P1 Left"] = true end
+        if math.abs(diff) < 24 and bd > 900 then held["P1 Up"] = true end
+        if bd < 400 then held["P1 Down"] = true end
+        if not ispod and math.abs(diff) < 12 then held["P1 Button 1"] = true end
+      end
+    end
+    if f % 600 == 0 then
+      local m2 = mem()
+      print(string.format("frame %d: fighter state %d tether %d; Ark energy %d; pirates %d; score %02X%02X%02X",
+        f, st, m2:read_u8(0x240C), m2:read_u8(0x2386), m2:read_u8(0x24E9),
+        m2:read_u8(0x2387), m2:read_u8(0x2388), m2:read_u8(0x2389)))
     end
   end
   for name, field in pairs(fields) do

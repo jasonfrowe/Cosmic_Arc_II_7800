@@ -22,10 +22,16 @@ then link them together.
 - [x] Balance and fire rate checked on hardware
 - [x] Fixes from hardware: down diagonals (input), rocks drifting off the diagonal lanes, a bigger Ark (48 x 24) with a fighter bay
 
-## M2: Fighter
-- [ ] Launch, fly (16 headings, inertia), twin blasters, recall/dock, tether
-- [ ] Ark auto-turret
-- [ ] Raider and gunship AI (from Spacewar); salvage pods
+## M2: Fighter ✅ (2026-11-21)
+- [x] Launch (button 2), fly (16 headings, inertia, down brakes, wraps at the edges), twin blasters, recall (button 2, flies itself home) or fly into the bay to dock
+- [x] Tether: drains out, charges docked; run dry and it comes home; damage comes off it too and can destroy it (the Ark builds another)
+- [x] Ark auto-turret while the fighter is out (any angle, nearest threat, slow)
+- [x] Raiders (circle the Ark, shoot), gunships (park between lanes, launch homing missiles), missiles
+- [x] Salvage pods from destroyed pirates: only the fighter picks them up, for Ark energy
+- [x] HUD: Ark energy and fighter tether bars
+- [x] `snap.lua` fighter autopilot (`AUTOFIGHTER`); all sprites drawn from assembly (`draw.asm`)
+- [ ] Tune on hardware: fighter handling, tether rates, turret rate, pirate damage
+- [ ] Move deep space into its own bank (bank 1 has 5.7K left)
 
 ## M3: Planet slice
 - [ ] Horizontal smooth-scroll engine with a wrapping surface

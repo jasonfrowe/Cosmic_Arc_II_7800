@@ -182,6 +182,13 @@ SFX = [
     ("HIT", 1, 5, sweep(3, 18, 31, 15, 2, 24)),         # a rock hits the Ark
     ("CLEAR", 1, 6, notes_fx(4, [17, 13, 11, 8], 5, 10)),  # wave clear
     ("LOST", 1, 8, sweep(8, 10, 31, 15, 0, 70)),        # the Ark is lost
+    ("LAUNCH", 1, 4, sweep(4, 20, 4, 12, 6, 14)),       # the fighter launches
+    ("DOCK", 1, 4, sweep(4, 4, 20, 10, 4, 14)),         # ... docks
+    ("FSHOT", 0, 1, sweep(4, 2, 8, 9, 3, 5)),           # twin blasters
+    ("FHIT", 1, 5, sweep(3, 10, 24, 14, 3, 12)),        # the fighter is hit
+    ("PSHOT", 0, 2, sweep(12, 6, 14, 8, 2, 8)),         # a pirate shoots
+    ("MISSILE", 1, 3, sweep(8, 20, 6, 6, 10, 16)),      # a missile launches
+    ("POD", 1, 6, notes_fx(4, [11, 9, 7, 5], 3, 11)),   # a pod picked up
 ]
 
 

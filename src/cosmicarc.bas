@@ -44,6 +44,7 @@
   dim bl_d = $2378
   dim sp_joy = $2380
   dim sp_fire = $2381
+  dim sp_fire2 = $24C5
   dim sp_aimx = $2383
   dim sp_aimy = $2384
   dim sp_energy = $2386
@@ -53,6 +54,7 @@
   dim sp_msgx = $239E
   dim hud_top = $23A0
   dim hud_bot = $23B8
+  dim hud_bot2 = $24D0
   dim sp_msg = $23D0
   dim starch = $23F0
   rem zero page
@@ -63,15 +65,16 @@
   rem joy0fire0 button 2 (as Gamma Force and Spacewar).
 
   BACKGRND = $00
-  rem P0 text, P1 the Ark, P2 rocks, P3 bolts and aim, P4 explosions,
-  rem P5/P6 stars, P7 the energy bar
+  rem P0 text, P1 the Ark, P2 rocks, P3 bolts, aim, turret shots, pods and
+  rem the tether bar, P4 explosions and pirates, P5 stars, P6 the fighter,
+  rem P7 the energy bar
   P0C1 = $0F
   P1C1 = $44 : P1C2 = $42 : P1C3 = $4C
   P2C1 = $62 : P2C2 = $66 : P2C3 = $6A
   P3C1 = $98 : P3C2 = $9A : P3C3 = $0F
   P4C1 = $04 : P4C2 = $36 : P4C3 = $1E
-  P5C1 = $04
-  P6C1 = $0A
+  P5C1 = $06
+  P6C1 = $06 : P6C2 = $0C : P6C3 = $AE
   P7C1 = $C8
 
   characterset font
@@ -126,6 +129,8 @@ gameloop
   sp_joy = t
   sp_fire = 0
   if joy0fire1 then sp_fire = 1
+  sp_fire2 = 0
+  if joy0fire0 then sp_fire2 = 1
   asm
   jsr sp_frame
 end
@@ -136,29 +141,13 @@ end
   if sp_energy < 25 then P7C1 = $36
 
   restorescreen
-  if sp_state <> 2 then plotsprite ark 1 56 80 : plotsprite aim 3 sp_aimx sp_aimy
-  for i = 0 to 9
-    t = rk_t[i]
-    if t = 0 then goto rocknext
-    x = rk_x[i] : y = rk_y[i]
-    if t = 1 then plotsprite rock_l 2 x y
-    if t = 2 then plotsprite rock_m 2 x y
-    if t = 3 then plotsprite rock_s 2 x y
-    if t < 4 then goto rocknext
-    f = 0
-    if rk_tm[i] < 12 then f = 1
-    if rk_tm[i] < 6 then f = 2
-    plotsprite boom0 4 x y f
-rocknext
-  next
-  for i = 0 to 3
-    if bl_t[i] = 0 then goto boltnext
-    x = bl_x[i] : y = bl_y[i] : f = bl_d[i]
-    plotsprite bolt0 3 x y f
-boltnext
-  next
+  if sp_state <> 2 then plotsprite ark 1 56 80
+  asm
+  jsr sp_draw
+end
   plotchars hud_top 0 0 0 20
-  plotchars hud_bot 7 0 11 20
+  plotchars hud_bot 7 0 11 10
+  plotchars hud_bot2 3 80 11 10
   if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
 
@@ -179,7 +168,7 @@ drawstars
     plotchars starch 5 t i 1
     t = rand & 63
     t = t + 48
-    plotchars starch 6 t i 1
+    plotchars starch 5 t i 1
     t = rand & 63
     t = t + 96
     plotchars starch 5 t i 1
@@ -245,7 +234,11 @@ end
   inline music.asm
   inline savekey.asm
   inline hwtest.asm
+  inline vec.asm
   inline space.asm
+  inline fighter.asm
+  inline pirates.asm
+  inline draw.asm
 
   bank 2
   rem signature, read at $8000 by hwtest.asm
@@ -359,3 +352,27 @@ end
   incgraphic gfx/boom0.png 160A 0 1 2 3
   incgraphic gfx/boom1.png 160A 0 1 2 3
   incgraphic gfx/boom2.png 160A 0 1 2 3
+  incgraphic gfx/fighter00.png 160A 0 1 2 3
+  incgraphic gfx/fighter01.png 160A 0 1 2 3
+  incgraphic gfx/fighter02.png 160A 0 1 2 3
+  incgraphic gfx/fighter03.png 160A 0 1 2 3
+  incgraphic gfx/fighter04.png 160A 0 1 2 3
+  incgraphic gfx/fighter05.png 160A 0 1 2 3
+  incgraphic gfx/fighter06.png 160A 0 1 2 3
+  incgraphic gfx/fighter07.png 160A 0 1 2 3
+  incgraphic gfx/fighter08.png 160A 0 1 2 3
+  incgraphic gfx/fighter09.png 160A 0 1 2 3
+  incgraphic gfx/fighter10.png 160A 0 1 2 3
+  incgraphic gfx/fighter11.png 160A 0 1 2 3
+  incgraphic gfx/fighter12.png 160A 0 1 2 3
+  incgraphic gfx/fighter13.png 160A 0 1 2 3
+  incgraphic gfx/fighter14.png 160A 0 1 2 3
+  incgraphic gfx/fighter15.png 160A 0 1 2 3
+  incgraphic gfx/raider0.png 160A 0 1 2 3
+  incgraphic gfx/raider1.png 160A 0 1 2 3
+  incgraphic gfx/gunship.png 160A 0 1 2 3
+  incgraphic gfx/missile0.png 160A 0 1 2 3
+  incgraphic gfx/missile1.png 160A 0 1 2 3
+  incgraphic gfx/dot.png 160A 0 1 2 3
+  incgraphic gfx/pod0.png 160A 0 1 2 3
+  incgraphic gfx/pod1.png 160A 0 1 2 3

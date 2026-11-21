@@ -191,6 +191,102 @@ a.....a.
 ]
 
 
+# ---------------------------------------------------------------------------
+# M2: the fighter, pirates, shots, pods.
+
+# The fighter: 16 headings (0 east, then clockwise: 4 down, 8 west, 12 up),
+# 8 x 12, rendered from a polygon in square units (x in hi-res pixels, y in
+# lines) and sampled down to 160A pixels. b hull, c cockpit.
+FIGHTER = [(9, 0), (-6, -7), (-3, 0), (-6, 7)]
+COCKPIT = (2, 0)
+
+
+def inside(poly, x, y):
+    n, c = len(poly), False
+    for i in range(n):
+        (x1, y1), (x2, y2) = poly[i], poly[(i + 1) % n]
+        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+            c = not c
+    return c
+
+
+def fighter_frames():
+    import math
+    frames = []
+    for k in range(16):
+        a = k * math.pi / 8
+        ca, sa = math.cos(a), math.sin(a)
+        rot = [(x * ca - y * sa, x * sa + y * ca) for x, y in FIGHTER]
+        rows = []
+        for py in range(12):
+            row = ""
+            for px in range(8):
+                hits = 0
+                for sx in range(4):
+                    for sy in range(4):
+                        hx = px * 2 + (sx + 0.5) / 2 - 8      # hi-res x, centre 8
+                        hy = py + (sy + 0.5) / 4 - 6          # line, centre 6
+                        hits += inside(rot, hx, hy)
+                row += "b" if hits >= 6 else "."
+            rows.append(row)
+        cx, cy = COCKPIT
+        hx, hy = cx * ca - cy * sa, cx * sa + cy * ca
+        px, py = int((hx + 8) // 2), int(hy + 6)
+        r = list(rows[py])
+        r[px] = "c"
+        rows[py] = "".join(r)
+        frames.append(rows)
+    return frames
+
+
+# Raider: a small, fast pirate; two frames (its lights blink). b hull, c lights
+RAIDER = [art("""
+b......b
+bb....bb
+.bbaabb.
+..bccb..
+..bccb..
+.bbaabb.
+bb....bb
+b......b
+"""), art("""
+b......b
+bb....bb
+.bbccbb.
+..baab..
+..baab..
+.bbccbb.
+bb....bb
+b......b
+""")]
+
+# Gunship: slow, heavy, launches missiles. 12 x 12
+GUNSHIP = art("""
+....bbbb....
+..bbbbbbbb..
+.bbaabbaabb.
+bbbbbbbbbbbb
+bbccbbbbccbb
+bbbbbbbbbbbb
+.bbaaaaaabb.
+..bbbbbbbb..
+...b.bb.b...
+..b..bb..b..
+.b...bb...b.
+............
+""")
+
+# Missile: 4 x 4, two frames
+MISSILE = [art(".c..\ncac.\n.c..\n...."), art(".a..\naca.\n.a..\n....")]
+
+# A shot (fighter, turret, pirate: the palette tells them apart), 4 x 4
+DOT = art("....\n.cc.\n.cc.\n....")
+
+# Salvage pod: 4 x 8, two frames
+POD = [art(".bb.\nbaab\nbccb\nbccb\nbccb\nbccb\nbaab\n.bb."),
+       art(".bb.\nbaab\nbaab\nbaab\nbaab\nbaab\nbaab\n.bb.")]
+
+
 def font():
     src = Image.open(GFX / "menufont.png")
     sp = src.load()
@@ -233,6 +329,16 @@ def main():
     save("aim", AIM)
     for i, b in enumerate(BOOM):
         save(f"boom{i}", b)
+    for i, fr in enumerate(fighter_frames()):
+        save(f"fighter{i:02d}", fr)
+    for i, fr in enumerate(RAIDER):
+        save(f"raider{i}", fr)
+    save("gunship", GUNSHIP)
+    for i, fr in enumerate(MISSILE):
+        save(f"missile{i}", fr)
+    save("dot", DOT)
+    for i, fr in enumerate(POD):
+        save(f"pod{i}", fr)
     font()
     print("gfx: wrote", ", ".join(sorted(p.stem for p in GFX.glob("*.png"))))
 

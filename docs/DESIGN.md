@@ -171,12 +171,19 @@ limps on to the destination. It isn't game over unless the hull is gone.
 ### 4.3 Fighter mode
 
 - 16 headings, thrust with inertia (Spacewar's flight model on the
-  MathUnit), button 1 fires twin blasters.
+  MathUnit), button 1 fires twin blasters. Left/right turn, up thrusts,
+  down brakes. It wraps at the screen's edges.
 - Button 2 recalls the fighter (it flies home on autopilot), or fly
   into the docking bay to dock at once and recharge it.
-- **Tether energy** drains while the fighter is out and recharges only when
-  docked. At zero the fighter is forced to recall. This makes the
-  launch → intercept → dock → defend rhythm.
+- **Tether energy** drains while the fighter is out (a full tether lasts
+  about 13 s) and recharges only when docked (about 3 s). At zero the fighter
+  is forced to recall. This makes the launch → intercept → dock → defend rhythm.
+  Hits on the fighter come off the tether too. If damage empties it, the fighter is
+  destroyed and the Ark takes 4 s to build another.
+- **Energy rule:** the fighter's blasters are free (the tether limits them),
+  so its kills pay no energy. The auto-turret's shots cost and pay like the
+  laser's. Salvage pods, which only the fighter can pick up, are deep space's
+  way to earn energy back.
 - While you fly, the Ark runs **auto-turret**: slow tracking of the
   nearest threat (the MathUnit's atan2 picks the aim), its rate set by the Auto-Turret
   upgrade. Its shields absorb stray hits.

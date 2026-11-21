@@ -61,6 +61,12 @@ WV_SPEED0 = $60     ; a large rock's speed (8.8 square units a frame):
 WV_SPEEDSTEP = 8    ;   WV_SPEED0 + WV_SPEEDSTEP * wave
 KID_SPEED = $20     ; a smaller rock goes this much faster a size step
 KID_SPLIT = $30     ; and the second piece of a split this much more again
+WV_RAID_FROM = 2    ; raiders from this wave: 1, one more every 2 waves,
+WV_RAIDMAX = 3      ;   at most this many
+WV_GUN_FROM = 4     ; a gunship from this wave
+WV_GUN2_FROM = 8    ; two from this one
+PR_FIRST  = 200     ; frames into a wave before the first pirate
+PR_GAP    = 180     ; frames between pirates
 ; rock_dmg (below): energy a rock costs when it hits the Ark
 BOLT_LIFE = 40
 
@@ -121,7 +127,8 @@ sp_msglen = $239D   ; 0: no message
 sp_msgx   = $239E
 sp_ticks  = $239F   ; game loop passes (for frame-rate checks)
 hud_top   = $23A0   ; 20 characters
-hud_bot   = $23B8   ; 20
+hud_bot   = $23B8   ; 10
+hud_bot2  = $24D0   ; 10 (fighter.asm's page)
 sp_msg    = $23D0   ; 20
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
 
@@ -138,6 +145,8 @@ sp_new
     sta sp_aim
     sta sp_flash
     jsr sp_clear
+    jsr ft_new
+    jsr pr_new
     jmp sp_nextwave
 
 sp_clear
@@ -204,6 +213,33 @@ sp_nw_g2
     lda M_P+1
     adc #>WV_SPEED0
     sta sp_spdh
+    ; pirates: raiders from WV_RAID_FROM (one more every 2 waves), gunships
+    ; from WV_GUN_FROM (two from WV_GUN2_FROM)
+    lda #0
+    sta sp_praid
+    sta sp_pgun
+    lda sp_wave
+    sec
+    sbc #WV_RAID_FROM
+    bcc sp_nw_np
+    lsr
+    clc
+    adc #1
+    cmp #WV_RAIDMAX+1
+    bcc sp_nw_r
+    lda #WV_RAIDMAX
+sp_nw_r
+    sta sp_praid
+    lda sp_wave
+    cmp #WV_GUN_FROM
+    bcc sp_nw_np
+    inc sp_pgun
+    cmp #WV_GUN2_FROM
+    bcc sp_nw_np
+    inc sp_pgun
+sp_nw_np
+    lda #PR_FIRST
+    sta sp_ptm
     lda #ST_START
     sta sp_state
     lda #90
@@ -213,6 +249,7 @@ sp_nw_g2
 ; ---------------------------------------------------------------------------
 sp_frame
     inc sp_ticks
+    inc sp_frame8
     lda sp_flash
     beq sp_f_nf
     dec sp_flash
@@ -220,13 +257,27 @@ sp_f_nf
     lda sp_state
     cmp #ST_OVER
     bne sp_f_live
-    jsr sp_rocks            ; (the rocks drift on, the Ark is gone)
+    jsr sp_rocks            ; (the rocks and pirates go on, the Ark is gone)
+    jsr pr_frame
+    jsr sh_frame
+    jsr pd_frame
     jmp sp_hud
 sp_f_live
-    jsr sp_input
+    jsr ft_frame
+    jsr ft_isout
+    bcc sp_f_ark
+    jsr tu_frame            ; the fighter's out: the auto-turret
+    jmp sp_f_go
+sp_f_ark
+    jsr sp_input            ; the Ark's own laser
+sp_f_go
     jsr sp_bolts
     jsr sp_rocks
+    jsr pr_frame
+    jsr sh_frame
+    jsr pd_frame
     jsr sp_hits
+    jsr pr_bolthits
     jsr sp_waves
     jmp sp_hud
 
@@ -405,6 +456,47 @@ sp_h_live
     jmp sp_h_next
 sp_h_bolts
     stx sp_slot
+    ; the rock against the fighter: its box against the fighter's (+-4, +-5)
+    jsr ft_isout
+    bcc sp_h_nf
+    ldx sp_slot
+    ldy rk_t,x
+    sec
+    lda ft_x
+    sbc #4
+    sbc rk_x,x
+    bcc sp_h_fx             ; fighter's left edge left of the rock's
+    cmp rock_w-1,y
+    bcs sp_h_nf
+    bcc sp_h_fy
+sp_h_fx
+    eor #$FF                ; the rock's left edge is within 8 of the fighter's?
+    cmp #8
+    bcs sp_h_nf
+sp_h_fy
+    sec
+    lda ft_y
+    sbc #5
+    sbc rk_y,x
+    bcc sp_h_fy2
+    cmp rock_h-1,y
+    bcs sp_h_nf
+    bcc sp_h_fhit
+sp_h_fy2
+    eor #$FF
+    cmp #10
+    bcs sp_h_nf
+sp_h_fhit
+    lda ft_flash
+    bne sp_h_nf
+    lda rock_dmg-1,y
+    jsr ft_hurt
+    ldx sp_slot
+    jsr sp_boom
+    ldx sp_slot
+    jmp sp_h_next
+sp_h_nf
+    ldx sp_slot
     ldy #NB-1
 sp_h_b
     lda bl_t,y
@@ -432,6 +524,8 @@ sp_h_b
     bcs sp_h_bn
     lda #0
     sta bl_t,y
+    lda #KILL_PAY
+    sta sp_pay
     ldx sp_slot
     jsr sp_rockhit
     ldx sp_slot
@@ -458,20 +552,29 @@ rock_pl .byte $20, $50, $00
 ; a rock (slot X) hits the Ark
 sp_arkhit
     ldy rk_t,x
+    lda rock_dmg-1,y
+    pha
+    jsr sp_boom
+    pla
+; the Ark takes A damage (rocks, pirate shots, missiles)
+sp_arkdmg
+    sta sp_t0
     sec
     lda sp_energy
-    sbc rock_dmg-1,y
-    bcs sp_ah_e
+    sbc sp_t0
+    bcs sp_ad_e
     lda #0
-sp_ah_e
+sp_ad_e
     sta sp_energy
-    jsr sp_boom
     lda #20
     sta sp_flash
     lda #SFX_HIT
     jsr sfx
     lda sp_energy
     bne sp_ah_r
+    lda sp_state
+    cmp #ST_OVER
+    beq sp_ah_r
     lda #ST_OVER
     sta sp_state
     lda #0
@@ -480,10 +583,38 @@ sp_ah_b
     sta bl_t,y              ; the bolts go with the Ark
     dey
     bpl sp_ah_b
+    jsr ft_isout            ; and the fighter
+    bcc sp_ah_nf
+    lda ft_x
+    sta tg_x
+    lda ft_y
+    sta tg_y
+    jsr pr_boomat
+sp_ah_nf
+    lda #FT_DOCK
+    sta ft_st
     lda #SFX_LOST
     jsr sfx
     jmp sp_msg_over
 sp_ah_r
+    rts
+
+; add sc_m/sc_l (BCD: hundreds-thousands, tens-ones) to the score
+sc_m      = $24EE
+sc_l      = $24EF
+sc_add
+    sed
+    clc
+    lda sp_score+2
+    adc sc_l
+    sta sp_score+2
+    lda sp_score+1
+    adc sc_m
+    sta sp_score+1
+    lda sp_score
+    adc #0
+    sta sp_score
+    cld
     rts
 
 ; slot X becomes an explosion
@@ -498,21 +629,14 @@ sp_boom
 sp_rockhit
     ldy rk_t,x
     sty sp_kids
-    sed
-    clc
-    lda sp_score+2
-    adc rock_pl-1,y
-    sta sp_score+2
-    lda sp_score+1
-    adc rock_pm-1,y
-    sta sp_score+1
-    lda sp_score
-    adc #0
-    sta sp_score
-    cld
-    clc                     ; a kill pays back its shot
+    lda rock_pl-1,y
+    sta sc_l
+    lda rock_pm-1,y
+    sta sc_m
+    jsr sc_add
+    clc                     ; a kill pays back its shot (sp_pay: by who)
     lda sp_energy
-    adc #KILL_PAY
+    adc sp_pay
     cmp #EN_MAX
     bcc sp_rh_e
     lda #EN_MAX
@@ -712,9 +836,32 @@ sp_w_play
     bne sp_w_r
     jmp sp_nextwave
 sp_w_p2
+    ; pirates still to come
+    lda sp_praid
+    ora sp_pgun
+    beq sp_w_rocks
+    dec sp_ptm
+    bne sp_w_rocks
+    lda #PR_GAP
+    sta sp_ptm
+    lda #PR_RAID
+    ldx sp_praid
+    beq sp_w_gun
+    dec sp_praid
+    bne sp_w_pr             ; (always)
+    beq sp_w_pr
+sp_w_gun
+    dec sp_pgun
+    lda #PR_GUN
+sp_w_pr
+    jsr pr_spawn
+sp_w_rocks
     lda sp_left
     bne sp_w_spawn
     lda sp_live
+    ora pr_live
+    ora sp_praid
+    ora sp_pgun
     bne sp_w_r
     ; wave clear (CLEAR_PAY energy: none for now)
     lda #ST_CLEAR
@@ -825,48 +972,75 @@ sp_hud_w
     and #$0F
     jsr tx_digit
     sta hud_top,y
-    ; bottom: the energy bar, 12 cells of 4
-    ldx #0
-sp_hud_en
-    lda tx_energy,x
-    sta hud_bot,x
-    inx
-    cpx #7
-    bne sp_hud_en
-    lda sp_energy
-    sta sp_t0
-sp_hud_bar
+    ; bottom: "A" and the Ark's energy, "F" and the fighter's tether, 8 cells
+    ; of 12 each (hud_bot, hud_bot2: 10 characters each)
+    lda #<hud_bot
+    sta hwp
+    lda #>hud_bot
+    sta hwp+1
+    lda #("A"-32)*2
+    ldx sp_energy
+    jsr hud_bar
+    lda #<hud_bot2
+    sta hwp
+    lda #>hud_bot2
+    sta hwp+1
+    lda ft_st
+    cmp #FT_DEAD
+    beq sp_hud_rep
+    lda #("F"-32)*2
+    ldx ft_teth
+    jmp hud_bar
+sp_hud_rep
+    ldy #9                  ; the Ark is building a new one
+sp_hud_rl
+    lda tx_repair,y
+    sta (hwp),y
+    dey
+    bpl sp_hud_rl
+    rts
+
+; (hwp): character A, then X as 8 cells of 12, then a space
+hud_bar
+    ldy #0
+    sta (hwp),y
+    stx sp_t0
+    iny
+hud_b_full
     lda sp_t0
-    cmp #8
-    bcc sp_hud_part
-    sbc #8
+    cmp #12
+    bcc hud_b_part
+    sbc #12
     sta sp_t0
     lda #CH_BAR4
-    sta hud_bot,x
+    sta (hwp),y
+    iny
+    cpy #9
+    bne hud_b_full
+    beq hud_b_end
+hud_b_part
+    ldx #0                  ; the part cell: quarters of 12 (3 each)
+hud_b_q
+    cmp #3
+    bcc hud_b_qd
+    sbc #3
     inx
-    cpx #19
-    bne sp_hud_bar
-    beq sp_hud_end
-sp_hud_part
-    lsr
-    tay
-    lda bar_part,y
-    sta hud_bot,x
-    lda #0
-    sta sp_t0
-    inx
-    cpx #19
-    bne sp_hud_part0
-    beq sp_hud_end
-sp_hud_part0
-    lda #0
-    sta hud_bot,x
-    inx
-    cpx #20
-    bne sp_hud_part0
-sp_hud_end
-    lda #0
-    sta hud_bot+19
+    bne hud_b_q
+hud_b_qd
+    lda bar_part,x
+    sta (hwp),y
+    iny
+hud_b_sp
+    cpy #10
+    beq hud_b_r
+    lda #CH_SPACE
+    sta (hwp),y
+    iny
+    bne hud_b_sp
+hud_b_end
+    lda #CH_SPACE
+    sta (hwp),y
+hud_b_r
     rts
 
 bar_part .byte 0, CH_BAR1, CH_BAR2, CH_BAR3
