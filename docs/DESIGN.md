@@ -158,9 +158,14 @@ limps on to the destination. It isn't game over unless the hull is gone.
   along its 4, so any rock can be shot from where it is. A rock that
   breaks sends both halves on down its lane, one faster than the other.
   Threats that come in *off* the lanes (pirates) are the fighter's job.
-- Energy (M1 numbers, to tune on hardware): 96, a shot costs 1, a kill
-  pays 2 (accurate fire gains, spraying loses), a rock hitting the Ark
-  costs 16 / 12 / 8 (large / medium / small), a cleared wave pays 24.
+- **Energy balance: perfect play breaks even.** A kill pays back exactly the
+  energy its shot cost (1 and 1). Missed shots and rocks that reach the Ark
+  (16 / 12 / 8 for large / medium / small) are real losses, and they have to
+  be made up some other way: creature captures, starports. Clearing a wave
+  pays nothing. The knobs are faster rocks in later waves and sectors, and
+  weapon upgrades. They're all in one block at the top of `src/asm/space.asm`.
+  Energy runs to 96 and fire rate is a bolt every 8 frames (both checked on
+  hardware).
 - Button 2 **launches the fighter**.
 
 ### 4.3 Fighter mode
@@ -276,6 +281,7 @@ bays** (creatures).
 
 ### 6.3 Upgrades (tiered, 3 levels each)
 
+Point-defense laser (faster fire, bolts that pierce a rock, a cheaper shot) ·
 Cargo holds · Stasis bays · Fuel tanks · Auto-turret AI · Fighter thrusters
 · Fighter blasters · Tether capacity · Tractor beam width · Shuttle hold ·
 Density / Holo scanner · Stealth (fewer encounters) · Hull plating. The

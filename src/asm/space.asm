@@ -42,7 +42,26 @@ PF_TOP    = 8
 PF_BOT    = 184
 
 EN_MAX    = 96      ; energy: 12 bar cells of 8
+
+; ---- balance knobs (docs/DESIGN.md 4.2) ----
+; Energy is net-neutral for perfect play: a kill pays back exactly the shot
+; that made it. Misses and hits by rocks cost energy that has to come back
+; some other way (captures, ports). Weapon upgrades (later) and faster rocks
+; in later waves and sectors are the other knobs.
+SHOT_COST = 1       ; energy a bolt costs
+KILL_PAY  = 1       ; energy a kill pays (= SHOT_COST: perfect play breaks even)
+CLEAR_PAY = 0       ; energy for clearing a wave (0: none, by the rule above)
 FIRE_GAP  = 8       ; frames between bolts
+WV_COUNT0 = 3       ; large rocks in a wave: WV_COUNT0 + wave, at most WV_COUNTMAX
+WV_COUNTMAX = 12
+WV_GAP0   = 110     ; frames between rocks: WV_GAP0 - WV_GAPSTEP * wave,
+WV_GAPSTEP = 10     ;   at least WV_GAPMIN
+WV_GAPMIN = 40
+WV_SPEED0 = $60     ; a large rock's speed (8.8 square units a frame):
+WV_SPEEDSTEP = 8    ;   WV_SPEED0 + WV_SPEEDSTEP * wave
+KID_SPEED = $20     ; a smaller rock goes this much faster a size step
+KID_SPLIT = $30     ; and the second piece of a split this much more again
+; rock_dmg (below): energy a rock costs when it hits the Ark
 BOLT_LIFE = 40
 
 RK_FREE   = 0
@@ -146,43 +165,44 @@ sp_nextwave
     cld
     lda sp_wave
     clc
-    adc #3
-    cmp #13
+    adc #WV_COUNT0
+    cmp #WV_COUNTMAX+1
     bcc sp_nw_n
-    lda #12
+    lda #WV_COUNTMAX
 sp_nw_n
     sta sp_left
-    ; gap = 110 - 10 * wave, at least 40
+    ; gap = WV_GAP0 - WV_GAPSTEP * wave, at least WV_GAPMIN
     lda sp_wave
-    asl
-    sta sp_t0
-    asl
-    asl
-    clc
-    adc sp_t0
-    sta sp_t0
+    sta M_A
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    lda #WV_GAPSTEP
+    sta M_B
     sec
-    lda #110
-    sbc sp_t0
+    lda #WV_GAP0
+    sbc M_P
     bcc sp_nw_g
-    cmp #40
+    ldx M_P+1
+    bne sp_nw_g
+    cmp #WV_GAPMIN
     bcs sp_nw_g2
 sp_nw_g
-    lda #40
+    lda #WV_GAPMIN
 sp_nw_g2
     sta sp_gap
     lda #30
     sta sp_spawn
-    ; speed = $60 + 8 * wave (8.8)
-    lda sp_wave
-    asl
-    asl
-    asl
+    ; speed = WV_SPEED0 + WV_SPEEDSTEP * wave (8.8)
+    lda #WV_SPEEDSTEP
+    sta M_B
     clc
-    adc #$60
+    lda M_P
+    adc #<WV_SPEED0
     sta sp_spdl
-    lda #0
-    adc #0
+    lda M_P+1
+    adc #>WV_SPEED0
     sta sp_spdh
     lda #ST_START
     sta sp_state
@@ -237,7 +257,7 @@ sp_in_c
     cmp #ST_PLAY
     bne sp_in_r
     lda sp_energy
-    cmp #2
+    cmp #SHOT_COST+1
     bcc sp_in_r             ; too weak to fire
     ldy #NB-1
 sp_in_s
@@ -262,7 +282,10 @@ sp_in_fire
     sta bl_d,y
     lda #FIRE_GAP
     sta sp_cool
-    dec sp_energy
+    sec
+    lda sp_energy
+    sbc #SHOT_COST
+    sta sp_energy
     lda #SFX_ZAP
     jmp sfx
 
@@ -487,9 +510,9 @@ sp_rockhit
     adc #0
     sta sp_score
     cld
-    clc                     ; a kill pays 2: a sure shot gains, a spray loses
+    clc                     ; a kill pays back its shot
     lda sp_energy
-    adc #2
+    adc #KILL_PAY
     cmp #EN_MAX
     bcc sp_rh_e
     lda #EN_MAX
@@ -503,9 +526,9 @@ sp_rh_e
     bcs sp_rh_boom          ; a small one just goes
     ; the children go on down the lane, one faster than the other
     inc sp_kids             ; their size
-    lda #$00
+    lda #0
     jsr sp_kid
-    lda #$30
+    lda #KID_SPLIT
     jsr sp_kid
     ldx sp_slot
 sp_rh_boom
@@ -547,14 +570,17 @@ sp_kid_go
     sta rk_y,x
     tya
     sta rk_t,x
-    ; speed: this wave's + $20 a size step + A
+    ; speed: this wave's + KID_SPEED a size step + A
     sec
     sbc #1
-    asl
-    asl
-    asl
-    asl
-    asl
+    sta M_A
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    lda #KID_SPEED
+    sta M_B
+    lda M_P
     clc
     adc sp_t2
     clc
@@ -690,14 +716,14 @@ sp_w_p2
     bne sp_w_spawn
     lda sp_live
     bne sp_w_r
-    ; wave clear: a bonus of energy
+    ; wave clear (CLEAR_PAY energy: none for now)
     lda #ST_CLEAR
     sta sp_state
     lda #120
     sta sp_timer
     clc
     lda sp_energy
-    adc #24
+    adc #CLEAR_PAY
     cmp #EN_MAX
     bcc sp_w_e
     lda #EN_MAX
