@@ -13,10 +13,13 @@ then link them together.
 - [x] Run the M0 ROM on the real AstroCart (with and without a SaveKey): all OK, both POKEYs
 - [ ] js7800_astrocart: second POKEY on SuperGame carts (for the browser build)
 
-## M1: Deep space slice (Mothership)
-- [ ] Art pipeline: RP6502 sprites → 160A
-- [ ] Ark in the centre, 8-way laser, energy meter
-- [ ] Asteroid waves with splitting; HUD
+## M1: Deep space slice (Mothership) ✅ (2026-11-21)
+- [x] Art pipeline: `tools/gfx.py` (ASCII art → 160A PNGs), RP6502-styled Ark and rocks, 160A font from Spacewar's
+- [x] Title screen; hardware check behind button 2
+- [x] Ark in the centre, 8-way laser along 8 lanes, aim marker, energy bar
+- [x] Asteroid waves along the lanes, splitting large → medium → small; explosions; HUD (score, wave, energy)
+- [x] `tools/snap.sh` scripted input and an autopilot soak test; holds 60 fps with 9 rocks
+- [ ] Tune the balance on hardware (energy costs, wave speed and size)
 
 ## M2: Fighter
 - [ ] Launch, fly (16 headings, inertia), twin blasters, recall/dock, tether

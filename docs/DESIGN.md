@@ -154,6 +154,13 @@ limps on to the destination. It isn't game over unless the hull is gone.
   laser that way. The 2600 asked you to centre the stick between shots.
   Here, holding the button auto-fires at a fixed rate, and each shot
   costs energy.
+- **Asteroids come in along the 8 firing lanes**, as the 2600 game's came
+  along its 4, so any rock can be shot from where it is. A rock that
+  breaks sends both halves on down its lane, one faster than the other.
+  Threats that come in *off* the lanes (pirates) are the fighter's job.
+- Energy (M1 numbers, to tune on hardware): 96, a shot costs 1, a kill
+  pays 2 (accurate fire gains, spraying loses), a rock hitting the Ark
+  costs 16 / 12 / 8 (large / medium / small), a cleared wave pays 24.
 - Button 2 **launches the fighter**.
 
 ### 4.3 Fighter mode

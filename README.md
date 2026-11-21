@@ -8,10 +8,10 @@ navigate a 64-sector galaxy of warps, starports and pirates, trading
 Fuel Ore, Organics and Equipment for upgrades, to fill the Ark's manifest
 before the star Alpha Ro collapses.
 
-**Status:** M0 (skeleton) done. The cart boots to a hardware check of the
-MathUnit, all ROM banks, the SaveKey, and music on both POKEYs. No game yet.
+**Status:** M1 (deep-space slice) done: defend the Ark against asteroid waves
+with the 8-way laser. Button 2 on the title runs the hardware check.
 
-![M0 hardware check](docs/m0_hardware_check.png)
+![Deep space](docs/m1_deep_space.png)
 
 - [Design document](docs/DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -25,6 +25,9 @@ Needs `wasmtime` (for the vendored 7800basic) and Python 3.
 tools/build.sh     # -> build/cosmicarc.a78
 tools/play.sh      # run it in the a7800 fork (SaveKey in port 2)
 ```
+
+Controls: joystick aims, button 1 fires, button 2 (on the title) opens the
+hardware check.
 
 ## Features (planned)
 

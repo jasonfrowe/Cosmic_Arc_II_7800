@@ -5,17 +5,17 @@
 ;   hw_frame  each frame: the live random byte, the music's POKEY mask
 ;   hw_mask   A = 0 both POKEYs, 1 POKEY 1 ($0450) only, 2 POKEY 2 ($0440) only
 ;
-; The text is 8 lines of 32 ASCII bytes at hw_lines (plotted by the BASIC
-; with plotchars, 30 columns a line): a label at column 0, a status at
-; column 20.
+; The text is 8 lines of 32 bytes at hw_lines, character codes (text.asm),
+; plotted by the BASIC with plotchars, 20 columns a line: a label at
+; column 0, a status at column 12.
 ; ===========================================================================
 
 hwp       = $B9     ; 2: source string
 hwd       = $BB     ; 2: destination in hw_lines
 
 hw_lines  = $2600   ; 8 x 32
-HW_COLS   = 30
-HW_STAT   = 20
+HW_COLS   = 20
+HW_STAT   = 12
 
 hw_math   = $2590   ; 1: the unit answers
 hw_trig   = $2591   ; 1: version 2 (trig block)
@@ -30,7 +30,7 @@ hw_t1     = $259A
 
 hw_init
     ; blank the lines
-    lda #$20
+    lda #CH_SPACE
     ldx #0
 hw_init_clr
     sta hw_lines,x
@@ -78,6 +78,7 @@ hw_text
 hw_text_c
     lda (hwp),y
     beq hw_text_r
+    jsr tx_ascii
     sta (hwd),y
     iny
     bne hw_text_c
@@ -103,7 +104,7 @@ hw_status
     adc #HW_STAT
     tax
     ldy #HW_COLS-HW_STAT
-    lda #$20
+    lda #CH_SPACE
 hw_status_pad
     sta hw_lines,x
     inx
@@ -122,11 +123,13 @@ hw_hex
     lsr
     tay
     lda hw_hexd,y
+    jsr tx_ascii
     sta hw_lines,x
     pla
     and #$0F
     tay
     lda hw_hexd,y
+    jsr tx_ascii
     sta hw_lines+1,x
     rts
 
@@ -357,7 +360,7 @@ hw_frame
     lda M_RND
     ldx #4*32+HW_STAT+1
     jsr hw_hex
-    lda #$24
+    lda #("$"-32)*2
     sta hw_lines+4*32+HW_STAT
 hw_frame_r
     rts
@@ -376,13 +379,13 @@ hw_maskst .byte ST_BOTH, ST_P1, ST_P2
 
 hw_hexd .byte "0123456789ABCDEF"
 
-hw_lt0 .byte "MATH UNIT ($043F)",0
-hw_lt1 .byte "TRIG BLOCK ($042F)",0
-hw_lt2 .byte "MULTIPLY / DIVIDE",0
-hw_lt3 .byte "ATAN2 / LENGTH",0
-hw_lt4 .byte "RANDOM ($043E)",0
-hw_lt5 .byte "ROM BANKS 2-16",0
-hw_lt6 .byte "SAVEKEY (PORT 2)",0
+hw_lt0 .byte "MATH UNIT",0
+hw_lt1 .byte "TRIG",0
+hw_lt2 .byte "MUL/DIV",0
+hw_lt3 .byte "ATAN/LEN",0
+hw_lt4 .byte "RANDOM",0
+hw_lt5 .byte "BANKS",0
+hw_lt6 .byte "SAVEKEY",0
 hw_lt7 .byte "MUSIC",0
 hw_lbl_lo .byte <hw_lt0,<hw_lt1,<hw_lt2,<hw_lt3,<hw_lt4,<hw_lt5,<hw_lt6,<hw_lt7
 hw_lbl_hi .byte >hw_lt0,>hw_lt1,>hw_lt2,>hw_lt3,>hw_lt4,>hw_lt5,>hw_lt6,>hw_lt7
@@ -397,9 +400,9 @@ ST_P2       = 6
 hw_s0 .byte "OK",0
 hw_s1 .byte "FAIL",0
 hw_s2 .byte "MISSING",0
-hw_s3 .byte "NOT FOUND",0
+hw_s3 .byte "NONE",0
 hw_s4 .byte "BOTH",0
-hw_s5 .byte "$0450 ONLY",0
-hw_s6 .byte "$0440 ONLY",0
+hw_s5 .byte "$0450",0
+hw_s6 .byte "$0440",0
 hw_st_lo .byte <hw_s0,<hw_s1,<hw_s2,<hw_s3,<hw_s4,<hw_s5,<hw_s6
 hw_st_hi .byte >hw_s0,>hw_s1,>hw_s2,>hw_s3,>hw_s4,>hw_s5,>hw_s6

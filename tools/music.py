@@ -171,8 +171,17 @@ def notes_fx(c, fs, each, v):
     return out
 
 
+def sweep(c, f0, f1, v0, v1, n):
+    return [(c, round(f0 + (f1 - f0) * i / (n - 1)), round(v0 + (v1 - v0) * i / (n - 1))) for i in range(n)]
+
+
 SFX = [
     ("BEEP", 0, 1, notes_fx(4, [12, 9], 3, 10)),
+    ("ZAP", 0, 1, sweep(4, 3, 14, 10, 3, 6)),           # a laser bolt
+    ("BOOM", 1, 3, sweep(8, 8, 28, 13, 1, 18)),         # a rock breaks
+    ("HIT", 1, 5, sweep(3, 18, 31, 15, 2, 24)),         # a rock hits the Ark
+    ("CLEAR", 1, 6, notes_fx(4, [17, 13, 11, 8], 5, 10)),  # wave clear
+    ("LOST", 1, 8, sweep(8, 10, 31, 15, 0, 70)),        # the Ark is lost
 ]
 
 
@@ -227,7 +236,10 @@ def main():
     # effects (id 0 = none)
     for i, (nm, ch, pri, data) in enumerate(SFX):
         out.append(f"SFX_{nm} = {i + 1}")
-        out.append(f"sfxd_{i + 1} .byte " + ",".join(f"{c},{f},{v}" for c, f, v in data) + ",$FF")
+        out.append(f"sfxd_{i + 1}")
+        for k in range(0, len(data), 12):
+            out.append("    .byte " + ",".join(f"{c},{f},{v}" for c, f, v in data[k:k + 12]))
+        out.append("    .byte $FF")
     ids = range(len(SFX) + 1)
     out.append("sfx_chan .byte 0," + ",".join(str(s[1]) for s in SFX))
     out.append("sfx_pri .byte 0," + ",".join(str(s[2]) for s in SFX))

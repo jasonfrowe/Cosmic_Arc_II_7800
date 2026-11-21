@@ -17,10 +17,22 @@ cmake -B build && cmake --build build   # the same build, through CMake
 file's path into a symbol name, so a `/` breaks it), runs the vendored
 7800basic, then `tools/a78header.py` finishes the header.
 
-`tools/snap.sh` takes `POKES="frame:addr:value,..."` (hex) in the
-environment to write memory at given frames, for example to solo a POKEY:
-`POKES=300:2502:0C`. The 7800 BIOS runs first, so the game starts about 200 frames
-in. Poke after that.
+`tools/snap.sh` (through `tools/emu/snap.lua`) takes, in the environment:
+
+- `POKES="frame:addr:value,..."` (hex): write memory at given frames, for
+  example `POKES=300:2502:0C` solos POKEY 2.
+- `INPUTS="from-to:Field;..."`: hold a control over a frame range, for example
+  `INPUTS="300-305:P1 Button 1;400-500:P1 Right"`.
+- `AUTOPLAY=frame`: from then on, aim at the nearest rock and fire. Every 600
+  frames it prints the wave, score, energy, the frames in which the game loop
+  ran (600 = full speed) and the most rocks seen.
+
+The 7800 BIOS runs first, so the game starts about 200 frames in. In MAME,
+"P1 Button 1" is 7800basic's `joy0fire1`.
+
+`tools/gfx.py` makes the PNGs in `src/gfx/` from ASCII art (run it with
+`.venv/bin/python`; it needs Pillow). The PNGs are committed, so the build
+doesn't need it.
 
 ## Cartridge
 
@@ -80,6 +92,7 @@ songs and effects are written in `tools/music.py`.
 | zero page $B0-$B5 | sound.asm (7800basic's tracker block, unused) |
 | zero page $B6-$B8 | savekey.asm |
 | zero page $B9-$BC | hwtest.asm |
+| $2300-$23FF | space.asm: rocks, bolts, the HUD's text |
 | $2500-$255F | sound.asm |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
@@ -87,6 +100,23 @@ songs and effects are written in `tools/music.py`.
 
 7800basic leaves $2200-$27FF free. The save block (DESIGN.md 7.5) will go
 at $2200.
+
+## Display
+
+160A, 8-line zones, 192 lines (24 rows): row 0 and row 23 are the HUD, rows
+1-22 the playfield (y 8-183). Text is doublewide: 8 pixels a character, 20
+across. The font is ASCII 32-95, so a character's code is (ASCII - 32) * 2
+(`text.asm`). 7800basic's `alphachars` maps literal strings the same way.
+Stars are one-character objects saved with `savescreen`. Each frame does
+`restorescreen`, then the sprites (`plotsprite`), then the HUD (`plotchars`
+from RAM).
+
+Deep space geometry: the Ark's centre is (80, 95). The 8 lanes leave it
+straight up/down/across, or diagonally at 1 pixel across for 2 lines (45° on
+screen, since a 160A pixel is about two lines wide). Rocks enter on a lane
+and fly at the centre, and bolts start from the aim marker on the same lane.
+The math unit works in "square" units (x doubled) so speeds look the same in
+every direction.
 
 ## Pitfalls found so far
 
@@ -98,6 +128,15 @@ at $2200.
   name (`snd_tick_go`), as Gamma Force does.
 - A 7800basic `dim` and an assembly label can't share a name. Give asm
   strings and tables their own names (`hw_lt0`, not `hw_l0`).
+- Don't `dim` a name that's one of 7800basic's one-letter variables (`i`,
+  `t`, `x`...): they're already defined. Use them as they are.
+- `plotsprite` won't take array elements (`rk_x[i]`): copy them into
+  variables first.
+- 7800basic wants PNGs with small palettes: save them 2-bit (`bits=2`).
+- dasm has a line length limit: split long `.byte` lines (music.py does).
+- `sfx` uses X and Y: reload loop registers after calling it.
+- Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
+  button 2, as in Gamma Force and Spacewar.
 
 ## Emulator fork changes (~/Software/a7800)
 
