@@ -4,11 +4,11 @@ Built as vertical slices, as Gamma Force was: get each mode playable on its own,
 then link them together.
 
 ## M0: Skeleton
-- [ ] Build script (vendored 7800basic or asm), CMake wrapper, `tools/play.sh` (`-nomouse`)
+- [ ] Build script (vendored 7800basic + asm, from Gamma Force), CMake wrapper, `tools/play.sh` (`-nomouse`)
 - [ ] 272K SuperGame layout, `.a78` header: MathUnit (`ACM`), POKEYs $0450 + $0440, SaveKey
 - [ ] a7800 fork: second POKEY for SuperGame carts; commit the $0440 device change
 - [ ] a7800 fork: SaveKey (24LC256) on port 2
-- [ ] MathUnit register include file, checked against `astromath.h`
+- [ ] `src/asm/mathunit.inc` from the FPGA repo's `docs/MATHUNIT.md`
 - [ ] Boots to a title screen and plays a dual-POKEY test tune
 
 ## M1: Deep space slice (Mothership)
@@ -28,7 +28,7 @@ then link them together.
 - [ ] One biome bank
 
 ## M4: Sector map
-- [ ] Galaxy data (grid-laid graph, warp bitmasks), generator or fixed map
+- [ ] Seeded galaxy generator (grid-laid graph, warp bitmasks, rules in DESIGN §3.2)
 - [ ] Sector view, galactic chart, fog of war, fuel, stardate
 - [ ] Encounter roll → M1/M2; planet sector → M3
 

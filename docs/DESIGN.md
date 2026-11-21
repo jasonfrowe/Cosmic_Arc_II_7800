@@ -8,8 +8,8 @@ inside a trading-and-exploration layer in the spirit of the BBS game
 TradeWars 2002: a galaxy of connected sectors, ports with buy/sell
 classes, fuel, cargo and upgrades.
 
-> Status: design draft. Sections marked **[Open]** need a decision; see
-> [Open questions](#open-questions).
+> Status: design draft. The early decisions are recorded in [Decisions](#decisions).
+> Hardware reference: the AstroCart V4 FPGA design (`~/Software/FPGA/Atari7800_AstroCart_V4`).
 
 ---
 
@@ -66,7 +66,30 @@ One warp is one **turn** and advances the stardate clock by one.
 | Mid-Rim | 16-40 | pirate flankers, denser rocks | rare species (3× bounty), shielded turrets | better prices |
 | Outer Rim | 41-64 | asteroid storms + pirate squadrons | apex species | Black Market (top-tier upgrades) |
 
-### 3.2 Making the map drawable (technical design decision)
+### 3.2 A seeded galaxy
+
+**New Game** asks for a seed (or takes the frame count when Start is
+pressed) and builds the galaxy into RAM with the MathUnit's random generator
+(xorshift, `$043E`). The same seed always makes the same galaxy, so a seed
+can be shared like a course code. The generator has to satisfy these rules,
+and otherwise re-rolls:
+
+- Every sector can be reached from sector 1 (one-way warps may not cut
+  any part off).
+- Sectors 1-10 form a connected Safe Space with at least 2 starports, one of
+  them in sector 1 or next to it.
+- At least one starport per tier. Black Market ports only in the Outer Rim.
+- Every species on the manifest appears on at least one planet, and apex
+  species only in the Outer Rim.
+- Dead ends lean toward rare planets and salvage (worth the detour).
+- Tiers come from the hop distance (breadth-first search from sector 1);
+  sector numbers are then given out in order of distance, so a low number
+  means safe, as in the table above.
+
+Only the seed and what has changed (visits, stock, populations) need
+saving. The galaxy itself is rebuilt from the seed on Continue.
+
+### 3.3 Making the map drawable (technical design decision)
 
 The 7800 can't draw arbitrary lines cheaply, so the galaxy is a **graph laid
 out on a hidden grid**: sectors sit on grid cells (for example 12×8), and
@@ -78,7 +101,7 @@ Each sector's warps are **one byte**: one bit per compass direction. A warp
 is two-way when both ends have the bit set and one-way when only the
 source does. So 64 bytes describe the whole graph.
 
-### 3.3 Sector types
+### 3.4 Sector types
 
 | Type | Icon | What's there |
 |---|---|---|
@@ -92,7 +115,7 @@ Port classes use TradeWars shorthand over three commodities, **Fuel Ore,
 Organics, Equipment**: `B` buys, `S` sells, in that order. `BSB` = buys
 Fuel Ore, sells Organics, buys Equipment.
 
-### 3.4 Fog of war
+### 3.5 Fog of war
 
 - Unvisited sectors show `?`. Visiting a sector reveals it and its warps.
 - **Density Scanner** (cheap, early): shows the threat tier of adjacent
@@ -100,7 +123,7 @@ Fuel Ore, sells Organics, buys Equipment.
 - **Holo Scanner** (expensive): reveals the type of adjacent sectors.
 - Port prices in the chart are the ones from your **last visit**.
 
-### 3.5 Screens
+### 3.6 Screens
 
 - **Sector view** (the default): the current sector's info at the top
   (type, port class, threat), its warps below as a short list to pick
@@ -202,7 +225,9 @@ the surface below.
 
 ### 5.4 Species
 
-- About **24 species** total, 6 per tier plus 6 apex. Each one has a movement
+- The manifest starts at **about 24 species** (6 per tier plus 6 apex). The count
+  can change to fit ROM, sprite budget and balance. The art starts from the
+  RP6502 game's beasties. Each one has a movement
   pattern (hop, burrow, flee the beam, swarm, glide, teleport) and a
   bounty.
 - A planet holds 2-4 species and a finite number of each. Planets
@@ -276,12 +301,12 @@ Black Market sells level 3 and the unique items.
 
 ### 7.1 Toolchain
 
-**[Open]** The proposal is **7800basic for game flow, menus and data, plus
-assembly for the engines**, as in Gamma Force. Gamma Force already has the
-pieces this game needs: SuperGame banking, a POKEY player, hiscore/SaveKey
-through `hiscore.asm`, a smooth-scroll engine and 320A cutscene text. The other
-choice is pure assembly like Pinball, which is faster and tighter but
-slower to write menus in.
+**Decided:** 7800basic for game flow, menus and data, plus assembly for
+the engines, as in Gamma Force. Gamma Force already has the pieces this
+game needs: SuperGame banking, a POKEY player, hiscore/SaveKey through
+`hiscore.asm`, a smooth-scroll engine and 320A cutscene text. Its build
+(`tools/build.sh`, the vendored 7800basic, the CMake wrapper) is the
+template.
 
 ### 7.2 Cartridge
 
@@ -304,28 +329,47 @@ slower to write menus in.
 | fixed $C000 | font, HUD, shared sprites |
 
 - Header: `ACM` at bytes 59-61 (MathUnit), POKEY at $0450 (bit 6) and $0440
-  (bit 10 / v4 audio byte 67 = 3), SaveKey in byte 58.
+  (bit 10 / v4 audio byte 67 = 3, as in Pinball's `tools/a78header.py`), SaveKey in byte 58.
 
-### 7.3 Known blockers
+### 7.3 Hardware reference and tool gaps
 
-1. **Dual POKEY with bank switching doesn't work in the emulator yet.** In
-   `a7800/src/devices/bus/a7800/a78_slot.cpp` the second POKEY is turned on only
-   when the cart type is `A78_TYPE0 + A78_POKEY0450` (no bank
-   switching), and the `$0440` device change is still uncommitted in the
-   fork's working tree (per Pinball's README). Needed: give
-   `a78_rom_p450_sg_device` a `pokey440` too, and make the same change in
-   js7800_astrocart. **[Open]** Does the AstroCart hardware itself support
-   SuperGame banking and both POKEYs at once?
-2. **The emulator has no SaveKey.** The fork supports the High Score Cart
-   (`hiscore.cpp`) but logs "SaveKey ... not supported". Options: add a
-   24LC256 SaveKey on joystick port 2 to the fork (the best option, since it tests the real
-   save path), or develop against the HSC first. A save slot needs about 400 bytes
-   (§7.5), more than HSC's per-game space, and needs its own reserved
-   range in the SaveKey address map.
-3. **MathUnit docs vs. emulator.** `Spacewar_7800/docs/MATHUNIT.md` and
-   `a7800/src/devices/bus/a7800/astromath.h` (v2, version byte $A2 at
-   $042F) list different register offsets. Take `astromath.h` as the source of
-   truth and write one register include file for this project.
+The **AstroCart V4 FPGA design** is the hardware reference. It runs
+SuperGame up to 512K (and up to 255 banks / 4 MB), two POKEYs at
+`$0450` + `$0440`, and the MathUnit, all on the console, and it has been
+tested with Gamma Force, Spacewar and Pinball. Its `docs/MATHUNIT.md` is the
+register definition that the emulator's `astromath.h` matches bit for bit.
+
+Limits of the real cart that the game has to respect:
+
+- **POKEY is the sound half only.** There's no POKEY `RANDOM`, keyboard or
+  pots. All randomness comes from the MathUnit's `RND` (`$043E`). Read it
+  with `LDA abs`, since read-modify-write and page-crossing indexed reads step
+  it more than once.
+- **No banked RAM, no XM.** RAM is the console's 4K, plus the optional 16K
+  of cart RAM at `$4000` (SuperGame "with RAM") if we ever need it. That
+  would give up Gamma Force's fixed ROM bank at `$4000`, so we keep the fixed
+  bank unless RAM runs out.
+- **The cart's own saving is High Score Cart only.** A SaveKey is a
+  joystick-port device, separate from the cart, so it works on the real
+  console.
+
+Gaps in our tools, to close in M0:
+
+1. **Dual POKEY with bank switching in the emulator.** In
+   `a7800/src/devices/bus/a7800/a78_slot.cpp:511` the second POKEY is turned on
+   only for `A78_TYPE0 + A78_POKEY0450` (no bank switching), and the `$0440`
+   device change is still uncommitted in the fork's working tree. Needed: a
+   `pokey440` in `a78_rom_p450_sg_device`, the same rule for SuperGame,
+   and the same change in js7800_astrocart if it doesn't have it.
+2. **SaveKey in the emulator.** The fork supports the High Score Cart
+   (`hiscore.cpp`) but logs "SaveKey ... not supported". Add a 24LC256 SaveKey
+   on joystick port 2 to the fork. A save slot of about 350 bytes (§7.5) needs its
+   own reserved range in the SaveKey address map. **Fallback** for players
+   without a SaveKey: the AstroCart's built-in High Score Cart, if a
+   compact save (seed + state) fits in the space a game gets there.
+3. **MathUnit docs.** `Spacewar_7800/docs/MATHUNIT.md` lists offsets that
+   don't match version 2. Use the FPGA repo's `docs/MATHUNIT.md` and write
+   one register include file (`src/asm/mathunit.inc`) for this project.
 
 ### 7.4 Display
 
@@ -350,14 +394,14 @@ MARIA's per-zone DMA early with Gamma Force's `dmalog.py`.
 
 | | Bytes |
 |---|---|
-| Warps (1/sector) | 64 |
+| Warps (1/sector), rebuilt from the seed, not saved | (64) |
 | Sector flags: visited, type, tier (1/sector) | 64 |
 | Port stock: 3 commodities × 20 ports | 60 |
 | Planet populations: 4 × ~25 planets | 100 |
 | Ship: credits, fuel, hull, upgrades, cargo, stasis | ~48 |
 | Manifest bitfield (24 species) | 3 |
-| Stardate, score, seed, RNG | ~10 |
-| **Save slot total** | **~350** |
+| Stardate, score, galaxy seed (4 bytes) | ~10 |
+| **Save slot total** | **~290** |
 
 The 7800 has 4K of RAM, so this fits. It lives in one block that saves
 and loads whole.
@@ -368,7 +412,8 @@ and loads whole.
   (atan2 + length), auto-turret target selection (nearest by length).
 - Asteroid split velocities, missile homing.
 - Economy: price = base × tier × stock ratio (multiply/divide).
-- Galaxy generation and spawns: the unit's random generator.
+- Galaxy generation and spawns: the unit's random generator (the only RNG
+  on the cart; see §7.3).
 
 ### 7.7 Audio
 
@@ -390,19 +435,20 @@ Fighter and pirate art from Spacewar.
 
 ---
 
+## Decisions
+
+| # | Question | Decision (2026-11-21) |
+|---|---|---|
+| 1 | Toolchain | 7800basic + assembly, as in Gamma Force |
+| 2 | Galaxy | Seeded and generated at New Game, with the rules in §3.2 |
+| 3 | Clock | Fading-star deadline (§6.4) |
+| 4 | Hardware | AstroCart V4 FPGA design is the reference: large SuperGame carts, dual POKEY and MathUnit together are fine |
+| 5 | Controller | Two-button joystick required |
+| 6 | Manifest | About 24 species to start; adjust for ROM, sprites and balance. Art from the RP6502 game |
+
 ## Open questions
 
-1. **Toolchain**: 7800basic + asm (Gamma Force) or pure asm (Pinball)?
-2. **Galaxy**: one hand-designed galaxy, or generated from a seed at
-   New Game, with rules: a port within 2 jumps of sector 1, Safe Space
-   connected, rare species behind dead ends? (I recommend seeded with
-   those rules. It's replayable and costs the same 64 bytes.)
-3. **Clock**: is a fading-star deadline the right pressure, or should
-   the game be open-ended until the manifest is complete?
-4. **Hardware**: does the real AstroCart do SuperGame banking + POKEYs at $0440
-   and $0450 + MathUnit together? What's its ROM size limit?
-5. **Controller**: require a two-button Proline joystick, or support a
-   one-button joystick too (for example, double-tap to launch the fighter)?
-6. **Manifest size**: is 24 species right? Each one needs art and a
-   movement pattern.
-7. **Name**: "Arc" (as in the RP6502 repo) throughout?
+1. **Seed entry**: let the player type a seed (a 4-character code on the
+   New Game screen), or only take it from the timing of the button press?
+2. **HSC fallback save**: worth it, or require a SaveKey for Continue?
+3. **Name**: "Arc" (as in the RP6502 repo) throughout?

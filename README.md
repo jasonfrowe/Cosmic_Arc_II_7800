@@ -27,7 +27,7 @@ before the star Alpha Ro collapses.
 ## Hardware
 
 - Atari 7800 + AstroCart (MathUnit at $0420-$043F, POKEYs at $0440 and $0450)
-- Two-button joystick
+- Two-button joystick (required)
 - SaveKey or AtariVox for saved games
 
 ## Related projects
