@@ -130,6 +130,9 @@ every direction.
   strings and tables their own names (`hw_lt0`, not `hw_l0`).
 - Don't `dim` a name that's one of 7800basic's one-letter variables (`i`,
   `t`, `x`...): they're already defined. Use them as they are.
+- **`if a then x : if b then y` nests**: the second `if` only runs when `a`
+  held. That lost the down-diagonal aims (found on hardware). Put one
+  condition on each line, or use `&&`. `tools/test_aim.sh` checks all 8 directions.
 - `plotsprite` won't take array elements (`rk_x[i]`): copy them into
   variables first.
 - 7800basic wants PNGs with small palettes: save them 2-bit (`bits=2`).

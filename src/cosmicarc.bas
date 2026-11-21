@@ -108,11 +108,17 @@ game
   jsr sp_new
 end
 gameloop
+  rem (one condition a line: an if after "then ... :" only runs when the
+  rem first one held)
   t = 8
   if joy0up then t = 0
   if joy0down then t = 4
-  if joy0right then t = 2 : if joy0up then t = 1 : if joy0down then t = 3
-  if joy0left then t = 6 : if joy0up then t = 7 : if joy0down then t = 5
+  if joy0right then t = 2
+  if joy0left then t = 6
+  if joy0up && joy0right then t = 1
+  if joy0down && joy0right then t = 3
+  if joy0down && joy0left then t = 5
+  if joy0up && joy0left then t = 7
   sp_joy = t
   sp_fire = 0
   if joy0fire1 then sp_fire = 1
