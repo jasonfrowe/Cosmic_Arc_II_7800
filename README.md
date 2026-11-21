@@ -8,10 +8,23 @@ navigate a 64-sector galaxy of warps, starports and pirates, trading
 Fuel Ore, Organics and Equipment for upgrades, to fill the Ark's manifest
 before the star Alpha Ro collapses.
 
-**Status:** design phase. Nothing is playable yet.
+**Status:** M0 (skeleton) done. The cart boots to a hardware check of the
+MathUnit, all ROM banks, the SaveKey, and music on both POKEYs. No game yet.
+
+![M0 hardware check](docs/m0_hardware_check.png)
 
 - [Design document](docs/DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Engine notes](docs/ENGINE.md): build, cart layout, RAM, pitfalls
+
+## Building
+
+Needs `wasmtime` (for the vendored 7800basic) and Python 3.
+
+```
+tools/build.sh     # -> build/cosmicarc.a78
+tools/play.sh      # run it in the a7800 fork (SaveKey in port 2)
+```
 
 ## Features (planned)
 

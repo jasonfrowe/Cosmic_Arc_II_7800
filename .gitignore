@@ -15,3 +15,4 @@ src/a78info.cfg
 cfg/
 snap/
 build/
+src/gen/
