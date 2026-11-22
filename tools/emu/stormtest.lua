@@ -20,11 +20,8 @@ emu.register_frame_done(function()
   if f > 340 then m:write_u8(0x27BC, 200) end            -- no pulses: just the storm
   if f == 345 then m:write_u8(0x2712, 3) end            -- the storm in 3 s
   local st, ss = m:read_u8(0x2709), m:read_u8(0x27D2)
-  if forcedir and ss == 2 and prevss ~= 2 then           -- the rock just came: from DIR
-    m:write_u8(0x27D9, forcedir)
-    local x = ({[0] = 512 - 4, 512 - 112, 512 + 104})[forcedir]
-    m:write_u8(0x27D4, x % 256); m:write_u8(0x27D5, x // 256)
-    m:write_u8(0x27D7, forcedir == 0 and 16 or 71)
+  if forcedir and ss == 1 then                           -- the klaxon: the rock's side
+    m:write_u8(0x27D9, forcedir)                         -- (the game places it)
   end
   if ss == 2 and m:read_u8(0x27DB) == 1 then seen = seen + 1 end
   prevss = ss

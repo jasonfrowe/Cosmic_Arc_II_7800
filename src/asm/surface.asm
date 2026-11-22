@@ -599,6 +599,13 @@ pl_clock
     sta st_state
     lda #STORM_DELAY
     sta st_tm
+    lda M_RND               ; where the rock will come from: 0 the top,
+    and #3                  ;   1 the left, 2 the right (3: the top)
+    cmp #3
+    bcc pl_ck_d
+    lda #0
+pl_ck_d
+    sta sr_dir
     lda #<tx_storm
     ldy #>tx_storm
     ldx #12
@@ -633,13 +640,7 @@ pl_st_k
     sta sp_msglen
     sta sr_xf
     sta sr_yf
-    lda M_RND
-    and #3
-    cmp #3
-    bne pl_st_d
-    lda #0
-pl_st_d
-    sta sr_dir
+    lda sr_dir              ; (chosen at the klaxon)
     beq pl_st_top
     cmp #1
     beq pl_st_left
