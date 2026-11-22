@@ -118,7 +118,6 @@ bytes of a line; the creatures come straight after it.
 | $2200-$22FF | surface.asm: the planet's turrets and their shots |
 | $2500-$255F | sound.asm |
 | $2560-$2571 | surface.asm: the planet scanner's line (18 characters, its ends included) |
-| $2578 | space.asm: sp_pwused (the pirate window opened this wave) |
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |

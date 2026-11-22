@@ -206,18 +206,14 @@ limps on to the destination. It isn't game over unless the hull is gone.
 
 ### 4.4b A wave's shape (as built)
 
-A wave (one deep-space scene, then a planet) is **8 rounds of large rocks:
-4, then the pirates, then 4**. A round starts a second after its rocks are
-gone (3 rocks a round on the first wave, rising to 6). The pirates come
-**during round 4**, a few seconds in, while you're still shooting rocks:
-pirate waves one after another, each a moment after the last is destroyed,
-2 on the first wave rising to 4, each a little stronger (raiders, then
-gunships). Rocks keep coming while they're about: small ones in the pirate
-window (20 s from the first pirate, once a wave), then large ones again,
-pirates or not. When the last pirate is destroyed: a breather (4 s) and
-"ROCKS INCOMING" (time to bring the saucer home), then rounds 5-8. The HUD
-shows the round (`R3/8`), or the pirate wave (`P1/2`) while their music
-plays. Knobs: `RD_*`, `PW_*`, `PR_FIRST0`, `PR_AFTER` in `space.asm`.
+A wave is a batch of large rocks (3 + the wave number) with the pirates
+mixed in: raiders from wave 1 (one more every other wave, up to 4), a
+gunship from wave 3, two from wave 6, arriving on their own timer while the
+rocks are about (the pirate window, 4.5). When the pirate deadline passes
+(the window shuts: its 20 s run out, or the last pirate's destroyed), **one
+more batch of large rocks** comes in with the rest, no warning, no pause
+(`WV_FINAL`). The wave's done when everything's clear. (An "8 rounds" structure was tried and dropped: it lost the
+mix of rocks and pirates.)
 
 **Every lane takes the same time** to reach the Ark: a large rock travels
 about 55 square units to the hull up or down, 75 on a diagonal and 100

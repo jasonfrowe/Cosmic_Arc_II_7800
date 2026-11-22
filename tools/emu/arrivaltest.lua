@@ -16,6 +16,8 @@ emu.register_frame_done(function()
   if f >= 300 and f <= 305 then held["P1 Button 1"] = true end
   if f > 330 then
     m:write_u8(0x2386, 96)
+    -- a steady stream of large rocks, no pirates
+    m:write_u8(0x238E, 4); m:write_u8(0x24C1, 0); m:write_u8(0x24C2, 0); m:write_u8(0x24F0, 0)
     for i = 0, 9 do
       local t = m:read_u8(0x2300 + i)
       if t == 1 and not born[i] then born[i] = f; lane[i] = m:read_u8(0x23E4 + i) end
@@ -27,7 +29,7 @@ emu.register_frame_done(function()
     end
   end
   for name, field in pairs(fields) do if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end end
-  if f == 3600 then
+  if f == 6000 then
     local avg = {}
     for k = 1, 3 do avg[k] = n[k] > 0 and sum[k] / n[k] or -1 end
     print(string.format("frames to the Ark: up/down %.0f (%d), diagonal %.0f (%d), across %.0f (%d)",
