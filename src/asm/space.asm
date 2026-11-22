@@ -51,7 +51,7 @@ EN_MAX    = 96      ; energy: 12 bar cells of 8
 SHOT_COST = 1       ; energy a bolt costs
 KILL_PAY  = 1       ; energy a kill pays (= SHOT_COST: perfect play breaks even)
 CLEAR_PAY = 0       ; energy for clearing a wave (0: none, by the rule above)
-FIRE_GAP  = 8       ; frames between bolts
+FIRE_GAP  = 8       ; frames between bolts (the laser's upgrades: fire_gaps)
 WV_COUNT0 = 3       ; large rocks in a wave: WV_COUNT0 + wave, at most WV_COUNTMAX
 WV_COUNTMAX = 12
 WV_GAP0   = 110     ; frames between rocks: WV_GAP0 - WV_GAPSTEP * wave,
@@ -416,7 +416,10 @@ sp_in_fire
     sta bl_dy,y
     txa
     sta bl_d,y
-    lda #FIRE_GAP
+    lda gs_ulas             ; the laser's upgrade: faster fire
+    and #3
+    tax
+    lda fire_gaps,x
     sta sp_cool
     sec
     lda sp_energy
@@ -916,6 +919,7 @@ sp_negx
 
 ; per lane (0 up, clockwise): 0 vertical, 1 across, 2 diagonal; and the
 ; signs of a rock's velocity (inwards: towards the Ark)
+fire_gaps .byte FIRE_GAP, 6, 4, 4   ; by the laser's upgrade level
 lane_kind .byte 0, 2, 1, 2, 0, 2, 1, 2
 ; a lane kind's speed scale (128 = 1): a large rock travels about 55 square
 ; units to the hull up or down, 75 on a diagonal, 100 across (the Ark's wide

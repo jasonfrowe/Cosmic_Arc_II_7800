@@ -40,6 +40,9 @@ Controls:
   fires the Ark's laser up, left or right at the rock coming in.
 - **The sector map:** the stick picks a choice (a warp, landing, docking),
   fire goes; button 2 shows the star chart.
+- **A starport:** button 2 changes tab (commodities, bio-bounty, shipyard),
+  the stick picks a line, fire trades; on bio-bounty, left keeps one for the
+  manifest.
 - On the title, button 2 opens the hardware check; Select goes straight to a
   planet (for testing).
 

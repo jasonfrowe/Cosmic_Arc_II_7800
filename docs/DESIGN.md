@@ -423,6 +423,28 @@ and **half the top speed across**.
 
 Docking at a port also **saves the game** (SaveKey).
 
+### 6.1b As built (M5, first slice)
+
+Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
+(button 2 the next), the stick picks a line, fire acts.
+
+- **Commodities**: fuel ore, organics, equipment (base 20, 30, 50). The
+  port's class says which way each goes; it **sells at base + 4 x tier**
+  and **buys at base - 4 + 8 x tier**, so goods bought near home sell for
+  more out in the rim. Holds: 10, 15, 20 by upgrade (ore crates from
+  planets go into them as fuel ore).
+- **Bio-Bounty**: creatures delivered on planets wait in stasis by kind
+  (walker, hopper, runner, burrower, glider, blinker). Fire sells one:
+  bounty (30 + 8 x kind) x (2 + tier) / 2, more out in the rim. Left keeps
+  one for the manifest (one of each; `KEPT`).
+- **Shipyard**: fuel (5 a unit) and energy (1 a point) to the full while
+  the credits last; upgrades, 2 steps each: the laser's fire rate (a bolt
+  every 8, 6, 4 frames; 500, 1000), the holds (300, 600), the fuel tanks
+  (30, 40, 50; 300, 600).
+- Leaving: an encounter, maybe (the sector's odds). `tools/test_port.sh`.
+- Not yet: port stock and restocking with the stardate; hull; more
+  upgrades; save on docking.
+
 ### 6.2 Resources
 
 To keep the HUD readable, there are only four meters:

@@ -1,4 +1,4 @@
--- Departure test: docking at a port (an outer-rim sector, 5 jumps from safe
+-- Departure test: docking at a port and leaving it (an outer-rim sector, 5 jumps from safe
 -- space) over and over; leaving, an encounter some of the time (60%), each
 -- a wave for 5 jumps (5 or 6). Encounters are cleared at once (the rocks and
 -- pirates taken away). tools/test_depart.sh
@@ -18,8 +18,10 @@ emu.register_frame_done(function()
     local s = m:read_u8(0x2590)
     m:write_u8(0x2680 + s, 0xC0 | 1); m:write_u8(0x26C0 + s, (5 << 2) | 1)
     if f - t0 == 5 then m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1) end
-    if f - t0 >= 20 and f - t0 <= 24 then held["P1 Button 1"] = true end
-    if f - t0 == 40 then
+    if f - t0 >= 20 and f - t0 <= 24 then held["P1 Button 1"] = true end   -- dock
+    if f - t0 == 40 then m:write_u8(0x22FB, 3); m:write_u8(0x27F7, 1) end  -- LEAVE PORT
+    if f - t0 >= 50 and f - t0 <= 54 then held["P1 Button 1"] = true end   -- leave
+    if f - t0 == 70 then
       docks = docks + 1
       if bank == 2 then encs = encs + 1; phase = "space"; t0 = f
       else t0 = f end

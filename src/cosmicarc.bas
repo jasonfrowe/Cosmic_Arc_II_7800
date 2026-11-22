@@ -545,6 +545,8 @@ end
   ds $A000 - ., 0
 end
   inline font320.asm
+  rem a starport's screens (after the font: $B000 on)
+  inline port.asm
 
   rem ======================================================================
   rem  Bank 5: the music (gen/music.asm, tools/music.py): sound.asm's player

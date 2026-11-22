@@ -31,6 +31,15 @@ gs_seed   = $2597   ; the galaxy's seed (4 bytes)
 gs_go     = $259B   ; for the BASIC: 0 stay, 1 deep space, 2 the planet
 gs_dest   = $259C   ; where the Ark's going (arrives on sv_enter)
 gs_msg    = $259D   ; a message on row 2: 0 none, else MSG_*
+; what the Ark carries, and its upgrades (port.asm)
+gs_ore    = $2585   ; fuel ore, organics, equipment (in the holds)
+gs_org    = $2586
+gs_eqp    = $2587
+gs_ulas   = $2588   ; upgrade levels 0-2: the laser (fire rate), the holds,
+gs_uhold  = $2589   ;   the fuel tanks
+gs_utank  = $258A
+gs_stasis = $256B   ; [6] creatures in stasis, by kind
+gs_kept   = $2571   ; the manifest: a bit a kind kept (one specimen each)
 gs_test   = $259F   ; (tests set it: fire on the title goes straight into
                     ;   deep space, waves then planets, as before the map)
 
@@ -47,7 +56,7 @@ GT_PLANET = 2
 GT_NEBULA = 3
 
 FUEL_START = 20
-FUEL_MAX  = 30
+; (fuel tanks and holds by upgrade level: up_tank, up_holds in port.asm)
 
 ; ---- the screens' scratch (the planet's RAM: free on the map) ----
 ; text rows 0-5 at $2200, 6-11 at $2700 (40 each)
@@ -434,6 +443,19 @@ gx_n_pt
     sta gs_cred+2
     lda #FUEL_START
     sta gs_fuel
+    lda #0                  ; nothing aboard, no upgrades
+    ldx #5
+gx_n_inv
+    sta gs_stasis,x
+    dex
+    bpl gx_n_inv
+    sta gs_kept
+    sta gs_ore
+    sta gs_org
+    sta gs_eqp
+    sta gs_ulas
+    sta gs_uhold
+    sta gs_utank
     rts
 gx_pfrom  .byte 1, 10, 15, 27, 40, 52
 gx_pspan  .byte 9, 5, 12, 13, 12, 12
@@ -554,6 +576,11 @@ sv_frame
     jsr sv_input
     jmp sv_f_draw
 sv_f_chart
+    cmp #2
+    bne sv_f_ch
+    jsr pt_input
+    jmp sv_f_draw
+sv_f_ch
     jsr ch_input
 sv_f_draw
     lda sv_dirty
@@ -565,6 +592,11 @@ sv_f_draw
     jsr sv_build
     jmp sv_f_nd
 sv_f_bc
+    cmp #2
+    bne sv_f_bch
+    jsr pt_build
+    jmp sv_f_nd
+sv_f_bch
     jsr ch_build
 sv_f_nd
     lda sp_joy
@@ -609,7 +641,8 @@ sv_f_rows
     bne sv_f_rows
     ; the chart's marker on the Ark's sector (blinking)
     lda sv_view
-    beq sv_f_r
+    cmp #1
+    bne sv_f_r
     lda sv_tick
     and #16
     bne sv_f_r
@@ -1125,15 +1158,8 @@ sv_i_act
 sv_i_r
     rts
 sv_i_dock
-    ; a port (trading to come): fuel topped up
-    lda #FUEL_MAX
-    sta gs_fuel
-    lda #MSG_REFUEL
-    sta gs_msg
-    inc sv_dirty
-    lda #SFX_POD
-    jsr sfx
-    jmp sv_depart           ; leaving: an encounter?
+    ; a port: its screen (port.asm)
+    jmp pt_enter
 
 ; warp to sector A: fuel, a stardate; maybe an encounter on the way
 sv_warp

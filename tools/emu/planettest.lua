@@ -13,6 +13,7 @@ emu.register_frame_done(function()
   local m = manager:machine().devices[":maincpu"].spaces["program"]
   local held = {}
   if f >= 290 and f <= 296 then held["Select"] = true end
+  if f == 300 then for i = 0, 6 do m:write_u8(0x256B + i, 0) end end   -- stasis empty
   local onplanet = f > 340 and m:read_u8(0x2714) < 3
   if onplanet then
     m:write_u8(0x2386, 96)
@@ -65,9 +66,11 @@ emu.register_frame_done(function()
     if name:match("^P1 ") or name == "Select" then field:set_value(held[name] and 1 or 0) end
   end
   if f == 4400 or back then
-    print(string.format("caught %d of %d; planet loop ran %d of %d frames; back to deep space: %s",
-      caught, m:read_u8(0x2717), ran, frames, tostring(back)))
-    print(string.format("result %d %d %d %d", caught, ran, frames, back and 1 or 0))
+    local stasis = 0
+    for i = 0, 5 do stasis = stasis + m:read_u8(0x256B + i) end
+    print(string.format("caught %d of %d (%d in stasis); planet loop ran %d of %d frames; back to deep space: %s",
+      caught, m:read_u8(0x2717), stasis, ran, frames, tostring(back)))
+    print(string.format("result %d %d %d %d", caught, ran, frames, (back and stasis == caught) and 1 or 0))
     manager:machine():exit()
   end
 end)

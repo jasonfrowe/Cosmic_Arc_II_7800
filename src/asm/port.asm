@@ -1,0 +1,876 @@
+; ===========================================================================
+; A starport (bank 4, after the map's font): docked, three tabs.
+;   COMMODITIES  fuel ore, organics, equipment: the port's class (a bit each:
+;                1 sells, 0 buys) says which way; prices by its tier (the
+;                rim pays more, and charges more: carry goods outward)
+;   BIO-BOUNTY   creatures in stasis (delivered on planets), by kind: sell
+;                one for a bounty (more out in the rim), or keep one of each
+;                for the manifest (the game's goal)
+;   SHIPYARD     fuel (5 a unit), energy (1 a point), upgrades: the laser
+;                (fire rate), the holds, the fuel tanks (3 levels each)
+; The stick picks a line, fire acts, button 2 the next tab, left (Bio-Bounty)
+; keeps one. LEAVE PORT: back to the sector (and an encounter, maybe).
+; Credits are BCD (gs_cred: 3 bytes, high first).
+; ===========================================================================
+
+pt_tab    = $27FB   ; the tab (0-2)
+pt_msg    = $27FC   ; the message (0 none, else pt_m*)
+pt_n      = $27FD   ; lines on this tab (the last: LEAVE PORT)
+pt_vl     = $27FE   ; a price, BCD: tens/ones, then hundreds
+pt_vh     = $27FF
+
+pt_ta     = $27F9   ; (the generator's scratch: free once it's done)
+pt_tb     = $27FA
+
+PT_FUEL   = $05     ; BCD: fuel a unit, energy a point
+PT_ENERGY = $01
+
+pt_enter
+    lda #2
+    sta sv_view
+    lda #0
+    sta pt_tab
+    sta sv_sel
+    sta pt_msg
+    lda #1
+    sta sv_dirty
+    lda #SFX_DOCK
+    jmp sfx
+
+; the port's tier (A, 0-3); its class bits (pt_class: bit k set, it sells k)
+pt_tier
+    ldx gs_sec
+    lda gx_info,x
+    rol
+    rol
+    rol
+    and #3
+    rts
+pt_class
+    ldx gs_sec
+    lda gx_info,x
+    lsr
+    lsr
+    and #7
+    rts
+
+; A (binary 0-255) to BCD: pt_vl, pt_vh
+pt_bcd
+    ldx #0
+pt_bc_h
+    cmp #100
+    bcc pt_bc_t
+    sbc #100
+    inx
+    bne pt_bc_h
+pt_bc_t
+    stx pt_vh
+    ldx #0
+pt_bc_t2
+    cmp #10
+    bcc pt_bc_o
+    sbc #10
+    inx
+    bne pt_bc_t2
+pt_bc_o
+    sta pt_vl
+    txa
+    asl
+    asl
+    asl
+    asl
+    ora pt_vl
+    sta pt_vl
+    rts
+
+; credits + the price; credits - the price (C = 1: done; C = 0: not enough,
+; unchanged)
+pt_add
+    sed
+    clc
+    lda gs_cred+2
+    adc pt_vl
+    sta gs_cred+2
+    lda gs_cred+1
+    adc pt_vh
+    sta gs_cred+1
+    lda gs_cred
+    adc #0
+    sta gs_cred
+    cld
+    rts
+pt_sub
+    sed
+    sec
+    lda gs_cred+2
+    sbc pt_vl
+    sta sv_t0
+    lda gs_cred+1
+    sbc pt_vh
+    sta sv_t1
+    lda gs_cred
+    sbc #0
+    cld
+    bcc pt_sb_r
+    sta gs_cred
+    lda sv_t1
+    sta gs_cred+1
+    lda sv_t0
+    sta gs_cred+2
+pt_sb_r
+    rts
+
+; commodity X's price here (BCD in pt_vl/pt_vh): the port sells at
+; base + 4 * tier, buys at base - 4 + 8 * tier. C = 1: the port sells it
+pt_cprice
+    stx pt_ta               ; (its own scratch: callers loop on sv_t3)
+    jsr pt_tier
+    sta pt_tb
+    jsr pt_class
+    ldx pt_ta
+    and gx_bit,x
+    php
+    lda pt_tb
+    asl
+    asl                     ; 4 * tier
+    plp
+    php
+    bne pt_cp_s
+    asl                     ; buys: 8 * tier - 4
+    sec
+    sbc #4
+pt_cp_s
+    clc
+    adc pt_cbase,x
+    jsr pt_bcd
+    plp
+    beq pt_cp_b
+    sec
+    rts
+pt_cp_b
+    clc
+    rts
+pt_cbase  .byte 20, 30, 50
+
+; kind X's bounty here: (30 + 8 * kind) * (2 + tier) / 2
+pt_bounty
+    txa
+    asl
+    asl
+    asl
+    adc #30
+    sta M_A
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    jsr pt_tier
+    clc
+    adc #2
+    sta M_B
+    lda M_P+1
+    lsr
+    lda M_P
+    ror
+    jmp pt_bcd
+
+; ---- the screen ----
+pt_build
+    jsr sv_cls
+    ldx #0                  ; row 0: STARPORT  SECTOR nn  (its tier)
+    lda #1
+    jsr sv_at
+    lda #<pt_s_title
+    ldy #>pt_s_title
+    ldx #8
+    jsr sv_puts
+    lda #2
+    jsr sv_skip
+    lda #<tx_sector
+    ldy #>tx_sector
+    ldx #7
+    jsr sv_puts
+    lda gs_sec
+    clc
+    adc #1
+    jsr sv_dec2
+    lda #2
+    jsr sv_skip
+    ldx gs_sec
+    jsr sv_tier
+    ; row 1: the tabs, the current one marked
+    ldx #0
+pt_b_tabs
+    stx sv_t3
+    lda pt_tabcol,x
+    ldx #1
+    jsr sv_at
+    ldx sv_t3
+    lda #0
+    cpx pt_tab
+    bne pt_b_tm
+    lda #178
+pt_b_tm
+    jsr sv_putc
+    ldx sv_t3
+    lda pt_tablo,x
+    pha
+    lda pt_tabhi,x
+    tay
+    lda pt_tablen,x
+    tax
+    pla
+    jsr sv_puts
+    ldx sv_t3
+    inx
+    cpx #3
+    bne pt_b_tabs
+    ; the lines
+    lda pt_tab
+    bne pt_b_t1
+    jsr pt_b_comm
+    jmp pt_b_lv
+pt_b_t1
+    cmp #1
+    bne pt_b_t2
+    jsr pt_b_bio
+    jmp pt_b_lv
+pt_b_t2
+    jsr pt_b_yard
+pt_b_lv
+    ; the last line: LEAVE PORT
+    lda pt_n
+    sec
+    sbc #1
+    jsr pt_line
+    lda #<pt_s_leave
+    ldy #>pt_s_leave
+    ldx #10
+    jsr sv_puts
+    ; row 9: a message
+    ldx pt_msg
+    beq pt_b_nm
+    stx sv_t3
+    ldx #9
+    lda #3
+    jsr sv_at
+    ldx sv_t3
+    lda pt_msglo-1,x
+    pha
+    lda pt_msghi-1,x
+    tay
+    lda pt_msglen-1,x
+    tax
+    pla
+    jsr sv_puts
+pt_b_nm
+    ; row 10: credits, fuel, holds (39 columns: exactly)
+    ldx #10
+    lda #1
+    jsr sv_at
+    lda #<pt_s_cred
+    ldy #>pt_s_cred
+    ldx #8
+    jsr sv_puts
+    lda gs_cred
+    jsr sv_bcd
+    lda gs_cred+1
+    jsr sv_bcd
+    lda gs_cred+2
+    jsr sv_bcd
+    lda #2
+    jsr sv_skip
+    lda #<pt_s_fuel
+    ldy #>pt_s_fuel
+    ldx #5
+    jsr sv_puts
+    lda gs_fuel
+    jsr sv_dec2
+    lda #("/"-32)*2
+    jsr sv_putc
+    ldx gs_utank
+    lda up_tank,x
+    jsr sv_dec2
+    lda #2
+    jsr sv_skip
+    lda #<pt_s_holds
+    ldy #>pt_s_holds
+    ldx #6
+    jsr sv_puts
+    clc
+    lda gs_ore
+    adc gs_org
+    adc gs_eqp
+    jsr sv_dec2
+    lda #("/"-32)*2
+    jsr sv_putc
+    ldx gs_uhold
+    lda up_holds,x
+    jsr sv_dec2
+    ; row 11: help
+    ldx #11
+    lda #1
+    jsr sv_at
+    lda pt_tab
+    cmp #1
+    beq pt_b_hk
+    lda #<pt_s_help
+    ldy #>pt_s_help
+    ldx #32
+    jmp sv_puts
+pt_b_hk
+    lda #<pt_s_helpk
+    ldy #>pt_s_helpk
+    ldx #31
+    jmp sv_puts
+pt_tabcol .byte 1, 15, 28
+pt_tablo  .byte <pt_s_tab0, <pt_s_tab1, <pt_s_tab2
+pt_tabhi  .byte >pt_s_tab0, >pt_s_tab1, >pt_s_tab2
+pt_tablen .byte 11, 10, 8
+
+; sv_dst = line A (row 3 + A), the cursor drawn if it's the selected one;
+; sv_dst after the cursor
+pt_line
+    sta sv_t2
+    clc
+    adc #3
+    tax
+    lda #1
+    jsr sv_at
+    lda #0
+    ldx sv_t2
+    cpx sv_sel
+    bne pt_l_c
+    lda #178
+pt_l_c
+    jsr sv_putc
+    lda #1
+    jmp sv_skip
+
+; COMMODITIES: NAME  HELD nn   PORT BUYS nn / PORT SELLS nn
+pt_b_comm
+    lda #4
+    sta pt_n
+    ldx #0
+pt_bc_l
+    stx sv_t3
+    txa
+    jsr pt_line
+    ldx sv_t3
+    lda pt_cnlo,x
+    ldy pt_cnhi,x
+    ldx #9
+    jsr sv_puts
+    lda #2
+    jsr sv_skip
+    lda #<pt_s_held
+    ldy #>pt_s_held
+    ldx #5
+    jsr sv_puts
+    ldx sv_t3
+    lda gs_ore,x
+    jsr sv_dec2
+    lda #3
+    jsr sv_skip
+    ldx sv_t3
+    jsr pt_cprice
+    bcc pt_bc_b
+    lda #<pt_s_psells
+    ldy #>pt_s_psells
+    ldx #11
+    bne pt_bc_p
+pt_bc_b
+    lda #<pt_s_pbuys
+    ldy #>pt_s_pbuys
+    ldx #10
+pt_bc_p
+    jsr sv_puts
+    jsr pt_putprice
+    ldx sv_t3
+    inx
+    cpx #3
+    bne pt_bc_l
+    rts
+pt_cnlo   .byte <pt_s_c0, <pt_s_c1, <pt_s_c2
+pt_cnhi   .byte >pt_s_c0, >pt_s_c1, >pt_s_c2
+
+; the price (pt_vh, pt_vl) as 3 digits (hundreds, tens, ones)
+pt_putprice
+    lda pt_vh
+    and #15
+    jsr tx_digit
+    jsr sv_putc
+    lda pt_vl
+    jmp sv_bcd
+
+; BIO-BOUNTY: NAME  nn IN STASIS   BOUNTY nnn   KEPT
+pt_b_bio
+    lda #7
+    sta pt_n
+    ldx #0
+pt_bb_l
+    stx sv_t3
+    txa
+    jsr pt_line
+    ldx sv_t3
+    lda pt_knlo,x
+    ldy pt_knhi,x
+    ldx #9
+    jsr sv_puts
+    ldx sv_t3
+    lda gs_stasis,x
+    jsr sv_dec2
+    lda #<pt_s_stasis
+    ldy #>pt_s_stasis
+    ldx #7
+    jsr sv_puts
+    lda #2
+    jsr sv_skip
+    lda #<pt_s_bounty
+    ldy #>pt_s_bounty
+    ldx #7
+    jsr sv_puts
+    ldx sv_t3
+    jsr pt_bounty
+    jsr pt_putprice
+    lda #2
+    jsr sv_skip
+    ldx sv_t3
+    lda gx_bit,x
+    and gs_kept
+    beq pt_bb_n
+    lda #<pt_s_kept
+    ldy #>pt_s_kept
+    ldx #4
+    jsr sv_puts
+pt_bb_n
+    ldx sv_t3
+    inx
+    cpx #6
+    bne pt_bb_l
+    rts
+pt_knlo   .byte <pt_s_k0, <pt_s_k1, <pt_s_k2, <pt_s_k3, <pt_s_k4, <pt_s_k5
+pt_knhi   .byte >pt_s_k0, >pt_s_k1, >pt_s_k2, >pt_s_k3, >pt_s_k4, >pt_s_k5
+
+; SHIPYARD
+pt_b_yard
+    lda #6
+    sta pt_n
+    lda #0                  ; REFUEL   FUEL nn/nn   5 A UNIT
+    jsr pt_line
+    lda #<pt_s_y0
+    ldy #>pt_s_y0
+    ldx #14
+    jsr sv_puts
+    lda gs_fuel
+    jsr sv_dec2
+    lda #("/"-32)*2
+    jsr sv_putc
+    ldx gs_utank
+    lda up_tank,x
+    jsr sv_dec2
+    lda #3
+    jsr sv_skip
+    lda #<pt_s_each5
+    ldy #>pt_s_each5
+    ldx #8
+    jsr sv_puts
+    lda #1                  ; REPAIR   ENERGY nn/96   1 A POINT
+    jsr pt_line
+    lda #<pt_s_y1
+    ldy #>pt_s_y1
+    ldx #16
+    jsr sv_puts
+    lda sp_energy
+    jsr sv_dec2
+    lda #("/"-32)*2
+    jsr sv_putc
+    lda #EN_MAX
+    jsr sv_dec2
+    lda #3
+    jsr sv_skip
+    lda #<pt_s_each1
+    ldy #>pt_s_each1
+    ldx #9
+    jsr sv_puts
+    lda #2                  ; LASER    LEVEL n   NEXT nnnn
+    jsr pt_line
+    lda #<pt_s_y2
+    ldy #>pt_s_y2
+    ldx #15
+    jsr sv_puts
+    lda gs_ulas
+    clc
+    adc #1
+    jsr tx_digit
+    jsr sv_putc
+    ldx #0
+    jsr pt_putnext
+    lda #3                  ; HOLDS    nn   NEXT nnnn
+    jsr pt_line
+    lda #<pt_s_y3
+    ldy #>pt_s_y3
+    ldx #9
+    jsr sv_puts
+    ldx gs_uhold
+    lda up_holds,x
+    jsr sv_dec2
+    ldx #1
+    jsr pt_putnext
+    lda #4                  ; TANKS    nn   NEXT nnnn
+    jsr pt_line
+    lda #<pt_s_y4
+    ldy #>pt_s_y4
+    ldx #9
+    jsr sv_puts
+    ldx gs_utank
+    lda up_tank,x
+    jsr sv_dec2
+    ldx #2
+    jmp pt_putnext
+
+; upgrade X's next price, or MAX
+pt_putnext
+    stx sv_t3
+    lda #3
+    jsr sv_skip
+    ldx sv_t3
+    lda gs_ulas,x
+    cmp #2
+    bcc pt_pn_n
+    lda #<pt_s_max
+    ldy #>pt_s_max
+    ldx #3
+    jmp sv_puts
+pt_pn_n
+    lda #<pt_s_next
+    ldy #>pt_s_next
+    ldx #5
+    jsr sv_puts
+    jsr pt_upprice
+    lda pt_vh
+    jsr sv_bcd
+    lda pt_vl
+    jmp sv_bcd
+
+; upgrade sv_t3's next price (BCD: pt_vh hundreds+thousands, pt_vl)
+pt_upprice
+    ldx sv_t3
+    lda gs_ulas,x           ; (level 0 or 1)
+    asl
+    clc
+    adc sv_t3
+    adc sv_t3
+    adc sv_t3
+    adc sv_t3               ; (x 4 + level x 2: the table's place)
+    tax
+    lda pt_uptab,x
+    sta pt_vh
+    lda pt_uptab+1,x
+    sta pt_vl
+    rts
+; by upgrade (laser, holds, tanks): level 1, level 2 (BCD, high byte first)
+pt_uptab  .byte $05, $00, $10, $00
+          .byte $03, $00, $06, $00
+          .byte $03, $00, $06, $00
+
+; ---- input ----
+pt_input
+    ; button 2 (fresh): the next tab
+    lda sp_fire2
+    beq pt_i_nt
+    lda sv_pf2
+    bne pt_i_nt
+    ldx pt_tab
+    inx
+    cpx #3
+    bcc pt_i_t
+    ldx #0
+pt_i_t
+    stx pt_tab
+    lda #0
+    sta sv_sel
+    sta pt_msg
+    inc sv_dirty
+    lda #SFX_BEEP
+    jmp sfx
+pt_i_nt
+    ; the stick (fresh): up, down a line; left (Bio-Bounty): keep one
+    ldx sp_joy
+    cpx sv_pjoy
+    beq pt_i_f
+    cpx #0
+    bne pt_i_dn
+    lda sv_sel
+    beq pt_i_f
+    dec sv_sel
+    jmp pt_i_mv
+pt_i_dn
+    cpx #4
+    bne pt_i_lt
+    lda sv_sel
+    clc
+    adc #1
+    cmp pt_n
+    bcs pt_i_f
+    sta sv_sel
+pt_i_mv
+    lda #0
+    sta pt_msg
+    inc sv_dirty
+    lda #SFX_BEEP
+    jmp sfx
+pt_i_lt
+    cpx #6
+    bne pt_i_f
+    lda pt_tab
+    cmp #1
+    bne pt_i_f
+    jmp pt_keep
+pt_i_f
+    ; fire (fresh): the line
+    lda sp_fire
+    beq pt_i_r
+    lda sv_pf
+    bne pt_i_r
+    inc sv_dirty
+    lda sv_sel
+    clc
+    adc #1
+    cmp pt_n
+    beq pt_leave
+    lda pt_tab
+    bne pt_i_f1
+    jmp pt_trade
+pt_i_f1
+    cmp #1
+    bne pt_i_f2
+    jmp pt_sell
+pt_i_f2
+    jmp pt_yard
+pt_i_r
+    rts
+
+pt_leave
+    lda #0
+    sta sv_view
+    sta sv_sel
+    lda #SFX_LAUNCH
+    jsr sfx
+    jmp sv_depart           ; leaving: an encounter?
+
+pt_say
+    sta pt_msg
+    tax
+    lda pt_msgsfx-1,x
+    jmp sfx
+
+; COMMODITIES: the port sells it: buy one; it buys it: sell one
+pt_trade
+    ldx sv_sel
+    jsr pt_cprice
+    bcs pt_tr_buy
+    ldx sv_sel
+    lda gs_ore,x
+    bne pt_tr_s
+    lda #5
+    jmp pt_say
+pt_tr_s
+    dec gs_ore,x
+    jsr pt_add
+    lda #1
+    jmp pt_say
+pt_tr_buy
+    jsr pt_holdfree
+    bcs pt_tr_b2
+    lda #4
+    jmp pt_say
+pt_tr_b2
+    jsr pt_sub
+    bcs pt_tr_b3
+    lda #3
+    jmp pt_say
+pt_tr_b3
+    ldx sv_sel
+    inc gs_ore,x
+    lda #2
+    jmp pt_say
+
+; BIO-BOUNTY: sell one of the kind
+pt_sell
+    ldx sv_sel
+    lda gs_stasis,x
+    bne pt_sl_s
+    lda #5
+    jmp pt_say
+pt_sl_s
+    dec gs_stasis,x
+    jsr pt_bounty
+    jsr pt_add
+    lda #1
+    jmp pt_say
+; ... or keep one (one of each: the manifest)
+pt_keep
+    inc sv_dirty
+    ldx sv_sel
+    cpx #6
+    bcs pt_kp_r
+    lda gx_bit,x
+    and gs_kept
+    beq pt_kp_1
+    lda #9
+    jmp pt_say
+pt_kp_1
+    lda gs_stasis,x
+    bne pt_kp_2
+    lda #5
+    jmp pt_say
+pt_kp_2
+    dec gs_stasis,x
+    lda gx_bit,x
+    ora gs_kept
+    sta gs_kept
+    lda #6
+    jmp pt_say
+pt_kp_r
+    rts
+
+; SHIPYARD
+pt_yard
+    lda sv_sel
+    bne pt_y1
+    ; fuel to the full, while the credits last
+    lda #0
+    sta sv_t4
+pt_y0_l
+    ldx gs_utank
+    lda gs_fuel
+    cmp up_tank,x
+    bcs pt_y0_d
+    lda #PT_FUEL
+    sta pt_vl
+    lda #0
+    sta pt_vh
+    jsr pt_sub
+    bcc pt_y0_d
+    inc gs_fuel
+    inc sv_t4
+    bne pt_y0_l
+pt_y0_d
+    jmp pt_y_said
+pt_y1
+    cmp #1
+    bne pt_y2
+    ; energy to the full, while the credits last
+    lda #0
+    sta sv_t4
+pt_y1_l
+    lda sp_energy
+    cmp #EN_MAX
+    bcs pt_y1_d
+    lda #PT_ENERGY
+    sta pt_vl
+    lda #0
+    sta pt_vh
+    jsr pt_sub
+    bcc pt_y1_d
+    inc sp_energy
+    inc sv_t4
+    bne pt_y1_l
+pt_y1_d
+pt_y_said
+    lda sv_t4               ; some bought: BOUGHT; none: full, or broke
+    beq pt_y_none
+    lda #2
+    jmp pt_say
+pt_y_none
+    lda sv_sel
+    bne pt_y_n1
+    ldx gs_utank
+    lda gs_fuel
+    cmp up_tank,x
+    bcs pt_y_full
+    lda #3
+    jmp pt_say
+pt_y_n1
+    lda sp_energy
+    cmp #EN_MAX
+    bcs pt_y_full
+    lda #3
+    jmp pt_say
+pt_y_full
+    lda #7
+    jmp pt_say
+pt_y2
+    ; an upgrade (laser, holds, tanks)
+    sec
+    sbc #2
+    sta sv_t3
+    tax
+    lda gs_ulas,x
+    cmp #2
+    bcc pt_y2_n
+    lda #7
+    jmp pt_say
+pt_y2_n
+    jsr pt_upprice
+    jsr pt_sub
+    bcs pt_y2_ok
+    lda #3
+    jmp pt_say
+pt_y2_ok
+    ldx sv_t3
+    inc gs_ulas,x
+    lda #8
+    jmp pt_say
+
+; messages
+pt_msglo  .byte <pt_m1, <pt_m2, <pt_m3, <pt_m4, <pt_m5, <pt_m6, <pt_m7, <pt_m8, <pt_m9
+pt_msghi  .byte >pt_m1, >pt_m2, >pt_m3, >pt_m4, >pt_m5, >pt_m6, >pt_m7, >pt_m8, >pt_m9
+pt_msglen .byte 4, 6, 18, 18, 12, 21, 12, 8, 16
+pt_msgsfx .byte SFX_POD, SFX_POD, SFX_HIT, SFX_HIT, SFX_HIT, SFX_DELIVER, SFX_BEEP, SFX_CLEAR, SFX_BEEP
+
+; ---- strings ----
+pt_s_title .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'STARPORT' (8)
+pt_s_tab0 .byte ("C"-32)*2,("O"-32)*2,("M"-32)*2,("M"-32)*2,("O"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("I"-32)*2,("E"-32)*2,("S"-32)*2   ; 'COMMODITIES' (11)
+pt_s_tab1 .byte ("B"-32)*2,("I"-32)*2,("O"-32)*2,("-"-32)*2,("B"-32)*2,("O"-32)*2,("U"-32)*2,("N"-32)*2,("T"-32)*2,("Y"-32)*2   ; 'BIO-BOUNTY' (10)
+pt_s_tab2 .byte ("S"-32)*2,("H"-32)*2,("I"-32)*2,("P"-32)*2,("Y"-32)*2,("A"-32)*2,("R"-32)*2,("D"-32)*2   ; 'SHIPYARD' (8)
+pt_s_c0 .byte ("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0,("O"-32)*2,("R"-32)*2,("E"-32)*2,0   ; 'FUEL ORE ' (9)
+pt_s_c1 .byte ("O"-32)*2,("R"-32)*2,("G"-32)*2,("A"-32)*2,("N"-32)*2,("I"-32)*2,("C"-32)*2,("S"-32)*2,0   ; 'ORGANICS ' (9)
+pt_s_c2 .byte ("E"-32)*2,("Q"-32)*2,("U"-32)*2,("I"-32)*2,("P"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2   ; 'EQUIPMENT' (9)
+pt_s_held .byte ("H"-32)*2,("E"-32)*2,("L"-32)*2,("D"-32)*2,0   ; 'HELD ' (5)
+pt_s_pbuys .byte ("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,("B"-32)*2,("U"-32)*2,("Y"-32)*2,("S"-32)*2,0   ; 'PORT BUYS ' (10)
+pt_s_psells .byte ("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,("S"-32)*2,("E"-32)*2,("L"-32)*2,("L"-32)*2,("S"-32)*2,0   ; 'PORT SELLS ' (11)
+pt_s_k0 .byte ("W"-32)*2,("A"-32)*2,("L"-32)*2,("K"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0   ; 'WALKER   ' (9)
+pt_s_k1 .byte ("H"-32)*2,("O"-32)*2,("P"-32)*2,("P"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0   ; 'HOPPER   ' (9)
+pt_s_k2 .byte ("R"-32)*2,("U"-32)*2,("N"-32)*2,("N"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0   ; 'RUNNER   ' (9)
+pt_s_k3 .byte ("B"-32)*2,("U"-32)*2,("R"-32)*2,("R"-32)*2,("O"-32)*2,("W"-32)*2,("E"-32)*2,("R"-32)*2,0   ; 'BURROWER ' (9)
+pt_s_k4 .byte ("G"-32)*2,("L"-32)*2,("I"-32)*2,("D"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0   ; 'GLIDER   ' (9)
+pt_s_k5 .byte ("B"-32)*2,("L"-32)*2,("I"-32)*2,("N"-32)*2,("K"-32)*2,("E"-32)*2,("R"-32)*2,0,0   ; 'BLINKER  ' (9)
+pt_s_stasis .byte 0,("S"-32)*2,("T"-32)*2,("A"-32)*2,("S"-32)*2,("I"-32)*2,("S"-32)*2   ; ' STASIS' (7)
+pt_s_bounty .byte ("B"-32)*2,("O"-32)*2,("U"-32)*2,("N"-32)*2,("T"-32)*2,("Y"-32)*2,0   ; 'BOUNTY ' (7)
+pt_s_kept .byte ("K"-32)*2,("E"-32)*2,("P"-32)*2,("T"-32)*2   ; 'KEPT' (4)
+pt_s_y0 .byte ("R"-32)*2,("E"-32)*2,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0,0,0,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'REFUEL   FUEL ' (14)
+pt_s_y1 .byte ("R"-32)*2,("E"-32)*2,("P"-32)*2,("A"-32)*2,("I"-32)*2,("R"-32)*2,0,0,0,("E"-32)*2,("N"-32)*2,("E"-32)*2,("R"-32)*2,("G"-32)*2,("Y"-32)*2,0   ; 'REPAIR   ENERGY ' (16)
+pt_s_y2 .byte ("L"-32)*2,("A"-32)*2,("S"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0,0,("L"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'LASER    LEVEL ' (15)
+pt_s_y3 .byte ("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2,0,0,0,0   ; 'HOLDS    ' (9)
+pt_s_y4 .byte ("T"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2,("S"-32)*2,0,0,0,0   ; 'TANKS    ' (9)
+pt_s_next .byte ("N"-32)*2,("E"-32)*2,("X"-32)*2,("T"-32)*2,0   ; 'NEXT ' (5)
+pt_s_max .byte ("M"-32)*2,("A"-32)*2,("X"-32)*2   ; 'MAX' (3)
+pt_s_each5 .byte ("5"-32)*2,0,("A"-32)*2,0,("U"-32)*2,("N"-32)*2,("I"-32)*2,("T"-32)*2   ; '5 A UNIT' (8)
+pt_s_each1 .byte ("1"-32)*2,0,("A"-32)*2,0,("P"-32)*2,("O"-32)*2,("I"-32)*2,("N"-32)*2,("T"-32)*2   ; '1 A POINT' (9)
+pt_s_leave .byte ("L"-32)*2,("E"-32)*2,("A"-32)*2,("V"-32)*2,("E"-32)*2,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'LEAVE PORT' (10)
+pt_s_cred .byte ("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2,0   ; 'CREDITS ' (8)
+pt_s_fuel .byte ("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'FUEL ' (5)
+pt_s_holds .byte ("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2,0   ; 'HOLDS ' (6)
+pt_s_help .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("T"-32)*2,("R"-32)*2,("A"-32)*2,("D"-32)*2,("E"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("N"-32)*2,("E"-32)*2,("X"-32)*2,("T"-32)*2,0,("T"-32)*2,("A"-32)*2,("B"-32)*2   ; 'FIRE: TRADE   BUTTON 2: NEXT TAB' (32)
+pt_s_helpk .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("S"-32)*2,("E"-32)*2,("L"-32)*2,("L"-32)*2,0,("O"-32)*2,("N"-32)*2,("E"-32)*2,0,0,0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2,(":"-32)*2,0,("K"-32)*2,("E"-32)*2,("E"-32)*2,("P"-32)*2,0,("O"-32)*2,("N"-32)*2,("E"-32)*2   ; 'FIRE: SELL ONE   LEFT: KEEP ONE' (31)
+pt_m1 .byte ("S"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2   ; 'SOLD' (4)
+pt_m2 .byte ("B"-32)*2,("O"-32)*2,("U"-32)*2,("G"-32)*2,("H"-32)*2,("T"-32)*2   ; 'BOUGHT' (6)
+pt_m3 .byte ("N"-32)*2,("O"-32)*2,("T"-32)*2,0,("E"-32)*2,("N"-32)*2,("O"-32)*2,("U"-32)*2,("G"-32)*2,("H"-32)*2,0,("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2   ; 'NOT ENOUGH CREDITS' (18)
+pt_m4 .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2,0,("A"-32)*2,("R"-32)*2,("E"-32)*2,0,("F"-32)*2,("U"-32)*2,("L"-32)*2,("L"-32)*2   ; 'THE HOLDS ARE FULL' (18)
+pt_m5 .byte ("N"-32)*2,("O"-32)*2,("N"-32)*2,("E"-32)*2,0,("T"-32)*2,("O"-32)*2,0,("S"-32)*2,("E"-32)*2,("L"-32)*2,("L"-32)*2   ; 'NONE TO SELL' (12)
+pt_m6 .byte ("K"-32)*2,("E"-32)*2,("P"-32)*2,("T"-32)*2,0,("F"-32)*2,("O"-32)*2,("R"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("M"-32)*2,("A"-32)*2,("N"-32)*2,("I"-32)*2,("F"-32)*2,("E"-32)*2,("S"-32)*2,("T"-32)*2   ; 'KEPT FOR THE MANIFEST' (21)
+pt_m7 .byte ("A"-32)*2,("L"-32)*2,("R"-32)*2,("E"-32)*2,("A"-32)*2,("D"-32)*2,("Y"-32)*2,0,("F"-32)*2,("U"-32)*2,("L"-32)*2,("L"-32)*2   ; 'ALREADY FULL' (12)
+pt_m8 .byte ("U"-32)*2,("P"-32)*2,("G"-32)*2,("R"-32)*2,("A"-32)*2,("D"-32)*2,("E"-32)*2,("D"-32)*2   ; 'UPGRADED' (8)
+pt_m9 .byte ("O"-32)*2,("N"-32)*2,("E"-32)*2,0,("A"-32)*2,("L"-32)*2,("R"-32)*2,("E"-32)*2,("A"-32)*2,("D"-32)*2,("Y"-32)*2,0,("K"-32)*2,("E"-32)*2,("P"-32)*2,("T"-32)*2   ; 'ONE ALREADY KEPT' (16)

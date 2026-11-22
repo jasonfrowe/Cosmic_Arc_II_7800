@@ -72,10 +72,12 @@ then link them together.
 - [x] Generated songs from RPMegaChopperII's composer (`tools/musicgen`): the map's track; the title's (`skip_intro`: in strong, no build-up)
 - [ ] More generated tracks (starport, ending); the hand-written ones redone?
 
-## M5: Starports
-- [ ] 320A tabbed menus: Commodities, Bio-Bounty, Shipyard
-- [ ] Port classes, stock and restock, prices by tier
-- [ ] Upgrades applied to every mode
+## M5: Starports (first slice ✅ 2026-11-22)
+- [x] 320A tabbed menus: Commodities, Bio-Bounty, Shipyard (`port.asm`); `test_port.sh`
+- [x] Port classes, prices by tier; creatures delivered into stasis, ore into the holds
+- [x] Upgrades: the laser's fire rate (deep space), holds, fuel tanks
+- [ ] Stock and restock with the stardate; hull and repairs; more upgrades (beam width, turret, thrusters, scanners)
+- [ ] The manifest's goal and the ending; the star's collapse
 
 ## M6: Save / continue
 - [ ] SaveKey save slot, saved on docking; Continue on the title

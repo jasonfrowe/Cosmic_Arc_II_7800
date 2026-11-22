@@ -1354,6 +1354,13 @@ pl_deliver
     cmp #HOLD_CR
     bne pl_dv_ore
     ldx pl_holdi
+    ldy cr_t,x              ; into stasis, by its kind (port.asm: the
+    lda gs_stasis-1,y       ;  Bio-Bounty)
+    cmp #99
+    bcs pl_dv_st
+    adc #1
+    sta gs_stasis-1,y
+pl_dv_st
     lda #0
     sta cr_t,x
     inc pl_caught
@@ -1375,6 +1382,10 @@ pl_dv_ore
     lda #0
     sta ck_st,x
     inc pl_ore
+    jsr pt_holdfree         ; into the holds as fuel ore, if there's room
+    bcc pl_dv_full
+    inc gs_ore
+pl_dv_full
     lda #$02                ; 200 points
     sta sc_m
     lda #$00
