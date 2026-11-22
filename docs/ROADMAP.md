@@ -32,6 +32,7 @@ then link them together.
 - [x] `snap.lua` fighter autopilot (`AUTOFIGHTER`); all sprites drawn from assembly (`draw.asm`)
 - [x] From hardware: the pirate window (small rocks only for 20 s after the first pirate), rocks hurt pirates (who dodge them on the math unit), the fighter docks only with button 2
 - [x] From hardware: directional fighter controls; music for the title, rocks and pirates
+- [x] From hardware: a wave is 8 rounds of rocks, 4 before and 4 after the pirates; several pirate waves (2-4) in a row; a 4 s breather and "ROCKS INCOMING" after them; the round on the HUD
 - [ ] Tune on hardware: fighter handling, tether rates, turret rate, pirate damage
 - [x] Deep space in its own bank (bank 2): bank 1 back to 10.4K free, bank 2 9.7K free
 

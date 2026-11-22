@@ -204,6 +204,20 @@ limps on to the destination. It isn't game over unless the hull is gone.
 | destroy a pirate carrier's shield generator | heavy single shots that split big rocks |
 | grab salvage pods before they drift off-screen | protecting itself (the auto-turret is weak) |
 
+### 4.4b A wave's shape (as built)
+
+A wave (one deep-space scene, then a planet) is **8 rounds of large rocks:
+4, then the pirates, then 4**. Each round starts a second after the field
+is clear (3 rocks a round on the first wave, rising to 6). After round 4
+come the **pirate waves**, one after another, each once the last is
+destroyed: 2 on the first wave, rising to 4, each a little stronger
+(raiders, then gunships), with a couple of small rocks drifting through.
+After the last pirate, a longer breather (4 s) and "ROCKS INCOMING" (time to
+bring the saucer home), then rounds 5-8. The HUD shows the round (`R3/8`)
+or the pirate wave (`P1/2`). Knobs: `RD_*`, `PW_*`, `PR_AFTER` in
+`space.asm`. Under the autopilots the first wave takes about 70 s, the
+fifth about 2 minutes.
+
 ### 4.5 The pirate window
 
 When a wave's first pirate arrives, "PIRATES!" flashes up, and for the next

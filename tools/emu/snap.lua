@@ -193,11 +193,13 @@ emu.register_frame_done(function()
     local m = mem()
     m:write_u8(0x2386, 96)
     local st, song = m:read_u8(0x238C), m:read_u8(0x24FF)
-    if st ~= (laststate or -1) or song ~= (lastsong or -1) then
+    local rd, pw = m:read_u8(0x2399), m:read_u8(0x239A)
+    if st ~= (laststate or -1) or song ~= (lastsong or -1) or rd ~= (lastrd or -1) or pw ~= (lastpw or -1) then
+      lastrd, lastpw = rd, pw
       local p = ""
       for i = 0, 5 do p = p .. m:read_u8(0x2460 + i) .. " " end
-      print(string.format("frame %d: wave %d state %d song %d | pirate slots %s| pr_live %d pending %d/%d window %d rocks %d left %d",
-        f, m:read_u8(0x238A), st, song, p, m:read_u8(0x24E9), m:read_u8(0x24C1), m:read_u8(0x24C2),
+      print(string.format("frame %d: wave %d round %d pirate wave %d/%d state %d song %d | pirate slots %s| pr_live %d pending %d/%d window %d rocks %d left %d",
+        f, m:read_u8(0x238A), rd, pw, m:read_u8(0x23FE), st, song, p, m:read_u8(0x24E9), m:read_u8(0x24C1), m:read_u8(0x24C2),
         m:read_u8(0x24F0), m:read_u8(0x2394), m:read_u8(0x238E)))
       laststate, lastsong = st, song
     end

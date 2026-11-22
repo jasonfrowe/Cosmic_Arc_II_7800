@@ -52,8 +52,24 @@ SHOT_COST = 1       ; energy a bolt costs
 KILL_PAY  = 1       ; energy a kill pays (= SHOT_COST: perfect play breaks even)
 CLEAR_PAY = 0       ; energy for clearing a wave (0: none, by the rule above)
 FIRE_GAP  = 8       ; frames between bolts
-WV_COUNT0 = 3       ; large rocks in a wave: WV_COUNT0 + wave, at most WV_COUNTMAX
-WV_COUNTMAX = 12
+; A wave (one deep-space scene, then a planet): 8 rounds of large rocks, 4
+; before the pirates and 4 after. Each round starts once the field is clear.
+; Between rounds 4 and 5, the pirates: several pirate waves, one after
+; another (each once the last is gone), small rocks drifting through; then
+; a longer pause, "ROCKS INCOMING", and the last 4 rounds.
+RD_PRE    = 4       ; rounds before the pirates
+RD_TOTAL  = 8       ; rounds in all
+RD_ROCK0  = 2       ; large rocks a round: RD_ROCK0 + (wave + 1) / 2, at most
+RD_ROCKMAX = 6      ;   RD_ROCKMAX (3 on the first wave)
+RD_PAUSE  = 60      ; frames from a clear field to the next round's first rock
+PR_AFTER  = 240     ; ... after the last pirate (4 s: get the saucer home)
+PW_WAVES0 = 2       ; pirate waves: PW_WAVES0 + (wave - 1) / 2, at most
+PW_WAVESMAX = 4     ;   PW_WAVESMAX
+PW_ROCKS  = 2       ; small rocks drifting through each pirate wave
+; pirate wave n of wave w (k = w + n - 1): raiders 1 + k / 2 (at most
+; WV_RAIDMAX), a gunship from k = PW_GUN_FROM, two from PW_GUN2_FROM
+PW_GUN_FROM = 2
+PW_GUN2_FROM = 5
 WV_GAP0   = 110     ; frames between rocks: WV_GAP0 - WV_GAPSTEP * wave,
 WV_GAPSTEP = 10     ;   at least WV_GAPMIN
 WV_GAPMIN = 40
@@ -64,11 +80,7 @@ KID_SPLIT = $30     ; and the second piece of a split this much more again
 ROCK_HP   = 2       ; a rock's hits: the Ark's laser (and turret) does 2, the
 BOLT_DMG  = 2       ;   saucer's blasters 1: the saucer needs twice the shots
 FTR_DMG   = 1
-WV_RAID_FROM = 2    ; raiders from this wave: 1, one more every 2 waves,
-WV_RAIDMAX = 3      ;   at most this many
-WV_GUN_FROM = 4     ; a gunship from this wave
-WV_GUN2_FROM = 8    ; two from this one
-PR_FIRST  = 200     ; frames into a wave before the first pirate
+WV_RAIDMAX = 3      ; raiders in a pirate wave, at most
 PR_GAP    = 180     ; frames between pirates
 PR_WINDOW = 150     ; when the wave's first pirate comes, new rocks are small
                     ;   ones (the Ark can see to them) for this many 8-frame
@@ -135,6 +147,10 @@ sp_slot   = $239B
 sp_kids   = $239C
 sp_msglen = $239D   ; 0: no message
 sp_msgx   = $239E
+sp_round  = $2399   ; the round (1-8)
+sp_pw     = $239A   ; pirate waves begun this wave
+sp_pwn    = $23FE   ; pirate waves this wave
+sp_rdn    = $23FF   ; large rocks a round, this wave
 sp_ticks  = $239F   ; game loop passes (for frame-rate checks)
 hud_top   = $23A0   ; 20 characters
 hud_bot   = $23B8   ; 10
@@ -218,14 +234,32 @@ sp_nextwave
     adc #1
     sta sp_wavebcd
     cld
-    lda sp_wave
+    lda sp_wave             ; rocks a round: RD_ROCK0 + (wave + 1) / 2
     clc
-    adc #WV_COUNT0
-    cmp #WV_COUNTMAX+1
+    adc #1
+    lsr
+    adc #RD_ROCK0
+    cmp #RD_ROCKMAX+1
     bcc sp_nw_n
-    lda #WV_COUNTMAX
+    lda #RD_ROCKMAX
 sp_nw_n
-    sta sp_left
+    sta sp_rdn
+    sta sp_left             ; round 1
+    lda #1
+    sta sp_round
+    lda #0
+    sta sp_pw
+    lda sp_wave             ; pirate waves: PW_WAVES0 + (wave - 1) / 2
+    sec
+    sbc #1
+    lsr
+    clc
+    adc #PW_WAVES0
+    cmp #PW_WAVESMAX+1
+    bcc sp_nw_pw
+    lda #PW_WAVESMAX
+sp_nw_pw
+    sta sp_pwn
     ; gap = WV_GAP0 - WV_GAPSTEP * wave, at least WV_GAPMIN
     lda sp_wave
     sta M_A
@@ -259,37 +293,15 @@ sp_nw_g2
     lda M_P+1
     adc #>WV_SPEED0
     sta sp_spdh
-    ; pirates: raiders from WV_RAID_FROM (one more every 2 waves), gunships
-    ; from WV_GUN_FROM (two from WV_GUN2_FROM)
-    lda #0
+    lda #0                  ; (pirates come in their own waves: sp_step)
     sta sp_praid
     sta sp_pgun
-    lda sp_wave
-    sec
-    sbc #WV_RAID_FROM
-    bcc sp_nw_np
-    lsr
-    clc
-    adc #1
-    cmp #WV_RAIDMAX+1
-    bcc sp_nw_r
-    lda #WV_RAIDMAX
-sp_nw_r
-    sta sp_praid
-    lda sp_wave
-    cmp #WV_GUN_FROM
-    bcc sp_nw_np
-    inc sp_pgun
-    cmp #WV_GUN2_FROM
-    bcc sp_nw_np
-    inc sp_pgun
-sp_nw_np
     lda #MUS_ROCKS          ; a new wave starts with the rocks' music
     jsr mu_switch
     lda #0
     sta sp_pwin
     sta sp_msgtm
-    lda #PR_FIRST
+    lda #1
     sta sp_ptm
     lda #ST_START
     sta sp_state
@@ -979,6 +991,9 @@ sp_w_rocks
     lda mu_song
     cmp #MUS_PIRATES
     bne sp_w_rk2
+    lda sp_pw               ; (more pirate waves to come: their music stays)
+    cmp sp_pwn
+    bcc sp_w_rk2
     lda pr_live
     ora sp_praid
     ora sp_pgun
@@ -997,6 +1012,10 @@ sp_w_rk2
     beq sp_w_r_far919
     jmp sp_w_r
 sp_w_r_far919
+    jsr sp_step             ; the next round or pirate wave?
+    bcs sp_w_wc
+    jmp sp_w_r
+sp_w_wc
     ; wave clear (CLEAR_PAY energy: none for now)
     lda #ST_CLEAR
     sta sp_state
@@ -1073,6 +1092,73 @@ sp_w_spd
 ; lane, at the playfield's edge, its centre exactly on the line from the
 ; Ark's centre (80, 95): diagonals 1 pixel across for 2 lines, e.g. lane 1's
 ; centre (115, 25) is 35 across for 70 up
+; The field is clear: start the next round or pirate wave (C = 0), or the
+; wave's done (C = 1)
+sp_step
+    lda sp_round
+    cmp #RD_PRE
+    bne sp_st_rk
+    lda sp_pw               ; after round 4: the pirates' waves
+    cmp sp_pwn
+    bcs sp_st_after
+    inc sp_pw
+    clc                     ; k = wave + n - 1
+    adc sp_wave
+    sta sp_t0
+    lsr                     ; raiders 1 + k / 2
+    clc
+    adc #1
+    cmp #WV_RAIDMAX+1
+    bcc sp_st_r
+    lda #WV_RAIDMAX
+sp_st_r
+    sta sp_praid
+    lda #0
+    ldx sp_t0
+    cpx #PW_GUN_FROM
+    bcc sp_st_g
+    lda #1
+    cpx #PW_GUN2_FROM
+    bcc sp_st_g
+    lda #2
+sp_st_g
+    sta sp_pgun
+    lda #60                 ; the first of them in a second
+    sta sp_ptm
+    lda #0                  ; ("PIRATES" again, small rocks again)
+    sta sp_pwin
+    lda #PW_ROCKS
+    sta sp_left
+    lda #120
+    sta sp_spawn
+    clc
+    rts
+sp_st_after
+    lda #<tx_incoming       ; the pirates are done: a breather, a warning,
+    ldy #>tx_incoming       ;  and the rocks again
+    ldx #14
+    jsr sp_msgcopy
+    lda #120
+    sta sp_msgtm
+    lda #MUS_ROCKS
+    jsr mu_switch
+    lda #PR_AFTER
+    bne sp_st_go
+sp_st_rk
+    cmp #RD_TOTAL
+    bcs sp_st_done
+    lda #RD_PAUSE
+sp_st_go
+    sta sp_spawn
+    inc sp_round
+    lda sp_rdn
+    sta sp_left
+    clc
+    rts
+sp_st_done
+    sec
+    rts
+
 lane_x  .byte 76, 111, 152, 112, 76, 40, 0, 41
 lane_y  .byte 16, 17, 87, 159, 160, 159, 87, 17
 
@@ -1106,6 +1192,31 @@ sp_hud_sp
     iny
     cpy #13
     bne sp_hud_sp
+    lda #("R"-32)*2         ; R3/8, or P1/2 during the pirates' waves
+    ldx sp_round
+    ldy sp_pw
+    beq sp_hud_rd
+    cpx #RD_PRE
+    bne sp_hud_rd
+    lda #("P"-32)*2
+    sta hud_top+7
+    tya
+    jsr tx_digit
+    sta hud_top+8
+    lda sp_pwn
+    jmp sp_hud_of
+sp_hud_rd
+    sta hud_top+7
+    txa
+    jsr tx_digit
+    sta hud_top+8
+    lda #RD_TOTAL
+sp_hud_of
+    jsr tx_digit
+    sta hud_top+10
+    lda #("/"-32)*2
+    sta hud_top+9
+    ldy #13
     ldx #0
 sp_hud_w
     lda tx_wave,x
