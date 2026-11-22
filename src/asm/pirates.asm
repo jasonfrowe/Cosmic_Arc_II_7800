@@ -318,6 +318,16 @@ pr_fr_aim
     jsr vec_angle
     sta pr_want
     ldx pr_slot
+    lda sp_state            ; the Ark's gone: they leave (away from where it
+    cmp #ST_OVER            ;  was, no shooting), and are gone off the edge
+    bne pr_fr_stay
+    lda pr_want
+    eor #$80
+    sta pr_want
+    lda #0
+    sta pr_dodge
+    jmp pr_fr_steer
+pr_fr_stay
     jsr pr_avoid            ; a rock coming: turn from it instead
     ldx pr_slot
     lda pr_dodge
@@ -381,6 +391,25 @@ pr_fr_tr
     lda pr_y,x
     adc pr_vyh,x
     sta pr_y,x
+    lda sp_state
+    cmp #ST_OVER
+    bne pr_fr_kin
+    lda pr_x,x              ; leaving: off the screen, gone
+    cmp #PR_XMIN
+    bcc pr_fr_gone
+    cmp #PR_XMAX+1
+    bcs pr_fr_gone
+    lda pr_y,x
+    cmp #PR_YMIN
+    bcc pr_fr_gone
+    cmp #PR_YMAX+1
+    bcs pr_fr_gone
+    jmp pr_fr_col
+pr_fr_gone
+    lda #0
+    sta pr_t,x
+    jmp pr_fr_n
+pr_fr_kin
     jsr pr_keepin
     ; a raider shoots
     lda pr_t,x

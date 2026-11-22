@@ -7,7 +7,9 @@ on POKEY 2 ($0440). The songs:
 
   MUS_TITLE    the Arc theme, D minor: the title and the hardware check
   MUS_ROCKS    deep space, A minor, driving: rocks
-  MUS_PIRATES  E Phrygian, faster, a menacing bass: pirates about
+  MUS_PIRATES  E Phrygian, faster, a menacing bass: pirates about (and a
+               planet's storm coming)
+  MUS_PLANET   D Dorian, plucked and curious: exploring a planet
 """
 
 from __future__ import annotations
@@ -248,6 +250,31 @@ def song_pirates():
                 lambda i: "drum_pirfill" if i % 4 == 3 else "drum_pir")
 
 
+# A planet: D Dorian, a plucked lead with space in it, a bouncing bass
+PLAN_FORM = ["Dm", "G", "Dm", "C", "F", "C", "Gm", "A"]
+PLAN_LEAD = """
+D5:2 r:2 F5:2 A5:2 r:2 G5:2 F5:2 E5:2
+D5:2 r:2 B4:2 D5:2 G5:4 r:4
+A5:2 r:2 A5:2 G5:2 F5:2 E5:2 D5:4
+E5:2 G5:2 C6:4 r:2 B5:2 G5:4
+A5:2 r:2 C6:2 A5:2 F5:4 G5:2 A5:2
+G5:2 r:2 E5:2 G5:2 C5:4 r:4
+D5:2 G5:2 A#5:2 D6:2 C6:2 A#5:2 A5:2 G5:2
+A5:4 E5:2 C#5:2 A4:4 r:4
+"""
+DRUM_PLAN = "kick:2 hat:2 hat:2 hat:2 snare:2 hat:2 hat:2 hat:2"
+DRUM_PLANFILL = "kick:2 hat:2 snare:2 hat:2 tom:2 hat:2 tom:2 tom:2"
+
+
+def song_planet():
+    def bass(ch):
+        lo, hi = bass_low(ROOT_OF[ch])
+        return [(lo, 2), (None, 2), (hi, 2), (lo, 2)] * 2
+    return song("mn", PLAN_FORM, PLAN_LEAD, "pluck", bass,
+                lambda n: [(n, 8), (n, 8)],
+                lambda i: "drum_planfill" if i % 4 == 3 else "drum_plan")
+
+
 # ---------------------------------------------------------------------------
 # TIA effects: (AUDC, AUDF, AUDV) a frame; channel; priority
 def notes_fx(c, fs, each, v):
@@ -297,20 +324,22 @@ def main():
     out.append("MUS_TITLE = 0")
     out.append("MUS_ROCKS = 1")
     out.append("MUS_PIRATES = 2")
-    songs = [("title", 7, 15), ("rocks", 6, 15), ("pirates", 5, 15)]
+    out.append("MUS_PLANET = 3")
+    songs = [("title", 7, 15), ("rocks", 6, 15), ("pirates", 5, 15), ("planet", 7, 15)]
     out.append("song_lo .byte " + ",".join(f"<song_{i}" for i in range(len(songs))))
     out.append("song_hi .byte " + ",".join(f">song_{i}" for i in range(len(songs))))
-    pre = {"title": "mt", "rocks": "mr", "pirates": "mp"}
+    pre = {"title": "mt", "rocks": "mr", "pirates": "mp", "planet": "mn"}
     for i, (nm, speed, mask) in enumerate(songs):
         p = pre[nm]
         out.append(f"song_{i} .byte {speed},{mask}")
         out.append("    .word " + ",".join(f"{p}_v{k}" for k in range(4)))
-    for s in song_title() + song_rocks() + song_pirates():
+    for s in song_title() + song_rocks() + song_pirates() + song_planet():
         out.append(s.label)
         out += s.lines
     for name, txt in (("drum_main", DRUM_MAIN), ("drum_fill", DRUM_FILL),
                       ("drum_rock", DRUM_ROCK), ("drum_rockfill", DRUM_ROCKFILL),
-                      ("drum_pir", DRUM_PIR), ("drum_pirfill", DRUM_PIRFILL)):
+                      ("drum_pir", DRUM_PIR), ("drum_pirfill", DRUM_PIRFILL),
+                      ("drum_plan", DRUM_PLAN), ("drum_planfill", DRUM_PLANFILL)):
         seq = drum_parse(txt)
         assert sum(d for _, d in seq) == 16, name
         out.append(name)

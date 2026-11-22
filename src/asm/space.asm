@@ -927,6 +927,14 @@ sp_w_play
     bne sp_w_p2
     dec sp_timer
     bne sp_w_r
+    ; the fighter out: it's called home, and the Ark waits for it
+    jsr ft_isout
+    bcc sp_w_in
+    lda #FT_HOMING
+    sta ft_st
+    inc sp_timer            ; (look again next frame)
+    rts
+sp_w_in
     lda sp_noplanet         ; (tests of deep space alone set this)
     beq sp_w_down
     jmp sp_nextwave
@@ -935,11 +943,6 @@ sp_w_down
     sta sp_state
     lda #0
     sta sp_msglen
-    jsr ft_isout
-    bcc sp_w_dn2
-    lda #FT_DOCK
-    sta ft_st
-sp_w_dn2
     lda #SFX_DEPART
     jmp sfx
 sp_w_p2

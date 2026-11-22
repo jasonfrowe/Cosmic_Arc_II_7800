@@ -297,6 +297,19 @@ of the screen to start a scene, at the game's start, each new wave, and on a pla
 with the shuttle aboard. It climbs off the top when the scene's done. A fighter
 that's out when a wave ends is taken aboard first.
 
+**HUD (as built):** top: the score, the world's name, one icon a creature
+(yellow caught, outlined loose). Under it the scanner: the whole planet in
+16 cells between two end caps (towers, the Ark, creatures, the shuttle, the
+storm's rock). Bottom: the energy icon and bar; the shuttle (or a red cross
+while it's rebuilt) and its bay: empty, a creature, or ore.
+
+**Worlds:** six, by palette (as the RP6502 game's): a new one each planet,
+sky and ground (grass, soil, stones) swapped: VERDA, RUBRA, GLACI, UMBRA,
+ARENA, TOXIS.
+
+**Music:** its own track (D Dorian, plucked); the pirates' when the storm's
+coming.
+
 ### 5.1 The surface
 
 - **Horizontal smooth scrolling** over a surface **4-8 screens wide

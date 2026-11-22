@@ -107,6 +107,8 @@ songs and effects are written in `tools/music.py`.
 | $2700-$27FF | surface.asm: the planet (shuttle, camera, creatures, crates) |
 | $2200-$22FF | surface.asm: the planet's turrets and their shots |
 | $2500-$255F | sound.asm |
+| $2560-$2571 | surface.asm: the planet scanner's line (18 characters, its ends included) |
+| $2575 | the stars' twinkle counter (BASIC) |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |
@@ -124,7 +126,7 @@ character, 20 across, with each glyph's 8 lines at the top of a 16-line
 character (`font.png` is 16 tall). The font is ASCII 32-95, so a character's
 code is (ASCII - 32) * 2 (`text.asm`). 7800basic's `alphachars` maps literal
 strings the same way.
-Stars are one-character objects saved with `savescreen`. Each frame does
+Stars are one-character objects saved with `savescreen`, three kinds (P5's colours 1-3); the BASIC's `twinkle` cycles P5 each frame. Glyphs after the terrain (tools/gfx.py `EXTRA`, codes in text.asm `CH_*`): stars, the planet scanner, HUD icons. The planet HUD draws in P0, whose colours 2 and 3 (yellow, red) text never uses. Each frame does
 `restorescreen`, then the sprites (`plotsprite`), then the HUD (`plotchars`
 from RAM).
 
@@ -166,6 +168,8 @@ tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
 tools/test_defense.sh # the planet's pulse: never hits a docked shuttle; finds one
                       # camped at the band's top, middle and foot; full speed
+tools/test_spaceend.sh # the Ark waits for the saucer before leaving a wave; pirates
+                       # leave when the Ark is lost
 tools/test_storm.sh   # each way the rock comes: in sight 1.5 s+ unanswered; docked,
                       # the Ark shoots it down unhurt; out, it hits the Ark (16)
 ```

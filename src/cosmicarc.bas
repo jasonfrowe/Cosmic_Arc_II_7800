@@ -58,6 +58,10 @@
   dim hud_bot2 = $24D0
   dim sp_msg = $23D0
   dim starch = $23F0
+  dim starch2 = $23F1
+  dim starch3 = $23FE
+  dim twtick = $2575
+  dim pl_world = $27F0
   rem surface.asm (the planet)
   dim pl_state = $2714
   dim pl_fine = $2719
@@ -65,7 +69,7 @@
   dim pl_arksx = $2770
   dim pl_arkv = $2771
   dim pl_arky = $2775
-  dim pl_scans = $27C0
+  dim pl_scans = $2560
   dim pl_tick = $271B
   rem zero page
   dim fireheld = a
@@ -79,7 +83,7 @@
   characterset font
   rem the font is ASCII 32-95 (tools/gfx.py); ~ stands in for " and '
   alphachars ' !~#$%&~()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  starch = 126
+  starch = 126 : starch2 = 144 : starch3 = 146
 
   asm
   lda #BANK_SPACE         ; deep space's bank (docs/ENGINE.md: banks)
@@ -106,8 +110,9 @@ titleloop
   plotsprite ark 1 56 80
   plotchars 'COSMIC ARC II' 0 28 2
   plotchars 'PRESS FIRE' 0 40 8
-  plotchars 'BUTTON 2: HW CHECK' 5 8 10
+  plotchars 'BUTTON 2: HW CHECK' 3 8 10
   drawscreen
+  gosub twinkle
   if !joy0fire0 then fire2held = 0
   if joy0fire0 && !fire2held then fire2held = 1 : goto hwcheck
   if switchselect then goto planettest
@@ -158,6 +163,7 @@ end
   plotchars hud_bot2 3 80 11 10
   if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
+  gosub twinkle
 
   if sp_state = 4 then goto planet
   if sp_state <> 2 then goto gameloop
@@ -210,15 +216,15 @@ end
   rem the ground: one row (zone 10). (The map width as a number: a name is
   rem taken for a variable; = PL_MAPW)
   plotmap pl_map 5 pl_fine 10 21 1 pl_col 0 149
-  rem the scanner (surface.asm pl_scanner): + towers, # the Ark,
-  rem * creatures, @ the shuttle
-  plotchars pl_scans 5 16 1 16
+  rem the scanner (surface.asm pl_scanner): towers, the Ark, creatures,
+  rem the shuttle, the storm's rock; its ends either side
+  plotchars pl_scans 0 8 1 18
   asm
   jsr pl_draw
 end
   plotchars hud_top 0 0 0 20
   plotchars hud_bot 7 0 11 10
-  plotchars hud_bot2 3 80 11 10
+  plotchars hud_bot2 0 80 11 10
   if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
   rem the beam shimmers: its palette (P3) cycles, in the vertical blank
@@ -259,8 +265,33 @@ spacepal
   P5C1 = $06
   P6C1 = $D4 : P6C2 = $DC : P6C3 = $0F
   P7C1 = $C8
-
+  P0C2 = $1C : P0C3 = $44
+  P5C1 = $06 : P5C2 = $86 : P5C3 = $0E
   return
+
+  rem the stars twinkle: P5's three colours (three kinds of star) each run
+  rem round a 32-step brightness cycle, a third of the way apart
+twinkle
+  twtick = twtick + 1
+  t = (twtick / 4) & 31
+  P5C1 = twink1[t]
+  t = (t + 11) & 31
+  P5C2 = twink2[t]
+  t = (t + 11) & 31
+  P5C3 = twink3[t]
+  return
+  data twink1
+  $04, $04, $06, $06, $08, $0A, $0C, $0A, $08, $06, $06, $04, $04, $04, $02, $02
+  $04, $04, $06, $06, $06, $08, $08, $06, $06, $04, $04, $02, $02, $02, $04, $04
+end
+  data twink2
+  $82, $84, $86, $88, $8A, $8C, $8E, $8C, $8A, $88, $86, $84, $82, $82, $82, $84
+  $84, $86, $86, $84, $84, $82, $82, $80, $80, $80, $82, $82, $84, $84, $82, $82
+end
+  data twink3
+  $08, $0A, $0C, $0E, $0F, $0E, $0C, $0A, $08, $06, $06, $06, $08, $08, $06, $06
+  $06, $08, $0A, $08, $06, $06, $04, $04, $06, $06, $08, $08, $06, $06, $06, $08
+end
 
   rem the tractor beam's colours, cycled (P3: edge, core)
   data beamc2
@@ -273,10 +304,27 @@ end
   rem P2 creatures (yellow, pink, cyan), P5 the ground (grass, soil, hills),
   rem the sky dark blue; the rest as deep space's
 planetpal
-  BACKGRND = $82
+  rem the world (surface.asm pl_world): its sky and its ground (grass, soil,
+  rem stones; crates too), as Cosmic Arc's worlds by palette
+  t = pl_world
+  BACKGRND = wsky[t]
   P2C1 = $1C : P2C2 = $4A : P2C3 = $9C
-  P5C1 = $C6 : P5C2 = $22 : P5C3 = $E4
+  P5C1 = wtop[t] : P5C2 = wsoil[t] : P5C3 = wstone[t]
   return
+  rem VERDA (green), RUBRA (rust), GLACI (ice), UMBRA (violet), ARENA (sand),
+  rem TOXIS (acid)
+  data wsky
+  $82, $F0, $70, $50, $A0, $C0
+end
+  data wtop
+  $C6, $36, $0E, $5A, $2C, $DA
+end
+  data wsoil
+  $22, $32, $96, $54, $26, $D4
+end
+  data wstone
+  $E4, $3A, $9A, $5E, $22, $EA
+end
 
   rem ======================================================================
   rem Stars (three a row, playfield rows 1-10), then save the screen as the
@@ -285,15 +333,22 @@ drawstars
   clearscreen
   for i = 1 to 10
     t = rand & 63
-    plotchars starch 5 t i 1
+    gosub plotstar
     t = rand & 63
     t = t + 48
-    plotchars starch 5 t i 1
+    gosub plotstar
     t = rand & 63
     t = t + 96
-    plotchars starch 5 t i 1
+    gosub plotstar
   next
   savescreen
+  return
+  rem a star at t, row i: half dim, a quarter blue, a quarter bright
+plotstar
+  f = rand & 3
+  if f < 2 then plotchars starch 5 t i 1 : return
+  if f = 2 then plotchars starch2 5 t i 1 : return
+  plotchars starch3 5 t i 1
   return
 
   rem ======================================================================

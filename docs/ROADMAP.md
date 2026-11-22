@@ -51,7 +51,8 @@ then link them together.
 - [x] From hardware: the flight band is the guns' range (never lands: fixes ore rising into the sky); the storm as Cosmic Arc's (klaxon, a rock at the Ark, the Ark's laser when docked); the Ark lower, a short tunnel; the defences' pace by level as the RP6502 game; `test_storm.sh`
 - [x] From hardware: the Ark doesn't fire on docking; 10 s from the klaxon to the rock, a slower rock always in sight (and on the scanner); no countdown; creatures react 75%; one thing in the beam; a solid, palette-cycled beam
 - [x] From hardware: dock on the move (up-left/up-right, near the ceiling); random pulse gaps over a steady full-band sweep: no safe line (tested at the band's top, middle, foot)
-- [ ] A planet music track (the Arc theme for now)
+- [x] Polish: twinkling stars (P5's three colours cycled); the Ark waits for the saucer before leaving a cleared wave; pirates leave when the Ark is lost; a planet HUD from new tiles (scanner with ends and markers, creature icons, energy icon, the shuttle's bay, the world's name); six worlds by palette (VERDA, RUBRA, GLACI, UMBRA, ARENA, TOXIS); planet music (D Dorian), the pirates' track when the storm comes; `test_spaceend.sh`
+- [x] A planet music track
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 
 ## M4: Sector map

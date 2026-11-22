@@ -250,6 +250,8 @@ sr_spdh   = $27E2
 cr_react  = $27E4   ; [NCR] the shuttle overhead: 0 not decided, 1 reacts,
                     ;   2 lets it be (decided each time it comes over)
 pl_busy   = $27E8   ; something's rising in the beam already
+pl_world  = $27F0   ; the world (0-5: its palette and name; the BASIC reads)
+NWORLD    = 6
 pl_nodock = $27EA   ; just out of the Ark: no docking till it's left the
                     ;   doorway (across, or DOCK_H+4 lines down)
 pl_cool   = $27B7
@@ -268,7 +270,8 @@ ps_vyl    = $22B0
 ps_vyh    = $22B4
 ps_sx     = $22B8
 ps_vis    = $22BC
-pl_scans  = $27C0   ; [16] the scanner's line (the BASIC plots it)
+pl_scans  = $2560   ; [18] the scanner's line, its ends included (the BASIC
+                    ;   plots it: one object)
 pl_t0     = $27B0
 pl_t1     = $27B1
 pl_t2     = $27B2
@@ -474,7 +477,19 @@ pl_new_dp2
     adc #60
     sta df_cool
     jsr pl_camera
-    lda #MUS_TITLE          ; (the Arc theme, for now)
+    lda sp_wave             ; the world: a new one each planet (palettes, as
+    beq pl_new_w            ;  Cosmic Arc's); the first (after wave 1) VERDA
+    sec
+    sbc #1
+pl_new_w
+    cmp #NWORLD
+    bcc pl_new_w2
+    sbc #NWORLD
+    bcs pl_new_w
+pl_new_w2
+    sta pl_world
+    jsr pl_hudname
+    lda #MUS_PLANET
     jsr mu_switch
     lda #<tx_planet
     ldy #>tx_planet
@@ -606,6 +621,8 @@ pl_clock
     lda #0
 pl_ck_d
     sta sr_dir
+    lda #MUS_PIRATES        ; (the menace: the storm's coming)
+    jsr mu_switch
     lda #<tx_storm
     ldy #>tx_storm
     ldx #12
@@ -2398,7 +2415,7 @@ pl_ca_r
 ; each: + the towers, # the Ark, * a creature, @ the shuttle. Characters,
 ; not sprites: sprites cost frames (5 of them here dropped some).
 pl_scanner
-    ldx #15
+    ldx #17
 pl_sn_c
     lda pl_scanbase,x
     sta pl_scans,x
@@ -2414,8 +2431,8 @@ pl_sn_cr
     lda cr_xl,x
     ldy cr_xh,x
     jsr pl_scanix
-    lda #("*"-32)*2
-    sta pl_scans,y
+    lda #CH_SCCR
+    sta pl_scans+1,y
 pl_sn_crn
     dex
     bpl pl_sn_cr
@@ -2425,14 +2442,18 @@ pl_sn_crn
     lda sr_xl
     ldy sr_xh
     jsr pl_scanix
-    lda #("!"-32)*2
-    sta pl_scans,y
+    lda #CH_SCROCK
+    sta pl_scans+1,y
 pl_sn_nr
+    lda pl_st               ; the shuttle (docked: the Ark shows)
+    cmp #PL_FLYING
+    bne pl_sn_r
     lda pl_wx
     ldy pl_wxh
     jsr pl_scanix
-    lda #("@"-32)*2
-    sta pl_scans,y
+    lda #CH_SCSH
+    sta pl_scans+1,y
+pl_sn_r
     rts
 
 ; world x (A lo, Y hi) -> Y = its scanner character, x / 64 (0-15)
@@ -2450,12 +2471,35 @@ pl_scanix
 ; the scanner's line without creatures: "-+-+-+-+#+-+-+-+" (towers at
 ; 64 + 128 n: characters 1, 3, ...; the Ark at 512: character 8)
 pl_scanbase
-    .byte ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2
-    .byte ("#"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2
+    .byte CH_SCL
+    .byte CH_SCTRK, CH_SCTWR, CH_SCTRK, CH_SCTWR, CH_SCTRK, CH_SCTWR, CH_SCTRK, CH_SCTWR
+    .byte CH_SCARK, CH_SCTWR, CH_SCTRK, CH_SCTWR, CH_SCTRK, CH_SCTWR, CH_SCTRK, CH_SCTWR
+    .byte CH_SCR
 
 ; ---- the HUD (rebuilt every 4th frame: it's text, and frames are tight) ----
-;   top:    "000000  TIME 45  2/4"
-;   bottom: "A" + the Ark's energy  |  "HOLD BEAST" / "HOLD  ORE " / "HOLD  ----"
+;   top (P0):    "000000 VERDA" and a creature each, right: caught (yellow)
+;                or still loose (outlined)
+;   bottom:      the energy icon and bar (P7) | (P0) the shuttle (or lost),
+;                its bay: [ ] empty, a creature, or ore
+; the top line's fixed part: blank at 6, the world's name at 7-11 (once)
+pl_hudname
+    lda #0
+    sta hud_top+6
+    lda pl_world
+    asl
+    asl
+    adc pl_world            ; * 5
+    tax
+    ldy #7
+pl_hn_w
+    lda tx_worlds,x
+    sta hud_top,y
+    inx
+    iny
+    cpy #12
+    bne pl_hn_w
+    rts
+
 pl_hud
     lda pl_tick             ; the top line on one frame in 4, the bottom two
     and #3                  ; frames on (spread: frames are tight)
@@ -2485,49 +2529,68 @@ pl_hd_sc
     inx
     cpx #3
     bne pl_hd_sc
-    lda #0                  ; (no countdown: the klaxon's the warning)
-pl_hd_t
-    sta hud_top,y
-    iny
-    cpy #15
-    bne pl_hd_t
+    ; (the world's name, 7-11: written once, pl_hudname)
+    ldy #12
     lda #0
+pl_hd_cl
     sta hud_top,y
     iny
-    sta hud_top,y
-    iny
-    lda pl_caught
-    jsr tx_digit
-    sta hud_top,y
-    iny
-    lda #("/"-32)*2
-    sta hud_top,y
-    iny
+    cpy #20
+    bne pl_hd_cl
+    ; the creatures: one every other character, the last at 18
     lda pl_total
-    jsr tx_digit
+    beq pl_hd_r
+    asl
+    sta pl_t0
+    sec
+    lda #20
+    sbc pl_t0
+    tay                     ; the first's place (the last at 18)
+    ldx #0
+pl_hd_cr
+    lda #CH_CAUGHT
+    cpx pl_caught
+    bcc pl_hd_c1
+    lda #CH_LOOSE
+pl_hd_c1
     sta hud_top,y
+    iny
+    iny
+    inx
+    cpx pl_total
+    bne pl_hd_cr
+pl_hd_r
     rts
 pl_hud_bot
     lda #<hud_bot
     sta hwp
     lda #>hud_bot
     sta hwp+1
-    lda #("A"-32)*2
+    lda #CH_ENERGY
     ldx sp_energy
     jsr hud_bar
-    ldx pl_hold
-    lda pl_holdtx,x
-    tax
     ldy #9
-pl_hd_hold
-    lda tx_hold,x
+    lda #0
+pl_hd_bc
     sta hud_bot2,y
-    dex
     dey
-    bpl pl_hd_hold
+    bpl pl_hd_bc
+    lda #CH_SHUT            ; the shuttle, or lost (being rebuilt)
+    ldx pl_st
+    cpx #PL_DEAD
+    bne pl_hd_s
+    lda #CH_SHLOST
+pl_hd_s
+    sta hud_bot2+1
+    lda #CH_BAYL
+    sta hud_bot2+3
+    lda #CH_BAYR
+    sta hud_bot2+5
+    ldx pl_hold             ; in the bay
+    lda pl_baych,x
+    sta hud_bot2+4
     rts
-
-pl_holdtx .byte 9, 19, 29       ; the last character of each in tx_hold
+pl_baych  .byte 0, CH_CAUGHT, CH_ORE
 
 ; ---------------------------------------------------------------------------
 ; Drawing (the BASIC has drawn the Ark and the ground). Creatures first:

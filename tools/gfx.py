@@ -401,11 +401,55 @@ TILES[T_ROCK0] = ["..c....."] + r0[1:]
 TILES[T_ROCK0][0] = "..cc...."
 
 
+# More glyphs after the terrain (index n: character code 2n; the codes are
+# in src/asm/common.asm, CH_*). '.' clear, a b c: colors 1-3 of the palette
+# they're drawn in (stars P5; the planet's HUD P0: white, yellow, red; the
+# energy icon P7). Up to 16 lines (a zone); text sits in the top 8.
+def _pad(rows, top=0):
+    rows = ["........"] * top + rows
+    return rows + ["........"] * (16 - len(rows))
+
+
+TRACK = "a.a.a.a."                      # the scanner's track (line 9)
+
+
+def _scan(marks):
+    rows = _pad(marks, 3)
+    rows[9] = "".join(m if m != "." else t for m, t in zip(rows[9], TRACK))
+    return rows
+
+
+_BEAST_FULL = ["..bbbb..", ".bbbbbb.", "bb.bb.bb", "bbbbbbbb", ".bbbbbb.", "..b..b..", ".b....b."]
+_BEAST_LOOSE = ["..aaaa..", ".a....a.", "a.a..a.a", "a......a", ".a....a.", "..a..a..", ".a....a."]
+EXTRA = {
+    72: _pad(["........", "........", "........", "...b...."]),            # a star (color 2)
+    73: _pad(["........", "........", "...c....", "..ccc...", "...c...."]),  # a bright star (3)
+    74: _scan([]),                                                         # scanner: track
+    75: _scan(["a......."] * 9),                                           # ... its left end
+    76: _scan([".......a"] * 9),                                           # ... its right end
+    77: _scan(["", "", "", "...a....", "...a....", "..aaa..."]),            # ... a tower
+    78: _scan(["", "..aaaa..", "aaaaaaaa", "..a..a.."]),                   # ... the Ark
+    79: _scan(["", "", "", "..bb....", ".bbbb...", ".b..b..."]),            # ... a creature
+    80: _scan(["", "", "...aa...", ".aaaaaa.", "..a..a.."]),                # ... the shuttle
+    81: _scan(["", "..cc....", ".cccc...", ".cccc...", "..cc...."]),        # ... the storm's rock
+    82: _pad(_BEAST_LOOSE),                                                # HUD: a creature loose
+    83: _pad(_BEAST_FULL),                                                 # ... caught
+    84: _pad(["....aa..", "...aa...", "..aa....", ".aaaaa..", "...aa...", "..aa....", ".aa....."]),  # energy (P7)
+    85: _pad(["aa......"] + ["a......."] * 5 + ["aa......"]),              # the bay: [
+    86: _pad(["......aa"] + [".......a"] * 5 + ["......aa"]),              # ... ]
+    87: _pad(["aaaaaaa.", "acacaca.", "aacacaa.", "acacaca.", "aacacaa.", "aaaaaaa."], 1),  # ... ore
+    88: _pad(["", "", "...aa...", ".aaaaaa.", "aaaaaaaa", "..a..a.."]),   # the shuttle
+    89: _pad(["c.....c.", ".c...c..", "..c.c...", "...c....", "..c.c...", ".c...c..", "c.....c."]),  # ... lost
+}
+for _k, _v in EXTRA.items():
+    EXTRA[_k] = [(r or "........") for r in _v]
+
+
 def font():
     src = Image.open(GFX / "menufont.png")
     sp = src.load()
     first, last = 32, 95
-    n = last - first + 1 + len(TILES)
+    n = max(max(TILES), max(EXTRA)) + 1
     # 16 lines a glyph (a 16-line zone), the letter in the top 8
     im = Image.new("P", (n * 8, 16), 0)
     im.putpalette(PNG_PALETTE)
@@ -414,7 +458,7 @@ def font():
         for y in range(8):
             for x in range(8):
                 px[i * 8 + x, y] = 1 if sp[(first + i) * 8 + x, y] else 0
-    for code, rows in TILES.items():
+    for code, rows in list(TILES.items()) + list(EXTRA.items()):
         assert len(rows) == 16 and all(len(r) == 8 for r in rows), code
         for y in range(16):
             for x in range(8):
