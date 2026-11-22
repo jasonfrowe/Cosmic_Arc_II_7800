@@ -2,12 +2,15 @@
 --  DOCKED=1: the shuttle stays aboard; the stick fires the Ark's laser at
 --  the rock's side: it must be shot down, the Ark unhurt, the planet over.
 --  DOCKED=0: the shuttle stays out: the rock must hit the Ark (16) and the
---  planet end. tools/test_storm.sh
+--  planet end. HOLDFIRE=1: docked but not firing: how long the rock's in
+--  sight before it hits. DIR: where it comes from. tools/test_storm.sh
 local fields = {}
 for tag, port in pairs(manager:machine():ioport().ports) do
   for name, field in pairs(port.fields) do fields[name] = field end
 end
 local docked = os.getenv("DOCKED") == "1"
+local forcedir = tonumber(os.getenv("DIR") or "")
+local seen, prevss = 0, 0
 local f, e0, stormseen, shot, hit, over = 0, nil, false, false, false, false
 emu.register_frame_done(function()
   f = f + 1
@@ -17,9 +20,17 @@ emu.register_frame_done(function()
   if f > 340 then m:write_u8(0x27BC, 200) end            -- no pulses: just the storm
   if f == 345 then m:write_u8(0x2712, 3) end            -- the storm in 3 s
   local st, ss = m:read_u8(0x2709), m:read_u8(0x27D2)
+  if forcedir and ss == 2 and prevss ~= 2 then           -- the rock just came: from DIR
+    m:write_u8(0x27D9, forcedir)
+    local x = ({[0] = 512 - 4, 512 - 112, 512 + 104})[forcedir]
+    m:write_u8(0x27D4, x % 256); m:write_u8(0x27D5, x // 256)
+    m:write_u8(0x27D7, forcedir == 0 and 16 or 71)
+  end
+  if ss == 2 and m:read_u8(0x27DB) == 1 then seen = seen + 1 end
+  prevss = ss
   if f > 345 and m:read_u8(0x2714) == 0 then
     if not docked and st == 0 then held["P1 Down"] = true end
-    if docked and ss == 2 then
+    if docked and ss == 2 and os.getenv("HOLDFIRE") ~= "1" and seen >= 30 then
       local d = m:read_u8(0x27D9)
       local k = ({[0] = "P1 Up", "P1 Left", "P1 Right"})[d]
       if f % 8 < 4 then held[k] = true end              -- fresh pushes
@@ -32,11 +43,12 @@ emu.register_frame_done(function()
     hit = e < (e0 or 0)
   end
   for name, field in pairs(fields) do if name:match("^P1 ") or name == "Select" then field:set_value(held[name] and 1 or 0) end end
-  if over and (m:read_u8(0x2714) == 3 or m:read_u8(0x2714) == 5) or f > 3000 then
-    print(string.format("%s: storm %s, the Ark %s (%d -> %d), the planet %s",
-      docked and "docked, firing" or "shuttle out", stormseen and "came" or "never came",
+  if over and (m:read_u8(0x2714) == 3 or m:read_u8(0x2714) == 5) or f > 4000 then
+    print(string.format("%s%s: storm %s, the rock in sight %.1f s, the Ark %s (%d -> %d), the planet %s",
+      docked and "docked, firing" or "shuttle out", forcedir and (" (from " .. ({[0]="the top","the left","the right"})[forcedir] .. ")") or "",
+      stormseen and "came" or "never came", seen / 60,
       hit and "hit" or "unhurt", e0 or -1, m:read_u8(0x2386), over and "over" or "NOT over"))
-    print(string.format("result %d %d %d", stormseen and 1 or 0, hit and 1 or 0, over and 1 or 0))
+    print(string.format("result %d %d %d %d", stormseen and 1 or 0, hit and 1 or 0, over and 1 or 0, seen >= 90 and 1 or 0))
     manager:machine():exit()
   end
 end)

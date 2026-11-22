@@ -6,6 +6,7 @@
 --  3. Undocking: hold down: within 2 s it's out of the tunnel and can move.
 --  4. No accident: just out, fly up and away (up + left) for a second: it
 --     must not dock again.
+--  5. Docking with up held: the Ark mustn't fire until the stick's let go.
 -- Turrets are held out. tools/test_feel.sh
 local fields = {}
 for tag, port in pairs(manager:machine():ioport().ports) do
@@ -56,8 +57,10 @@ emu.register_frame_done(function()
       elseif vx == 0 then phase = "dock"; t0 = f end         -- lined up and stopped
     elseif phase == "dock" then
       held["P1 Up"] = true                                  -- just push up
-      if st == 0 then results.dock = (f - t0) / 60; phase = "undock"; t0 = f end
-      if f - t0 > 600 then results.dock = -1; phase = "undock"; t0 = f end
+      if st == 0 and not results.dock then results.dock = (f - t0) / 60; t1 = f end
+      if results.dock and mm:read_u8(0x27DC) > 0 then results.fired = 1 end   -- the Ark's bolt
+      if results.dock and f - t1 > 20 then phase = "undock"; t0 = f end
+      if f - t0 > 600 and not results.dock then results.dock = -1; phase = "undock"; t0 = f end
     elseif phase == "undock" then
       held["P1 Down"] = true
       if st == 1 and auto == 0 then results.undock = (f - t0) / 60; phase = "away"; t0 = f end
@@ -76,7 +79,8 @@ emu.register_frame_done(function()
     print(string.format("docking from 4 px off, just pushing up: %s", results.dock and results.dock >= 0 and string.format("%.1f s", results.dock) or "FAILED"))
     print(string.format("undocking, holding down: %s", results.undock and results.undock >= 0 and string.format("%.1f s", results.undock) or "FAILED"))
     print(string.format("flying up and away just out of the Ark: %s", results.accident and "DOCKED BY ACCIDENT" or "no dock"))
-    print(string.format("result %d %.2f %.2f %d", ahead, results.dock or -1, results.undock or -1, results.accident or 0))
+    print(string.format("docking with up still held: the Ark %s", results.fired and "FIRED" or "held its fire"))
+    print(string.format("result %d %.2f %.2f %d %d", ahead, results.dock or -1, results.undock or -1, results.accident or 0, results.fired or 0))
     manager:machine():exit()
   end
 end)

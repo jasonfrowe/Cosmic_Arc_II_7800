@@ -282,8 +282,10 @@ def creature_frames():
 
 
 # The tractor beam: 8 x 16 segments (one plotsprite a zone), stacked
-# shuttle to ground; two frames
-BEAM = [["..cbbc..", "..bccb.."] * 8, ["..bccb..", "..cbbc.."] * 8]
+# shuttle to ground. Solid (every line the same, so overlapping pieces don't
+# show); it shimmers by palette: the BASIC cycles P3's colours, as the
+# RP6502 game cycles its beam's palette.
+BEAM = [["..bccb.."] * 16, ["..bccb.."] * 16]
 
 # An ore crate, 8 x 8. a band, b box, c ore glints
 CRATE = art("""

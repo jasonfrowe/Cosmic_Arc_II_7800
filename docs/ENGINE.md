@@ -166,8 +166,8 @@ tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
 tools/test_defense.sh # the planet's pulse: never hits a docked shuttle, does in the
                       # band; full speed while it fires
-tools/test_storm.sh   # docked: the Ark shoots the storm's rock down, unhurt; out:
-                      # the rock hits the Ark (16); the planet ends either way
+tools/test_storm.sh   # each way the rock comes: in sight 1.5 s+ unanswered; docked,
+                      # the Ark shoots it down unhurt; out, it hits the Ark (16)
 ```
 
 The deep-space tests set `sp_noplanet` ($23EF) so waves go straight on without

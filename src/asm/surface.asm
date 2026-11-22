@@ -35,10 +35,12 @@ BANK_PLANET = 3
 ; ---- knobs ----
 PL_TIME   = 45      ; seconds until the storm (as Cosmic Arc's: the klaxon,
                     ;   then a rock comes at the Ark: be back aboard)
-STORM_DELAY = 240   ; frames from the klaxon to the rock
+STORM_DELAY = 150   ; 4-frame steps from the klaxon to the rock (10 s: back
+                    ;   to the Ark from anywhere: the far side is 512 px, 4.3 s)
 ROCK_DMG  = 16      ; the rock hitting the Ark costs this
-ROCK_SPD0 = $0100   ; the rock's speed (8.8 px a frame): 1 + 1/4 a level,
-ROCK_SPDL = $40     ;   at most 2
+ROCK_SPD0 = $0080   ; the rock's speed (8.8 px a frame across; down, half
+ROCK_SPDL = $20     ;   that in lines): 1/2 + 1/8 a level, at most 1. At
+ROCK_SPDMAX = $0100 ;   level 0 it's in sight about 2 s each way.
 AB_LIFE   = 40      ; frames an Ark bolt lasts
 PL_ACC    = $20     ; shuttle acceleration across (8.8 pixels a frame)
 PL_VMAX   = $0200   ; top speed across
@@ -49,6 +51,8 @@ BEAM_MINY = 100     ; the beam works only with the shuttle this low or lower
                     ;   long beam costs too many sprites)
 NEAR_X    = 28      ; a low shuttle this near across sets creatures off
 NEAR_Y    = 96      ;   (lower than this line)
+REACT_PCT = 192     ; ... and reacts this often in 256 (75%), decided each
+                    ;   time the shuttle comes over (always was too hard)
 PL_STUNCD = 150     ; frames between stun pulses
 PL_STUNR  = 36      ; a pulse reaches this far across (and down)
 CR_STUN   = 150     ; frames a creature stays stunned
@@ -239,6 +243,9 @@ ab_d      = $27DF   ; its frame: 0 up, 2 right, 6 left
 ab_held   = $27E0   ; the stick still held from the last shot
 sr_spdl   = $27E1   ; the rock's speed, this level
 sr_spdh   = $27E2
+cr_react  = $27E4   ; [NCR] the shuttle overhead: 0 not decided, 1 reacts,
+                    ;   2 lets it be (decided each time it comes over)
+pl_busy   = $27E8   ; something's rising in the beam already
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -414,12 +421,16 @@ pl_new_t
     lda M_P+1
     adc #>ROCK_SPD0
     sta sr_spdh
-    cmp #2
+    sec                     ; (at most ROCK_SPDMAX)
+    lda sr_spdl
+    sbc #<ROCK_SPDMAX
+    lda sr_spdh
+    sbc #>ROCK_SPDMAX
     bcc pl_new_rs
-    lda #2
-    sta sr_spdh
-    lda #0
+    lda #<ROCK_SPDMAX
     sta sr_spdl
+    lda #>ROCK_SPDMAX
+    sta sr_spdh
 pl_new_rs
     lda #DF_STEP1           ; frames a line: DF_STEP1 - stages after, >= 1
     sec
@@ -602,6 +613,9 @@ pl_storm
     lda #SFX_KLAXON
     jsr sfx
 pl_st_k
+    lda pl_tick             ; (st_tm counts 4-frame steps)
+    and #3
+    bne pl_st_r
     dec st_tm
     bne pl_st_r
     ; the rock: from the top, the left or the right (never below)
@@ -621,17 +635,17 @@ pl_st_d
     beq pl_st_top
     cmp #1
     beq pl_st_left
-    lda #<(ARK_WX+80)       ; from the right
+    lda #<(ARK_WX+104)      ; from the right (off the screen, docked)
     sta sr_xl
-    lda #>(ARK_WX+80)
+    lda #>(ARK_WX+104)
     sta sr_xh
     lda #ARK_MIDY-8
     sta sr_y
     rts
 pl_st_left
-    lda #<(ARK_WX-88)
+    lda #<(ARK_WX-112)
     sta sr_xl
-    lda #>(ARK_WX-88)
+    lda #>(ARK_WX-112)
     sta sr_xh
     lda #ARK_MIDY-8
     sta sr_y
@@ -641,22 +655,26 @@ pl_st_top
     sta sr_xl
     lda #>(ARK_WX-4)
     sta sr_xh
-    lda #24
+    lda #16
     sta sr_y
 pl_st_r
     rts
 pl_st_rock
     cmp #2
     bne pl_st_r
-    ; it comes straight at the Ark
+    ; it comes straight at the Ark (down: half the speed, in lines)
     lda sr_dir
     bne pl_st_side
+    lda sr_spdh
+    lsr
+    sta pl_t1
+    lda sr_spdl
+    ror
     clc
-    lda sr_yf
-    adc sr_spdl
+    adc sr_yf
     sta sr_yf
     lda sr_y
-    adc sr_spdh
+    adc pl_t1
     sta sr_y
     cmp #PL_ARKY+6-16+1     ; its foot reaching the Ark's top
     bcc pl_st_hit_far662
@@ -1070,6 +1088,8 @@ pl_sh_iup
     lda #0
     sta pl_auto
     sta pl_launch
+    lda #1                  ; (up's still held from docking: the Ark fires
+    sta ab_held             ;  only once the stick's been let go)
     jsr pl_deliver
     lda #SFX_DOCK
     jmp sfx
@@ -1721,8 +1741,9 @@ pl_cr_nn
 pl_cr_r
     rts
 
-; C = 1: the shuttle is low (below NEAR_Y), flying, and within NEAR_X across
-; of creature X (on the screen)
+; C = 1: creature X reacts: the shuttle is low (below NEAR_Y), flying,
+; within NEAR_X across of it (on the screen), and it's decided to (REACT_PCT
+; of the time, decided once each time the shuttle comes over)
 pl_overhead
     lda pl_st
     cmp #PL_FLYING
@@ -1736,9 +1757,24 @@ pl_overhead
     jsr pl_beamoff
     cmp #NEAR_X
     bcs pl_oh_no
+    lda cr_react,x          ; overhead: react or not, decided once
+    bne pl_oh_dec
+    lda M_RND
+    cmp #REACT_PCT
+    lda #1
+    bcc pl_oh_set
+    lda #2
+pl_oh_set
+    sta cr_react,x
+pl_oh_dec
+    cmp #1
+    bne pl_oh_c
     sec
     rts
 pl_oh_no
+    lda #0                  ; gone from overhead: decide afresh next time
+    sta cr_react,x
+pl_oh_c
     clc
     rts
 
@@ -2034,6 +2070,29 @@ pl_bw_low
     jmp pl_bw_off
 pl_bw_on
     inc pl_beam
+    ; something already rising? then nothing else is taken (one at a time)
+    lda #0
+    sta pl_busy
+    ldx #NCR-1
+pl_bw_bz
+    lda cr_t,x
+    beq pl_bw_bz1
+    lda cr_st,x
+    cmp #CS_LIFT
+    bne pl_bw_bz1
+    inc pl_busy
+pl_bw_bz1
+    dex
+    bpl pl_bw_bz
+    ldx #NCK-1
+pl_bw_bk
+    lda ck_st,x
+    cmp #CS_LIFT+1
+    bne pl_bw_bk1
+    inc pl_busy
+pl_bw_bk1
+    dex
+    bpl pl_bw_bk
     lda pl_tick
     and #15
     bne pl_bw_go
@@ -2077,6 +2136,11 @@ pl_bw_c5
     bcc pl_bw_take
     jmp pl_bw_cn
 pl_bw_take
+    lda pl_busy             ; one at a time: it walks on past
+    beq pl_bw_tk
+    jmp pl_bw_cn
+pl_bw_tk
+    inc pl_busy
 pl_bw_t2
     lda #CS_LIFT
     sta cr_st,x
@@ -2153,6 +2217,9 @@ pl_bw_k
     jsr pl_beamoff
     cmp #BEAM_HALF+1
     bcs pl_bw_kn
+    lda pl_busy             ; one at a time
+    bne pl_bw_kn
+    inc pl_busy
     lda #CS_LIFT+1
     sta ck_st,x
 pl_bw_klift
@@ -2295,6 +2362,15 @@ pl_sn_cr
 pl_sn_crn
     dex
     bpl pl_sn_cr
+    lda st_state            ; the storm's rock: !
+    cmp #2
+    bne pl_sn_nr
+    lda sr_xl
+    ldy sr_xh
+    jsr pl_scanix
+    lda #("!"-32)*2
+    sta pl_scans,y
+pl_sn_nr
     lda pl_wx
     ldy pl_wxh
     jsr pl_scanix
@@ -2352,33 +2428,12 @@ pl_hd_sc
     inx
     cpx #3
     bne pl_hd_sc
-    ldx #0
+    lda #0                  ; (no countdown: the klaxon's the warning)
 pl_hd_t
-    lda tx_ptime,x
     sta hud_top,y
     iny
-    inx
-    cpx #7
+    cpy #15
     bne pl_hd_t
-    ; seconds: two digits (the math unit divides by 10)
-    lda pl_secs
-    sta M_N
-    lda #0
-    sta M_N+1
-    sta M_N+2
-    sta M_N+3
-    sta M_D+1
-    sta M_CTRL
-    lda #10
-    sta M_D
-    lda M_Q
-    jsr tx_digit
-    sta hud_top,y
-    iny
-    lda M_R
-    jsr tx_digit
-    sta hud_top,y
-    iny
     lda #0
     sta hud_top,y
     iny

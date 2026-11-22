@@ -66,6 +66,7 @@
   dim pl_arkv = $2771
   dim pl_arky = $2775
   dim pl_scans = $27C0
+  dim pl_tick = $271B
   rem zero page
   dim fireheld = a
   dim fire2held = b
@@ -220,6 +221,9 @@ end
   plotchars hud_bot2 3 80 11 10
   if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
+  rem the beam shimmers: its palette (P3) cycles, in the vertical blank
+  t = (pl_tick / 4) & 3
+  P3C2 = beamc2[t] : P3C3 = beamc3[t]
   if pl_state <> 3 then goto planetloop
   rem out of energy on the planet: the game's over
   if sp_energy = 0 then goto planetlost
@@ -257,6 +261,14 @@ spacepal
   P7C1 = $C8
 
   return
+
+  rem the tractor beam's colours, cycled (P3: edge, core)
+  data beamc2
+  $96, $98, $9A, $98
+end
+  data beamc3
+  $AC, $0E, $AE, $0F
+end
 
   rem P2 creatures (yellow, pink, cyan), P5 the ground (grass, soil, hills),
   rem the sky dark blue; the rest as deep space's
