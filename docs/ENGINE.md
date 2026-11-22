@@ -164,8 +164,10 @@ tools/test_planet.sh  # Select -> a planet: the autopilot catches, the planet en
 tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
                       # docking from near the Ark by pushing up < 2 s; undocking < 2 s
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
-tools/test_defense.sh # the planet's pulse: never hits above the guns' range, does in
-                      # it; full speed while it fires
+tools/test_defense.sh # the planet's pulse: never hits a docked shuttle, does in the
+                      # band; full speed while it fires
+tools/test_storm.sh   # docked: the Ark shoots the storm's rock down, unhurt; out:
+                      # the rock hits the Ark (16); the planet ends either way
 ```
 
 The deep-space tests set `sp_noplanet` ($23EF) so waves go straight on without

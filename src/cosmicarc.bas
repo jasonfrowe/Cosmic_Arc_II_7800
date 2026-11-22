@@ -218,7 +218,7 @@ end
   plotchars hud_top 0 0 0 20
   plotchars hud_bot 7 0 11 10
   plotchars hud_bot2 3 80 11 10
-  if sp_msglen then plotchars sp_msg 0 sp_msgx 5 sp_msglen
+  if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
   if pl_state <> 3 then goto planetloop
   rem out of energy on the planet: the game's over

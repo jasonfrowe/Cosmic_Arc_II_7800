@@ -255,7 +255,7 @@ the surface below.
 
 The Ark hangs over **one spot** of the planet and doesn't follow the shuttle.
 **Docking is easy, with a tunnel as in the RP6502 game.** A tunnel hangs under
-the Ark down to the shuttle's ceiling (line 80), which nothing else can climb
+the Ark down to the band's top (line 100); the Ark hangs low (line 64), so it's short. Nothing else can climb
 above. To dock, get under the Ark's doorway (within 8 px of its middle: twice
 the shuttle's width) and push **straight** up at the ceiling. The shuttle
 centres itself, flies up the tunnel and goes inside. Up and to a side is flying away, and never
@@ -270,11 +270,12 @@ ground scrolls under it.
 | | Numbers (knobs in `surface.asm`) |
 |---|---|
 | The surface | 1024 px round (6.4 screens), wraps; rolling ground in one character row |
-| The clock | 60 s, the klaxon from 15 s; time up with the shuttle out: its cargo lost, the Ark -12 |
+| The flight band | **lines 100-148, the guns' range** (as the RP6502 lander's zone): the towers are always a threat, and the shuttle never lands (the beam reaches the ground from it) |
+| The storm (the clock) | **as Cosmic Arc's**: 45 s, then the klaxon ("STORM COMING"), and 4 s later a rock comes at the Ark from the top, left or right (1 px a frame + 1/4 a level, at most 2). **Docked, the stick fires the Ark's laser** up, left or right (a fresh push a shot). Shot down: "ALL CLEAR", the planet's done. It hits: the Ark -16 ("ARC HIT"), a shuttle still out is lost with its cargo, the planet's done |
 | The beam | either button, with the shuttle low (line 104 or lower, as the RP6502 lander beams near the surface): **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame and **struggles**: a pixel across every 8 frames, dropping if it gets more than 5 px out. In testing, 70-85% of creatures in the beam were caught. Crates rise a quarter line a frame and halve the climb. |
 | Creatures | 2-4 a planet. **None ever hides.** A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, dodger dashes away; the glider (bobbing between lines 112 and 144) hurries; the skitterer is always quick and twitchy |
-| The defences | **as in Cosmic Arc (RP6502): a pulse to dodge, no bullets.** A tower every 128 px (one always in view); every gun moves as one, up and down between lines 100 and 146, **at a pace that rises with the stage** (the wave just cleared): stage 1 a line every 4 frames and a pulse every 2.5 s; each stage a frame a line faster (to 1) and 0.25 s sooner (to 0.75 s). Before each pulse the guns flash (24 frames' warning), then a pulse crosses the whole screen at their height for 6 frames. **A shuttle it touches is destroyed**: its cargo falls, the Ark loses 12, and launches another 2.5 s later. Above the guns' range (the shuttle flies up to line 80) is safe, but the beam only works low: catching is timing the beam between pulses |
-| All caught | the planet's done: the Ark's energy full again, 1,000 points |
+| The defences | **as in Cosmic Arc (RP6502): a pulse to dodge, no bullets.** A tower every 128 px (one always in view); every gun moves as one, up and down between lines 100 and 146, **at a pace that rises with the level** (as Cosmic Arc's: the level goes up only when every creature on a planet is caught): level 0 a line every 4 frames and a pulse every 2.5 s; each level a frame a line faster (to 1) and 0.25 s sooner (to 0.75 s). (The RP6502 game: 4 to 1, 120 to 30 frames; ours starts gentler.) Before each pulse the guns flash (24 frames' warning), then a pulse crosses the whole screen at their height for 6 frames. **A shuttle it touches is destroyed**: its cargo falls, the Ark loses 12, and launches another 2.5 s later. Above the guns' range (the shuttle flies up to line 80) is safe, but the beam only works low: catching is timing the beam between pulses |
+| All caught | (and docked) the planet's done: the Ark's energy full again, 1,000 points, the next level |
 
 (Earlier versions had a stun pulse, burrowers and blinkers that hid (it read
 as creatures vanishing), and shuttle blasters aimed with the stick that moved it,

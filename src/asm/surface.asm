@@ -33,13 +33,18 @@
 BANK_PLANET = 3
 
 ; ---- knobs ----
-PL_TIME   = 60      ; seconds on the surface
-PL_KLAXON = 15      ; the klaxon from here
+PL_TIME   = 45      ; seconds until the storm (as Cosmic Arc's: the klaxon,
+                    ;   then a rock comes at the Ark: be back aboard)
+STORM_DELAY = 240   ; frames from the klaxon to the rock
+ROCK_DMG  = 16      ; the rock hitting the Ark costs this
+ROCK_SPD0 = $0100   ; the rock's speed (8.8 px a frame): 1 + 1/4 a level,
+ROCK_SPDL = $40     ;   at most 2
+AB_LIFE   = 40      ; frames an Ark bolt lasts
 PL_ACC    = $20     ; shuttle acceleration across (8.8 pixels a frame)
 PL_VMAX   = $0200   ; top speed across
 BEAM_HALF = 5       ; the beam takes a creature whose middle is this near,
                     ;   and drops one that wriggles further out
-BEAM_MINY = 104     ; the beam works only with the shuttle this low or lower
+BEAM_MINY = 100     ; the beam works only with the shuttle this low or lower
                     ;   (the RP6502 game's lander beams near the surface; a
                     ;   long beam costs too many sprites)
 NEAR_X    = 28      ; a low shuttle this near across sets creatures off
@@ -50,12 +55,14 @@ CR_STUN   = 150     ; frames a creature stays stunned
 TT_FREEZE = 200     ; frames a turret stays frozen
 DF_TOP    = 100     ; the guns' highest line, and lowest (they move as one)
 DF_BOT    = 146
-DF_STEP1  = 4       ; frames a line the guns move on the first stage; one
-                    ;   less each stage after, to 1
-DF_PERIOD1 = 150    ; frames between pulses on the first stage (2.5 s);
-DF_PERIODSTEP = 15  ;   this much less each stage after,
+; The pace rises with the level (sp_level), as Cosmic Arc's (RP6502): 4
+; frames a step, one less a level, to 1; pulses 120 frames apart, 15 less a
+; level, to 30. Ours: the same steps, pulses from 150 (to 45): our guns'
+; range is a little shorter, and 120 felt too quick to start.
+DF_STEP1  = 4       ; frames a line the guns move at level 0
+DF_PERIOD1 = 150    ; frames between pulses at level 0 (2.5 s),
+DF_PERIODSTEP = 15  ;   this much less each level after,
 DF_PERIODMIN = 45   ;   to no less than this (0.75 s)
-; (the stage: sp_wave, the wave just cleared; the first planet is stage 1)
 DF_WARN   = 24      ; frames the guns flash before they fire
 DF_PULSE  = 6       ; frames a pulse lasts
 SHUTTLE_DMG = 12    ; the shuttle shot down costs the Ark this
@@ -63,9 +70,10 @@ PL_REBUILD = 150    ; frames until the Ark launches another
 CR_PAY    = 12      ; Ark energy for a creature delivered
 LOST_DMG  = 12      ; ... lost at time up with the shuttle out
 
-PL_DOCKY  = 58      ; the shuttle's centre, docked in the Ark's bay
-PL_YMIN   = 80      ; the ceiling: the highest it flies (the tunnel's foot)
-TUNNEL_Y  = 56      ; the tunnel under the Ark: lines 56-79 (two pieces)
+PL_DOCKY  = 80      ; the shuttle's centre, docked in the Ark's bay
+PL_YMIN   = 100     ; the free-flight band, lines 100-148: the guns' range
+PL_YMAX   = 148     ;   (the towers always a threat; it never lands)
+TUNNEL_Y  = 86      ; the tunnel under the Ark: lines 86-101 (one piece)
 GROUND_Y  = 152     ; a creature's top on the highest ground (the surface
                     ;   at line 160; it's 160-168: pl_ground)
 GLIDE_Y   = 124     ; a glider starts here, and bobs between lines 112 and 144
@@ -98,7 +106,8 @@ PL_DONE   = 3
 PL_ARRIVE = 4       ; the Ark comes down into orbit (the shuttle aboard)
 PL_DEPART = 5       ; ... and climbs away when it's over
 PL_LOST   = 6       ; the Ark's energy ran out: the game's over
-PL_ARKY   = 32      ; the Ark's line, in orbit
+PL_ARKY   = 64      ; the Ark's line, in orbit (lower: a short tunnel)
+ARK_MIDY  = PL_ARKY+15  ; its hull's middle line
 ; creature states
 CS_GROUND = 0
 CS_AIR    = 1       ; jumping, falling, or a glider flying
@@ -213,6 +222,23 @@ df_py     = $27BE   ; its line
 df_period = $27BF
 df_step   = $27D0   ; frames a line, this stage
 df_tick   = $27D1
+st_state  = $27D2   ; the storm: 0 not yet, 1 the klaxon, 2 the rock, 3 over
+st_tm     = $27D3
+sr_xl     = $27D4   ; the rock: world x, lo hi fraction
+sr_xh     = $27D5
+sr_xf     = $27D6
+sr_y      = $27D7
+sr_yf     = $27D8
+sr_dir    = $27D9   ; 0 down from the top, 1 in from the left, 2 from the right
+sr_sx     = $27DA   ; its screen x, and on the screen
+sr_vis    = $27DB
+ab_t      = $27DC   ; the Ark's bolt: frames left (0 none)
+ab_x      = $27DD   ; (screen: docked, the camera's on the Ark)
+ab_y      = $27DE
+ab_d      = $27DF   ; its frame: 0 up, 2 right, 6 left
+ab_held   = $27E0   ; the stick still held from the last shot
+sr_spdl   = $27E1   ; the rock's speed, this level
+sr_spdh   = $27E2
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -369,14 +395,32 @@ pl_new_t
     lda #0
     sta df_dir
     sta df_pulse
-    ; this stage's pace: stage = sp_wave (1 on the first planet)
-    lda sp_wave
-    bne pl_new_lv
-    lda #1
-pl_new_lv
-    sec
-    sbc #1                  ; stages after the first
+    ; this level's pace (as Cosmic Arc's: the level goes up only when every
+    ; creature on a planet is caught; it starts at 0)
+    lda sp_level
     sta pl_t0
+    ; the rock's speed: ROCK_SPD0 + ROCK_SPDL a level, at most 2 px a frame
+    sta M_A
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    lda #ROCK_SPDL
+    sta M_B
+    clc
+    lda M_P
+    adc #<ROCK_SPD0
+    sta sr_spdl
+    lda M_P+1
+    adc #>ROCK_SPD0
+    sta sr_spdh
+    cmp #2
+    bcc pl_new_rs
+    lda #2
+    sta sr_spdh
+    lda #0
+    sta sr_spdl
+pl_new_rs
     lda #DF_STEP1           ; frames a line: DF_STEP1 - stages after, >= 1
     sec
     sbc pl_t0
@@ -508,6 +552,7 @@ pl_fr_r
     rts
 pl_fr_play
     jsr pl_clock
+    jsr pl_storm
     jsr pl_shuttle
     jsr pl_camera
     jsr pl_creatures
@@ -521,50 +566,307 @@ pl_fr_play
 
 ; ---- the clock ----
 pl_clock
+    lda st_state            ; (counts only until the storm)
+    bne pl_ck_r
     dec pl_sub
     bne pl_ck_r
     lda #60
     sta pl_sub
     dec pl_secs
-    bne pl_ck_k
-    ; time's up
-    lda #PL_TIMEUP
-    sta pl_state
-    lda #150
-    sta pl_endtm
-    lda #0
-    sta pl_beam
-    lda pl_st
-    cmp #PL_FLYING
-    bne pl_ck_tu
-    jsr pl_drop             ; the shuttle's still out: what it held is lost,
-    lda #LOST_DMG           ; and it costs the Ark
-    jsr pl_arkdmg
-pl_ck_tu
-    lda #<tx_timeup
-    ldy #>tx_timeup
-    ldx #7
-    jsr sp_msgcopy
-    lda #0
-    sta pl_msgtm
-    rts
-pl_ck_k
-    lda pl_secs
-    cmp #PL_KLAXON+1
-    bcs pl_ck_r
-    lda #SFX_KLAXON         ; the klaxon, each second
-    jsr sfx
-    lda pl_secs
-    cmp #PL_KLAXON
     bne pl_ck_r
-    lda #<tx_warning
-    ldy #>tx_warning
-    ldx #7
+    ; the storm's coming (as Cosmic Arc's): the klaxon, then a rock at the
+    ; Ark. Be back aboard to shoot it down.
+    lda #1
+    sta st_state
+    lda #STORM_DELAY
+    sta st_tm
+    lda #<tx_storm
+    ldy #>tx_storm
+    ldx #12
     jsr sp_msgcopy
-    lda #90
+    lda #0
     sta pl_msgtm
 pl_ck_r
     rts
+
+; ---- the storm: the klaxon; the rock; the Ark's laser (docked) ----
+pl_storm
+    jsr pl_arkfire
+    lda st_state
+    cmp #1
+    bne pl_st_rock
+    ; the klaxon, twice a second, until the rock comes
+    lda pl_tick
+    and #31
+    bne pl_st_k
+    lda #SFX_KLAXON
+    jsr sfx
+pl_st_k
+    dec st_tm
+    bne pl_st_r
+    ; the rock: from the top, the left or the right (never below)
+    lda #2
+    sta st_state
+    lda #0
+    sta sp_msglen
+    sta sr_xf
+    sta sr_yf
+    lda M_RND
+    and #3
+    cmp #3
+    bne pl_st_d
+    lda #0
+pl_st_d
+    sta sr_dir
+    beq pl_st_top
+    cmp #1
+    beq pl_st_left
+    lda #<(ARK_WX+80)       ; from the right
+    sta sr_xl
+    lda #>(ARK_WX+80)
+    sta sr_xh
+    lda #ARK_MIDY-8
+    sta sr_y
+    rts
+pl_st_left
+    lda #<(ARK_WX-88)
+    sta sr_xl
+    lda #>(ARK_WX-88)
+    sta sr_xh
+    lda #ARK_MIDY-8
+    sta sr_y
+    rts
+pl_st_top
+    lda #<(ARK_WX-4)
+    sta sr_xl
+    lda #>(ARK_WX-4)
+    sta sr_xh
+    lda #24
+    sta sr_y
+pl_st_r
+    rts
+pl_st_rock
+    cmp #2
+    bne pl_st_r
+    ; it comes straight at the Ark
+    lda sr_dir
+    bne pl_st_side
+    clc
+    lda sr_yf
+    adc sr_spdl
+    sta sr_yf
+    lda sr_y
+    adc sr_spdh
+    sta sr_y
+    cmp #PL_ARKY+6-16+1     ; its foot reaching the Ark's top
+    bcc pl_st_hit_far662
+    jmp pl_st_hit
+pl_st_hit_far662
+    jmp pl_st_sx
+pl_st_side
+    cmp #1
+    bne pl_st_fromr
+    clc
+    lda sr_xf
+    adc sr_spdl
+    sta sr_xf
+    lda sr_xl
+    adc sr_spdh
+    sta sr_xl
+    lda sr_xh
+    adc #0
+    and #3
+    sta sr_xh
+    ; reached the Ark's left edge (ARK_WX - 24, the rock 8 wide)?
+    sec
+    lda sr_xl
+    sbc #<(ARK_WX-24-8)
+    lda sr_xh
+    sbc #>(ARK_WX-24-8)
+    bcc pl_st_hit_far684
+    jmp pl_st_hit
+pl_st_hit_far684
+    jmp pl_st_sx
+pl_st_fromr
+    sec
+    lda sr_xf
+    sbc sr_spdl
+    sta sr_xf
+    lda sr_xl
+    sbc sr_spdh
+    sta sr_xl
+    lda sr_xh
+    sbc #0
+    and #3
+    sta sr_xh
+    ; reached the Ark's right edge (ARK_WX + 24)?
+    sec
+    lda sr_xl
+    sbc #<(ARK_WX+24)
+    lda sr_xh
+    sbc #>(ARK_WX+24)
+    bcc pl_st_hit
+pl_st_sx
+    ; on the screen? (and the Ark's bolt against it)
+    lda #0
+    sta sr_vis
+    lda sr_xl
+    ldy sr_xh
+    jsr pl_scrx
+    bcc pl_st_r2
+    sta sr_sx
+    inc sr_vis
+    lda ab_t
+    beq pl_st_r2
+    clc
+    lda ab_x
+    adc #2
+    sec
+    sbc sr_sx
+    cmp #8
+    bcs pl_st_r2
+    clc
+    lda ab_y
+    adc #2
+    sec
+    sbc sr_y
+    cmp #16
+    bcs pl_st_r2
+    ; shot down: the storm's over, the planet's done
+    lda #0
+    sta ab_t
+    lda #3
+    sta st_state
+    lda #$01                ; 100 points
+    sta sc_m
+    lda #0
+    sta sc_l
+    jsr sc_add
+    lda #SFX_BOOM
+    jsr sfx
+    lda #<tx_allclear
+    ldy #>tx_allclear
+    ldx #9
+    jsr sp_msgcopy
+    jmp pl_st_end
+pl_st_r2
+    rts
+pl_st_hit
+    ; it hit the Ark: the Ark pays; a shuttle still out is lost with its cargo
+    lda #3
+    sta st_state
+    lda pl_st
+    cmp #PL_FLYING
+    bne pl_st_h2
+    jsr pl_drop
+pl_st_h2
+    lda #<tx_archit
+    ldy #>tx_archit
+    ldx #7
+    jsr sp_msgcopy
+    lda #ROCK_DMG
+    jsr pl_arkdmg
+    lda pl_state            ; (out of energy: lost, the game's over)
+    bne pl_st_r2
+pl_st_end
+    lda #PL_TIMEUP          ; the planet's done: the Ark leaves
+    sta pl_state
+    lda #120
+    sta pl_endtm
+    lda #0
+    sta pl_beam
+    sta pl_msgtm
+    rts
+
+; the Ark's laser: docked, the stick fires it up, left or right (a fresh
+; push each shot, one bolt at a time)
+pl_arkfire
+    lda ab_t                ; a bolt flying
+    beq pl_af_new
+    dec ab_t
+    beq pl_af_new
+    lda ab_d
+    bne pl_af_side
+    sec
+    lda ab_y
+    sbc #5
+    sta ab_y
+    cmp #20
+    bcs pl_af_new
+    lda #0
+    sta ab_t
+    beq pl_af_new
+pl_af_side
+    cmp #2
+    bne pl_af_left
+    clc
+    lda ab_x
+    adc #3
+    sta ab_x
+    cmp #157
+    bcc pl_af_new
+    lda #0
+    sta ab_t
+    beq pl_af_new
+pl_af_left
+    sec
+    lda ab_x
+    sbc #3
+    sta ab_x
+    bcs pl_af_new
+    lda #0
+    sta ab_t
+pl_af_new
+    ldx sp_joy
+    cpx #8
+    bne pl_af_st
+    lda #0                  ; let go: the next push fires
+    sta ab_held
+    rts
+pl_af_st
+    lda pl_st
+    cmp #PL_DOCKED
+    bne pl_af_r
+    lda ab_held
+    bne pl_af_r
+    lda ab_t
+    bne pl_af_r
+    cpx #0
+    beq pl_af_up
+    cpx #2
+    beq pl_af_right
+    cpx #6
+    beq pl_af_lft
+pl_af_r
+    rts
+pl_af_up
+    lda #78
+    sta ab_x
+    lda #PL_ARKY+2
+    sta ab_y
+    lda #0
+    beq pl_af_go
+pl_af_right
+    lda #104
+    sta ab_x
+    lda #ARK_MIDY-2
+    sta ab_y
+    lda #2
+    bne pl_af_go
+pl_af_lft
+    lda #52
+    sta ab_x
+    lda #ARK_MIDY-2
+    sta ab_y
+    lda #6
+pl_af_go
+    sta ab_d
+    lda #AB_LIFE
+    sta ab_t
+    lda #1
+    sta ab_held
+    lda #SFX_ZAP
+    jmp sfx
 
 ; ---- the ground (tools/planet.py: pl_hd, pl_hs a column) ----
 ; world x (A lo, Y hi) -> A = the surface's line there (160-168). Uses Y.
@@ -888,6 +1190,10 @@ pl_sh_ud0
     sta pl_gnd
     sec
     sbc #8
+    cmp #PL_YMAX            ; the band's foot: it never lands
+    bcc pl_sh_gk
+    lda #PL_YMAX
+pl_sh_gk
     sta pl_t0
     cmp pl_y
     bcs pl_sh_ud
@@ -1840,6 +2146,9 @@ pl_bw_k
     beq pl_bw_kn
     lda ck_vis,x
     beq pl_bw_kn
+    lda ck_y,x              ; only from under the shuttle (one above it
+    cmp pl_y                ;  rose for ever: into the sky)
+    bcc pl_bw_kn
     lda ck_sx,x
     jsr pl_beamoff
     cmp #BEAM_HALF+1
@@ -1939,6 +2248,7 @@ pl_checkall
     sta pl_state
     lda #180
     sta pl_endtm
+    inc sp_level            ; every one caught: the next level (pace)
     lda pl_killed           ; every one caught (none shot): the bonus
     bne pl_ca_nb
     lda #EN_MAX             ; the Ark's energy full again (as in the original)
@@ -2281,6 +2591,29 @@ pl_dw_btop
     jsr pl_beampc
 pl_dw_nob
 
+    ; the storm's rock, and the Ark's bolt
+    lda st_state
+    cmp #2
+    bne pl_dw_nr
+    lda sr_vis
+    beq pl_dw_nr
+    lda sr_sx
+    sta temp4
+    lda sr_y
+    sta temp5
+    lda #0
+    PLOT rock_l, 4
+pl_dw_nr
+    lda ab_t
+    beq pl_dw_nab
+    lda ab_x
+    sta temp4
+    lda ab_y
+    sta temp5
+    lda ab_d
+    PLOT bolt0, 3
+pl_dw_nab
+
     ; the Ark's tunnel, under it in orbit (where the shuttle docks)
     lda pl_arkv
     beq pl_dw_nt
@@ -2293,12 +2626,6 @@ pl_dw_nob
     sta pl_t0
     sta temp4
     lda #TUNNEL_Y
-    sta temp5
-    lda #0
-    PLOT tunnel, 1
-    lda pl_t0
-    sta temp4
-    lda #TUNNEL_Y+8
     sta temp5
     lda #0
     PLOT tunnel, 1

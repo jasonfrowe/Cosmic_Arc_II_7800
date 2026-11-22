@@ -145,6 +145,8 @@ sp_msgtm  = $24F1   ; frames a timed message has left (0: it stays)
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
 rk_hp     = $23F2   ; [NR] hits left: the Ark's bolts do 2, the saucer's 1
 sp_arky   = $23FC   ; the Ark's sprite line (ARK_Y once it's in place)
+sp_level  = $23FD   ; the level: up when every creature on a planet is caught
+                    ;   (the planet's defences and storm pace from it)
 sp_noplanet = $23EF ; not 0: waves go straight on, no planets (tests)
 
 ; ---------------------------------------------------------------------------
@@ -157,6 +159,7 @@ sp_new
     sta sp_score+2
     sta sp_wave
     sta sp_wavebcd
+    sta sp_level
     sta sp_aim
     sta sp_flash
     jsr sp_clear

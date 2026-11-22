@@ -1,5 +1,6 @@
--- Defence test: the shuttle hovers at a line (HOVER); count pulses, shuttles
--- lost, and the planet loop's rate. tools/test_defense.sh
+-- Defence test: the shuttle hovers at a line (HOVER; 0: stays docked); count
+-- pulses, shuttles lost, and the planet loop's rate. The clock is held (no
+-- storm). tools/test_defense.sh
 -- the defence: the shuttle sits at a height; how often pulses kill it; the
 -- loop's rate while pulses fire
 local fields = {}
@@ -14,9 +15,10 @@ emu.register_frame_done(function()
   local held = {}
   if f >= 290 and f <= 296 then held["Select"] = true end
   if f > 340 and m:read_u8(0x2714) == 0 then
-    m:write_u8(0x2386, 96); m:write_u8(0x2712, 50)
+    m:write_u8(0x2386, 96); m:write_u8(0x2712, 40)
     local st, y = m:read_u8(0x2709), m:read_u8(0x2707)
-    if st == 0 then held["P1 Down"] = true
+    if Y == 0 then
+    elseif st == 0 then held["P1 Down"] = true
     elseif m:read_u8(0x2777) == 0 then
       if f < 420 then held["P1 Right"] = true end
       if y < Y then held["P1 Down"] = true elseif y > Y then held["P1 Up"] = true end
