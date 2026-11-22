@@ -243,23 +243,24 @@ get at them. Their centres stay inside the playfield (`pr_keepin`).
 The Ark holds high orbit at the top of the screen and the shuttle flies
 the surface below.
 
-### 5.0 As built (M3)
+### 5.0 As built (M3, after playtesting)
 
-The Ark hangs in orbit at the top of the screen and follows you round. The
-shuttle (the saucer) stays at the screen's centre while the ground scrolls under
-it. Down takes it out of the Ark's bay. Flying up into the Ark docks it and
-hands over what it holds: a creature (+12 Ark energy, 500 points) or an ore
-crate (200 points). Each cleared deep-space wave goes down to a planet,
-and the game returns to space when the planet's over.
+The Ark hangs over **one spot** of the planet. It doesn't follow the shuttle,
+which has to come back to it: under the Ark it can fly up into the bay to dock
+and hand over its cargo (a creature: +12 Ark energy, 500 points; an ore crate:
+200 points). Anywhere else it can't climb to the Ark's height. The shuttle
+(the saucer) stays at the screen's centre while the ground scrolls under it.
+Each cleared deep-space wave goes down to a planet, and the game returns to
+space when it's over.
 
-| | M3 numbers (knobs in `surface.asm`) |
+| | Numbers (knobs in `surface.asm`) |
 |---|---|
-| The surface | 1024 px round (6.4 screens), wraps |
-| The clock | 60 s, the klaxon from 15 s; time up with the shuttle out loses what it held and costs the Ark 12 |
-| Creatures | 2-4 a planet, kinds at random: walker, hopper, runner (flees a low shuttle or its beam), burrower (ducks underground), glider (flies), blinker (vanishes and turns up to 64 px away) |
-| The beam | takes a creature whose middle is within 6 px; lifts it 1 line a frame (a crate half that, and a crate halves the climb too); let go and it falls |
-| Stun pulse | button 2, every 2.5 s: creatures within 36 px stunned 2.5 s, turrets frozen 3.3 s |
-| Turrets | two towers; a shot every 2-3 s at a shuttle within 72 px across, its aim straying a little; a hit knocks the cargo loose and costs the Ark 4 |
+| The surface | 1024 px round (6.4 screens), wraps; the ground is one character row |
+| The clock | 60 s, the klaxon from 15 s; time up with the shuttle out: its cargo lost, the Ark -12 |
+| The beam | button 1: **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame; unstunned, it **struggles** (a pixel across every 4 frames) and drops if it gets more than 5 px out (unstunned walkers and runners got free about 3 times in 4 in testing). Crates rise a quarter line a frame and halve the climb. |
+| Stun pulse | button 2, every 2.5 s: creatures within 36 px stunned 2.5 s (they don't react or struggle), turrets frozen 3.3 s. **Stun, then beam.** |
+| Creatures | 2-4 a planet. A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, burrower digs in, glider (always bobbing between lines 96 and 136) hurries, blinker teleports when the beam touches it |
+| Turrets | **a tower every 128 px** (8; one always in view). Each on the screen fires every 45-76 frames at the flying shuttle, aim straying a little. **A hit destroys the shuttle**: its cargo falls, the Ark loses 12, and launches another 2.5 s later |
 | All caught | the Ark's energy full again, 1,000 points |
 
 On a planet the Ark can't drop below 1 energy: only deep space ends the game.

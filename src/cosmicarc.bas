@@ -61,6 +61,8 @@
   dim pl_state = $2714
   dim pl_fine = $2719
   dim pl_col = $271A
+  dim pl_arksx = $2770
+  dim pl_arkv = $2771
   rem zero page
   dim fireheld = a
   dim fire2held = b
@@ -197,10 +199,13 @@ end
   if sp_energy < 49 then P7C1 = $1C
   if sp_energy < 25 then P7C1 = $36
   clearscreen
-  plotsprite ark 1 56 32
-  rem (the map width as a number: a name is taken for a variable; = PL_MAPW)
-  plotmap pl_map 5 pl_fine 9 21 2 pl_col 0 149
-  plotchars '----------------' 5 16 1
+  rem the Ark hangs over its own spot of the planet
+  if pl_arkv then plotsprite ark 1 pl_arksx 32
+  rem the ground: one row (zone 10). (The map width as a number: a name is
+  rem taken for a variable; = PL_MAPW)
+  plotmap pl_map 5 pl_fine 10 21 1 pl_col 0 149
+  rem the scanner's line: + a tower (one every 128 pixels), # the Ark
+  plotchars '-+-+-+-+#+-+-+-+' 5 16 1
   asm
   jsr pl_draw
 end

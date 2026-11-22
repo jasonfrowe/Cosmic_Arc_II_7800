@@ -2,17 +2,23 @@
 ; The planet (M3): Cosmic Arc's surface run, on a horizontally scrolling
 ; planet that wraps round (1024 pixels: tools/planet.py).
 ;
-; The Ark hangs in orbit at the top of the screen (it follows you round).
-; The shuttle (the saucer) sits at the screen's centre across: the ground
-; scrolls under it. Down launches it from the Ark; it flies up into the Ark
-; to dock and hand over what it carries.
-;   button 1  the tractor beam: a creature (or ore crate) under the shuttle
-;             rises into it while the beam holds; let go and it drops
-;   button 2  the stun pulse: creatures and turrets near the shuttle freeze
-; Creatures: walker, hopper, runner (flees the beam), burrower, glider,
-; blinker (teleports). Turrets ride towers and shoot at the shuttle: a hit
-; knocks its cargo loose. The clock: 60 s; at 15 the klaxon; at 0, time's
-; up (a shuttle still out costs the Ark energy). Every creature delivered:
+; The Ark hangs in orbit over one spot of the planet (it doesn't follow:
+; the shuttle has to come back to it). The shuttle (the saucer) sits at the
+; screen's centre across: the ground scrolls under it. Down launches it
+; from the Ark; under the Ark it flies up into it to dock and hand over what
+; it carries. It can't climb to the Ark's height anywhere else.
+;   button 1  the tractor beam: the shuttle stops dead, and a creature (or
+;             ore crate) under it rises, slowly, while the beam holds; a
+;             creature struggles, and one that wriggles out of the beam drops
+;   button 2  the stun pulse: creatures and turrets near the shuttle freeze;
+;             a stunned creature neither reacts nor struggles
+; Creatures react to a low shuttle overhead: the walker turns about at
+; random, the hopper jumps away, the runner sprints, the burrower digs in,
+; the glider bobs, and the blinker teleports when the beam touches it.
+; Turrets: a tower every 128 pixels (one's always in view); they shoot at
+; the shuttle: a hit destroys it (its cargo falls) and costs the Ark energy;
+; the Ark launches another. The clock: 60 s; at 15 the klaxon; at 0, time's
+; up (a shuttle still out is lost, at a cost). Every creature delivered:
 ; the Ark's energy full again.
 ;
 ;   pl_new    a planet: creatures, crates, turrets; the shuttle docked
@@ -31,28 +37,34 @@ PL_TIME   = 60      ; seconds on the surface
 PL_KLAXON = 15      ; the klaxon from here
 PL_ACC    = $20     ; shuttle acceleration across (8.8 pixels a frame)
 PL_VMAX   = $0200   ; top speed across
-PL_LIFT   = 1       ; lines a frame a creature rises in the beam
-BEAM_HALF = 6       ; the beam takes a creature whose middle is this near
+BEAM_HALF = 5       ; the beam takes a creature whose middle is this near,
+                    ;   and drops one that wriggles further out
+NEAR_X    = 28      ; a low shuttle this near across sets creatures off
+NEAR_Y    = 96      ;   (lower than this line)
 PL_STUNCD = 150     ; frames between stun pulses
 PL_STUNR  = 36      ; a pulse reaches this far across (and down)
 CR_STUN   = 150     ; frames a creature stays stunned
 TT_FREEZE = 200     ; frames a turret stays frozen
-TT_GAP    = 120     ; frames between a turret's shots (+ up to 63)
-TT_SPREAD = 31      ; its aim strays up to +-TT_SPREAD/2 (of 256 a turn)
-TT_RANGE  = 72      ; it shoots at a shuttle this near across
+TT_GAP    = 45      ; frames between a turret's shots (+ up to 31)
+TT_SPREAD = 15      ; its aim strays up to +-TT_SPREAD/2 (of 256 a turn)
 TS_SPEED  = $0200
-TS_DMG    = 4       ; a turret shot costs the Ark this
+SHUTTLE_DMG = 12    ; the shuttle shot down costs the Ark this
+PL_REBUILD = 150    ; frames until the Ark launches another
 CR_PAY    = 12      ; Ark energy for a creature delivered
 LOST_DMG  = 12      ; ... lost at time up with the shuttle out
 
 PL_DOCKY  = 58      ; the shuttle's centre, docked in the Ark's bay
-PL_YMAX   = 146
-GROUND_Y  = 149     ; a creature's top, standing (feet on the surface, 157)
+PL_YMIN   = 72      ; the highest it flies, away from the Ark
+PL_YMAX   = 152
+GROUND_Y  = 152     ; a creature's top, standing (feet on the surface, 160)
 GLIDE_Y   = 112
+ARK_WX    = 512     ; the Ark's centre on the planet
+ARK_DOCKX = 8       ; the shuttle docks within this of it, across
 
 ; shuttle
 PL_DOCKED = 0
 PL_FLYING = 1
+PL_DEAD   = 2       ; shot down: the Ark builds another
 ; pl_state
 PL_PLAY   = 0
 PL_CLEAR  = 1
@@ -78,8 +90,8 @@ HOLD_ORE  = 2
 
 NCR       = 4
 NCK       = 2
-NTT       = 2
-NTS       = 4
+NTT       = 8       ; towers, 128 apart
+NTS       = 6
 
 ; ---- RAM ($2700-$27FF) ----
 pl_wx     = $2700   ; the shuttle's world x: lo, hi, fraction
@@ -134,26 +146,32 @@ ck_y      = $2766
 ck_yf     = $2768
 ck_sx     = $276A
 ck_vis    = $276C
-tt_xl     = $2770   ; [NTT]
-tt_xh     = $2772
-tt_y      = $2774
-tt_dir    = $2776
-tt_cool   = $2778
-tt_frz    = $277A
-tt_sx     = $277C
-tt_vis    = $277E
-ts_t      = $2780   ; [NTS]
-ts_xl     = $2784
-ts_xh     = $2788
-ts_xf     = $278C
-ts_y      = $2790
-ts_yf     = $2794
-ts_vxl    = $2798
-ts_vxh    = $279C
-ts_vyl    = $27A0
-ts_vyh    = $27A4
-ts_sx     = $27A8
-ts_vis    = $27AC
+; turrets and their shots: $2200-$2287
+tt_xl     = $2200   ; [NTT]
+tt_xh     = $2208
+tt_y      = $2210
+tt_dir    = $2218
+tt_cool   = $2220
+tt_frz    = $2228
+tt_sx     = $2230
+tt_vis    = $2238
+ts_t      = $2240   ; [NTS]
+ts_xl     = $2246
+ts_xh     = $224C
+ts_xf     = $2252
+ts_y      = $2258
+ts_yf     = $225E
+ts_vxl    = $2264
+ts_vxh    = $226A
+ts_vyl    = $2270
+ts_vyh    = $2276
+ts_sx     = $227C
+ts_vis    = $2282
+pl_arksx  = $2770   ; the Ark's screen x, and on the screen (the BASIC)
+pl_arkv   = $2771
+pl_dead   = $2772   ; frames until a new shuttle
+pl_boomx  = $2773   ; where it went down
+pl_boomy  = $2774
 pl_t0     = $27B0
 pl_t1     = $27B1
 pl_t2     = $27B2
@@ -161,25 +179,20 @@ pl_i      = $27B3
 
 ; ---------------------------------------------------------------------------
 pl_new
-    ldx #$4F                ; clear $2700-$274F... and the rest below
+    ldx #0                  ; clear $2700-$27FF and $2200-$22FF
     lda #0
 pl_new_c
     sta $2700,x
-    sta $2750,x
-    dex
-    bpl pl_new_c
-    ldx #$5F
-pl_new_c2
-    sta $27A0,x
-    dex
-    bpl pl_new_c2
+    sta $2200,x
+    inx
+    bne pl_new_c
     lda #PL_DOCKED
     sta pl_st
     lda #PL_DOCKY
     sta pl_y
-    lda #<512               ; the shuttle starts between the towers
+    lda #<ARK_WX            ; the shuttle starts in the Ark
     sta pl_wx
-    lda #>512
+    lda #>ARK_WX
     sta pl_wxh
     lda #PL_TIME
     sta pl_secs
@@ -250,21 +263,33 @@ pl_new_k
     sta ck_y,y
     dey
     bpl pl_new_k
-    ; turrets: towers at 256 and 768
+    ; turrets: a tower every 128 pixels from 64, at different heights
+    ldx #NTT-1
+pl_new_t
+    txa
+    lsr                     ; x = 64 + 128 * n: lo = (n & 1) * 128 + 64
     lda #0
-    sta tt_xl
-    sta tt_xl+1
-    lda #1
-    sta tt_xh
-    lda #3
-    sta tt_xh+1
-    lda #120
-    sta tt_y
-    lda #100
-    sta tt_y+1
-    lda #60
-    sta tt_cool
-    sta tt_cool+1
+    ror
+    ora #64
+    sta tt_xl,x
+    txa
+    lsr
+    sta tt_xh,x
+    lda M_RND
+    and #31
+    clc
+    adc #100
+    sta tt_y,x
+    lda M_RND
+    and #1
+    sta tt_dir,x
+    lda M_RND
+    and #63
+    clc
+    adc #60
+    sta tt_cool,x
+    dex
+    bpl pl_new_t
     jsr pl_camera
     lda #MUS_TITLE          ; (the Arc theme, for now)
     jsr mu_switch
@@ -373,6 +398,47 @@ pl_shuttle
     beq pl_sh_h
     dec pl_hit
 pl_sh_h
+    lda pl_st
+    cmp #PL_DEAD
+    bne pl_sh_alive
+    dec pl_dead             ; shot down: the Ark launches another
+    bne pl_sh_dr
+    lda #PL_DOCKED
+    sta pl_st
+    lda #PL_DOCKY
+    sta pl_y
+    lda #<ARK_WX
+    sta pl_wx
+    lda #>ARK_WX
+    sta pl_wxh
+pl_sh_dr
+    rts
+pl_sh_alive
+    cmp #PL_DOCKED
+    bne pl_sh_out
+    ldx sp_joy              ; docked: only down (out of the bay)
+    cpx #8
+    bcs pl_sh_dr
+    lda pl_updown,x
+    bmi pl_sh_dr
+    beq pl_sh_dr
+    lda #PL_FLYING
+    sta pl_st
+    lda #0
+    sta pl_vxl
+    sta pl_vxh
+    rts
+pl_sh_out
+    ; the beam on: the shuttle stops dead
+    lda sp_fire
+    beq pl_sh_free
+    lda pl_hold
+    bne pl_sh_free
+    lda #0
+    sta pl_vxl
+    sta pl_vxh
+    rts
+pl_sh_free
     ldx sp_joy
     ; across: accelerate the stick's way, or slow down
     cpx #8
@@ -465,18 +531,12 @@ pl_sh_mp
     lda pl_updown,x
     beq pl_sh_r
     bmi pl_sh_up
-    ; down: out of the bay, and down to just above the ground
-    lda #PL_FLYING
-    sta pl_st
-    lda pl_y
+    lda pl_y                ; down, to just above the ground
     cmp #PL_YMAX
     bcs pl_sh_r
     inc pl_y
     rts
 pl_sh_up
-    lda pl_st
-    cmp #PL_FLYING
-    bne pl_sh_r
     lda pl_hold             ; a crate's heavy: half speed up
     cmp #HOLD_ORE
     bne pl_sh_u1
@@ -485,6 +545,14 @@ pl_sh_up
     and #1
     beq pl_sh_r
 pl_sh_u1
+    ; under the Ark it may go on up into it; anywhere else, no higher
+    ; than PL_YMIN
+    jsr pl_underark
+    bcs pl_sh_u2
+    lda pl_y
+    cmp #PL_YMIN+1
+    bcc pl_sh_r
+pl_sh_u2
     dec pl_y
     lda pl_y
     cmp #PL_DOCKY+1
@@ -496,6 +564,31 @@ pl_sh_u1
     sta pl_st
     jmp pl_deliver
 pl_sh_r
+    rts
+
+; C = 1: the shuttle is under the Ark (within ARK_DOCKX across)
+pl_underark
+    sec
+    lda pl_wx
+    sbc #<ARK_WX
+    sta pl_t0
+    lda pl_wxh
+    sbc #>ARK_WX
+    and #3
+    beq pl_ua_p
+    cmp #3
+    bne pl_ua_no
+    lda pl_t0               ; a little to the left: -1..-ARK_DOCKX
+    cmp #256-ARK_DOCKX
+    rts                     ; (C = 1 when it's that near)
+pl_ua_p
+    lda pl_t0
+    cmp #ARK_DOCKX+1
+    bcs pl_ua_no
+    sec
+    rts
+pl_ua_no
+    clc
     rts
 
 ; per joystick direction (0 up, clockwise): across (-1, 0, 1), up/down (-1 up)
@@ -569,6 +662,31 @@ pl_camera
     clc
     adc #1
     sta pl_fine
+    ; the Ark (48 wide, its left edge at ARK_WX - 24): on the screen if its
+    ; left edge is under 160, or within 48 off the left (MARIA wraps)
+    lda #0
+    sta pl_arkv
+    sec
+    lda #<(ARK_WX-24)
+    sbc pl_cam
+    sta pl_arksx
+    lda #>(ARK_WX-24)
+    sbc pl_camh
+    and #3
+    beq pl_cm_al
+    cmp #3
+    bne pl_cm_r
+    lda pl_arksx
+    cmp #208
+    bcc pl_cm_r
+    inc pl_arkv
+    rts
+pl_cm_al
+    lda pl_arksx
+    cmp #160
+    bcs pl_cm_r
+    inc pl_arkv
+pl_cm_r
     rts
 
 ; world x (A lo, Y hi) -> C = 1 and A = screen x if it's on the screen (an
@@ -668,6 +786,13 @@ pl_sc_sn
     rts
 
 ; ---- creatures ----
+; Each kind reacts to the shuttle low overhead (pl_overhead), unless stunned:
+;   walker    turns about at random, quickly, and hurries
+;   hopper    jumps away
+;   runner    sprints away
+;   burrower  digs in
+;   glider    (always bobbing up and down) hurries
+;   blinker   blinks away when the beam touches it (pl_beamwork)
 pl_creatures
     ldx #NCR-1
 pl_cr_l
@@ -682,24 +807,166 @@ pl_cr_go
 pl_cr_ns
     lda cr_st,x
     cmp #CS_LIFT
-    bne pl_cr_nl
-    jmp pl_cr_n             ; (the beam moves it: pl_beamwork)
-pl_cr_nl
+    beq pl_cr_skip          ; (the beam moves it: pl_beamwork)
     cmp #CS_HELD
-    bne pl_cr_nh
-    jmp pl_cr_n
-pl_cr_nh
+    beq pl_cr_skip
     cmp #CS_AIR
+    bne pl_cr_gr0
+    jmp pl_cr_air
+pl_cr_gr0
+    cmp #CS_HIDE
     bne pl_cr_ground
-    ; in the air: a glider glides; anything else falls
+    jmp pl_cr_hidden
+pl_cr_skip
+    jmp pl_cr_n
+
+pl_cr_ground
+    lda cr_stun,x           ; stunned: it stands still
+    beq pl_cr_g1
+    jmp pl_cr_n
+pl_cr_g1
+    jsr pl_overhead
+    bcc pl_cr_calm
+    lda cr_t,x
+    cmp #CK_WALK+1
+    beq pl_cr_rwalk
+    cmp #CK_HOP+1
+    beq pl_cr_rhop
+    cmp #CK_RUN+1
+    beq pl_cr_rrun
+    cmp #CK_BURROW+1
+    beq pl_cr_rdig
+    jmp pl_cr_calm
+pl_cr_rwalk
+    lda cr_tm,x             ; turn about soon, and again
+    cmp #24
+    bcc pl_cr_rw2
+    lda M_RND
+    and #15
+    clc
+    adc #4
+    sta cr_tm,x
+pl_cr_rw2
+    jsr pl_walk
+    ldx pl_i
+    jmp pl_cr_calm
+pl_cr_rhop
+    jsr pl_away
+    lda #$FD                ; a hop: up at 2.75 lines a frame
+    sta cr_vyh,x
+    lda #$40
+    sta cr_vyl,x
+    lda #CS_AIR
+    sta cr_st,x
+    jmp pl_cr_n
+pl_cr_rrun
+    lda cr_fast,x
+    bne pl_cr_calm
+    jsr pl_away
+    lda #40
+    sta cr_fast,x
+    jmp pl_cr_calm
+pl_cr_rdig
+    lda #CS_HIDE
+    sta cr_st,x
+    lda M_RND
+    and #63
+    clc
+    adc #90
+    sta cr_tm,x
+    jmp pl_cr_n
+pl_cr_calm
+    ; a runner sprinting: three times as fast
+    lda cr_fast,x
+    beq pl_cr_walk
+    dec cr_fast,x
+    jsr pl_walk
+    jsr pl_walk
+    ldx pl_i
+pl_cr_walk
+    jsr pl_walk
+    ldx pl_i
+    ; its own timer: turn about, hop, burrow, blink
+    dec cr_tm,x
+    beq pl_cr_tm
+    jmp pl_cr_n
+pl_cr_tm
+    lda M_RND
+    ora #$40
+    sta cr_tm,x
+    lda cr_t,x
+    cmp #CK_HOP+1
+    bne pl_cr_t2
+    lda #$FD
+    sta cr_vyh,x
+    lda #$40
+    sta cr_vyl,x
+    lda #CS_AIR
+    sta cr_st,x
+    jmp pl_cr_n
+pl_cr_t2
+    cmp #CK_BURROW+1
+    beq pl_cr_hide
+    cmp #CK_BLINK+1
+    bne pl_cr_turn
+pl_cr_hide
+    lda #CS_HIDE
+    sta cr_st,x
+    lda #90
+    sta cr_tm,x
+    jmp pl_cr_n
+pl_cr_turn
+    lda cr_dir,x
+    eor #1
+    sta cr_dir,x
+    jmp pl_cr_n
+
+pl_cr_air
     lda cr_t,x
     cmp #CK_GLIDE+1
     bne pl_cr_fall
+    ; a glider: across, bobbing up and down between lines 96 and 136
     lda cr_stun,x
-    bne pl_cr_gn
-    jsr pl_walk             ; across, 0.75 a frame (twice: see pl_walk)
+    beq pl_cr_gl
+    jmp pl_cr_n
+pl_cr_gl
+    jsr pl_walk
     jsr pl_walk
     ldx pl_i
+    jsr pl_overhead
+    bcc pl_cr_gb
+    jsr pl_walk
+    jsr pl_walk
+    ldx pl_i
+pl_cr_gb
+    lda pl_tick
+    and #1
+    bne pl_cr_gt
+    lda cr_vyh,x            ; (its bob: $00 down, else up)
+    bne pl_cr_gup
+    inc cr_y,x
+    lda cr_y,x
+    cmp #136
+    bcc pl_cr_gt
+    lda #1
+    sta cr_vyh,x
+    bne pl_cr_gt
+pl_cr_gup
+    dec cr_y,x
+    lda cr_y,x
+    cmp #97
+    bcs pl_cr_gt
+    lda #0
+    sta cr_vyh,x
+pl_cr_gt
+    dec cr_tm,x
+    bne pl_cr_gn
+    lda M_RND
+    ora #$40
+    sta cr_tm,x
+    lda cr_dir,x
+    eor #1
+    sta cr_dir,x
 pl_cr_gn
     jmp pl_cr_n
 pl_cr_fall
@@ -718,25 +985,24 @@ pl_cr_fall
     adc cr_vyh,x
     sta cr_y,x
     cmp #GROUND_Y
-    bcc pl_cr_air
+    bcc pl_cr_fl2
     lda #GROUND_Y           ; landed
     sta cr_y,x
     lda #CS_GROUND
     sta cr_st,x
-pl_cr_air
+pl_cr_fl2
     lda cr_t,x              ; a hopper keeps moving across in its jump
     cmp #CK_HOP+1
-    bne pl_cr_an
+    bne pl_cr_n
+    jsr pl_walk
     jsr pl_walk
     ldx pl_i
-pl_cr_an
     jmp pl_cr_n
-pl_cr_ground
-    cmp #CS_HIDE
-    bne pl_cr_gr
-    ; hidden (burrowed, blinked out): come back after a while
+
+pl_cr_hidden
+    ; hidden (burrowed, blinked out): back after a while (a stun: at once)
     lda cr_stun,x
-    bne pl_cr_up            ; (a stun brings it up at once)
+    bne pl_cr_up
     dec cr_tm,x
     beq pl_cr_up
     jmp pl_cr_n
@@ -747,7 +1013,7 @@ pl_cr_up
     sta cr_tm,x
     lda cr_t,x
     cmp #CK_BLINK+1
-    bne pl_cr_un
+    bne pl_cr_n
     ; a blinker comes back up to 64 pixels away
     lda M_RND
     and #$7F
@@ -763,99 +1029,44 @@ pl_cr_bx
     adc cr_xh,x
     and #3
     sta cr_xh,x
-pl_cr_un
-    jmp pl_cr_n
-pl_cr_gr
-    ; on the ground: stunned ones stand still
-    lda cr_stun,x
-    beq pl_cr_move
-    jmp pl_cr_n
-pl_cr_move
-    ; a runner near the shuttle (with its beam on, or low) runs
-    lda cr_t,x
-    cmp #CK_RUN+1
-    bne pl_cr_walk
-    lda cr_fast,x
-    beq pl_cr_rn
-    dec cr_fast,x
-    jsr pl_walk
-    jsr pl_walk
-    jsr pl_walk
-    ldx pl_i
-    jmp pl_cr_tm
-pl_cr_rn
-    lda cr_vis,x
-    beq pl_cr_walk
-    lda pl_beam
-    bne pl_cr_rchk
-    lda pl_y
-    cmp #110
-    bcc pl_cr_walk
-pl_cr_rchk
-    lda cr_sx,x
-    clc
-    adc #4
-    sec
-    sbc #80
-    bcs pl_cr_rd
-    eor #$FF
-    adc #1
-pl_cr_rd
-    cmp #48
-    bcs pl_cr_walk
-    ; run: away from the shuttle
-    lda #0
-    ldy cr_sx,x
-    cpy #76
-    bcs pl_cr_rr
-    lda #1
-pl_cr_rr
-    sta cr_dir,x
-    lda #40
-    sta cr_fast,x
-pl_cr_walk
-    jsr pl_walk
-    ldx pl_i
-pl_cr_tm
-    ; its own timer: turn, hop, burrow, blink
-    dec cr_tm,x
-    bne pl_cr_n
-    lda M_RND
-    ora #$40
-    sta cr_tm,x
-    lda cr_t,x
-    cmp #CK_HOP+1
-    bne pl_cr_t2
-    lda #$FD                ; a hop: up at 2.75 lines a frame
-    sta cr_vyh,x
-    lda #$40
-    sta cr_vyl,x
-    lda #CS_AIR
-    sta cr_st,x
-    lda #60
-    sta cr_tm,x
-    jmp pl_cr_n
-pl_cr_t2
-    cmp #CK_BURROW+1
-    beq pl_cr_hide
-    cmp #CK_BLINK+1
-    bne pl_cr_turn
-pl_cr_hide
-    lda #CS_HIDE
-    sta cr_st,x
-    lda #90
-    sta cr_tm,x
-    jmp pl_cr_n
-pl_cr_turn
-    lda cr_dir,x
-    eor #1
-    sta cr_dir,x
 pl_cr_n
     ldx pl_i
     dex
     bmi pl_cr_r
     jmp pl_cr_l
 pl_cr_r
+    rts
+
+; C = 1: the shuttle is low (below NEAR_Y), flying, and within NEAR_X across
+; of creature X (on the screen)
+pl_overhead
+    lda pl_st
+    cmp #PL_FLYING
+    bne pl_oh_no
+    lda pl_y
+    cmp #NEAR_Y
+    bcc pl_oh_no
+    lda cr_vis,x
+    beq pl_oh_no
+    lda cr_sx,x
+    jsr pl_beamoff
+    cmp #NEAR_X
+    bcs pl_oh_no
+    sec
+    rts
+pl_oh_no
+    clc
+    rts
+
+; creature X turns to face away from the shuttle
+pl_away
+    lda #0
+    ldy cr_sx,x
+    cpy #76
+    bcs pl_aw_r
+    lda #1
+pl_aw_r
+    sta cr_dir,x
     rts
 
 ; creature X walks: 3/8 of a pixel a frame its way (call it again to go faster)
@@ -933,7 +1144,7 @@ pl_tt_go
 pl_tt_up
     dec tt_y,x
     lda tt_y,x
-    cmp #96
+    cmp #104
     bcs pl_tt_f
     lda #0
     sta tt_dir,x
@@ -954,22 +1165,14 @@ pl_tt_n_far947
     bcs pl_tt_n_far951
     jmp pl_tt_n
 pl_tt_n_far951
-    sta pl_t0               ; its screen x
-    clc
-    adc #4
-    sec
-    sbc #80
-    bcs pl_tt_dx
-    eor #$FF
-    adc #1
-pl_tt_dx
-    cmp #TT_RANGE
-    bcc pl_tt_n_far962
+    sta pl_t0               ; its screen x (any turret on the screen fires)
+    cmp #156
+    bcc pl_tt_on            ; (not one half off the left)
     jmp pl_tt_n
-pl_tt_n_far962
+pl_tt_on
     ldx pl_i
     lda M_RND
-    and #63
+    and #31
     clc
     adc #TT_GAP
     sta tt_cool,x
@@ -1108,15 +1311,9 @@ pl_ts_dx
 pl_ts_dy
     cmp #5
     bcs pl_ts_n
-    lda pl_hit
-    bne pl_ts_k
-    ; hit: the cargo's knocked loose, and it costs the Ark
-    lda #60
-    sta pl_hit
+    ; hit: the shuttle's destroyed
     stx pl_i
-    jsr pl_drop
-    lda #TS_DMG
-    jsr pl_arkdmg
+    jsr pl_shotdown
     ldx pl_i
 pl_ts_k
     lda #0
@@ -1127,6 +1324,26 @@ pl_ts_n
     jmp pl_ts_l
 pl_ts_r
     rts
+
+; the shuttle's shot down: its cargo falls, the Ark pays, and builds another
+pl_shotdown
+    jsr pl_drop
+    lda #PL_DEAD
+    sta pl_st
+    lda #PL_REBUILD
+    sta pl_dead
+    lda #76
+    sta pl_boomx
+    sec
+    lda pl_y
+    sbc #8
+    sta pl_boomy
+    lda #0
+    sta pl_beam
+    lda #SFX_LOST
+    jsr sfx
+    lda #SHUTTLE_DMG
+    jmp pl_arkdmg
 
 ; the Ark takes A (no lower than 1: the planet can't end the game)
 pl_arkdmg
@@ -1222,22 +1439,27 @@ pl_under_ck
     rts
 
 ; ---- the tractor beam ----
+; A creature under the beam starts to rise, half a line a frame. Not
+; stunned, it struggles: it wriggles a pixel across every 4 frames, and one
+; that gets more than BEAM_HALF from the beam's middle drops out. A blinker
+; the beam touches (not stunned) blinks away instead. Crates rise at a
+; quarter of a line a frame, and don't struggle.
 pl_beamwork
     lda #0
     sta pl_beam
     lda sp_fire
-    bne pl_bw_off_far1215
+    bne pl_bw_try
     jmp pl_bw_off
-pl_bw_off_far1215
+pl_bw_try
     lda pl_st
     cmp #PL_FLYING
-    beq pl_bw_off_far1218
+    beq pl_bw_fly
     jmp pl_bw_off
-pl_bw_off_far1218
+pl_bw_fly
     lda pl_hold
-    beq pl_bw_off_far1220
+    beq pl_bw_on
     jmp pl_bw_off
-pl_bw_off_far1220
+pl_bw_on
     inc pl_beam
     lda pl_tick
     and #15
@@ -1245,43 +1467,92 @@ pl_bw_off_far1220
     lda #SFX_BEAM
     jsr sfx
 pl_bw_go
-    ; creatures: take one under the beam; lift what's in it
     ldx #NCR-1
 pl_bw_c
+    stx pl_i
     lda cr_t,x
-    beq pl_bw_cn
+    bne pl_bw_c1
+    jmp pl_bw_cn
+pl_bw_c1
     lda cr_st,x
     cmp #CS_LIFT
     beq pl_bw_lift
     cmp #CS_HIDE
-    beq pl_bw_cn
+    bne pl_bw_c2
+    jmp pl_bw_cn
+pl_bw_c2
     cmp #CS_HELD
-    beq pl_bw_cn
+    bne pl_bw_c3
+    jmp pl_bw_cn
+pl_bw_c3
     lda cr_vis,x
-    beq pl_bw_cn
+    bne pl_bw_c4
+    jmp pl_bw_cn
+pl_bw_c4
     lda cr_y,x
     cmp pl_y
-    bcc pl_bw_cn            ; above the shuttle
+    bcs pl_bw_c5
+    jmp pl_bw_cn            ; above the shuttle
+pl_bw_c5
     lda cr_sx,x
-    clc
-    adc #4
-    sec
-    sbc #80
-    bcs pl_bw_dx
-    eor #$FF
-    adc #1
-pl_bw_dx
+    jsr pl_beamoff          ; how far its middle is from the beam's
     cmp #BEAM_HALF+1
-    bcs pl_bw_cn
+    bcc pl_bw_take
+    jmp pl_bw_cn
+pl_bw_take
+    ; a blinker (not stunned) blinks away from the beam
+    lda cr_t,x
+    cmp #CK_BLINK+1
+    bne pl_bw_t2
+    lda cr_stun,x
+    bne pl_bw_t2
+    lda #CS_HIDE
+    sta cr_st,x
+    lda #40
+    sta cr_tm,x
+    jmp pl_bw_cn
+pl_bw_t2
     lda #CS_LIFT
     sta cr_st,x
-    jsr pl_under_cr
 pl_bw_lift
-    jsr pl_under_cr         ; it comes along under the shuttle
+    ; it rises half a line a frame
+    lda pl_tick
+    and #1
+    bne pl_bw_wr
+    dec cr_y,x
+pl_bw_wr
+    ; it struggles (not stunned): a pixel across every 4 frames
+    lda cr_stun,x
+    bne pl_bw_in
+    lda pl_tick
+    and #3
+    bne pl_bw_in
+    lda M_RND
+    and #1
+    sta cr_dir,x
+    jsr pl_walk             ; (3/8 of a pixel: three of them)
+    jsr pl_walk
+    jsr pl_walk
+    ldx pl_i
+    ; out of the beam: it drops
+    ldy cr_xh,x
+    lda cr_xl,x
+    jsr pl_scrx
+    ldx pl_i
+    bcc pl_bw_drop
+    sta cr_sx,x
+    jsr pl_beamoff
+    cmp #BEAM_HALF+1
+    bcc pl_bw_in
+pl_bw_drop
+    lda #CS_AIR
+    sta cr_st,x
+    lda #0
+    sta cr_vyl,x
+    sta cr_vyh,x
+    jmp pl_bw_cn
+pl_bw_in
     lda cr_y,x
-    sec
-    sbc #PL_LIFT
-    sta cr_y,x
     sec
     sbc pl_y
     cmp #5
@@ -1295,9 +1566,12 @@ pl_bw_lift
     lda #SFX_CAPTURE
     jmp sfx
 pl_bw_cn
+    ldx pl_i
     dex
-    bpl pl_bw_c
-    ; crates, the same, at half speed
+    bmi pl_bw_crates
+    jmp pl_bw_c
+pl_bw_crates
+    ; crates: a quarter of a line a frame
     ldx #NCK-1
 pl_bw_k
     lda ck_st,x
@@ -1309,22 +1583,14 @@ pl_bw_k
     lda ck_vis,x
     beq pl_bw_kn
     lda ck_sx,x
-    clc
-    adc #4
-    sec
-    sbc #80
-    bcs pl_bw_kx
-    eor #$FF
-    adc #1
-pl_bw_kx
+    jsr pl_beamoff
     cmp #BEAM_HALF+1
     bcs pl_bw_kn
     lda #CS_LIFT+1
     sta ck_st,x
 pl_bw_klift
-    jsr pl_under_ck
     lda pl_tick
-    and #1
+    and #3
     bne pl_bw_kn
     dec ck_y,x
     lda ck_y,x
@@ -1368,6 +1634,19 @@ pl_bo_k
 pl_bo_kn
     dex
     bpl pl_bo_k
+    rts
+
+; A = a thing's screen x (8 wide) -> A = how far its middle is from the
+; beam's (80), either way
+pl_beamoff
+    clc
+    adc #4
+    sec
+    sbc #80
+    bcs pl_bo_p
+    eor #$FF
+    adc #1
+pl_bo_p
     rts
 
 ; ---- the stun pulse ----
@@ -1572,65 +1851,12 @@ pl_hd_hold
 pl_holdtx .byte 9, 19, 29       ; the last character of each in tx_hold
 
 ; ---------------------------------------------------------------------------
-; Drawing (the BASIC has drawn the Ark and the ground): towers, turrets,
-; crates, creatures, the beam, the shuttle, shots, the pulse, the scanner.
+; Drawing (the BASIC has drawn the Ark and the ground). Creatures first:
+; zone 9, where they stand, has the most in it, and if MARIA runs short of
+; time on a line it's the last objects that go. Then crates, towers and
+; turrets, the beam, the shuttle (or its wreck), shots, the pulse, the
+; scanner.
 pl_draw
-    ; towers: 4 segments, y 96-159, then their turrets
-    ldx #NTT-1
-pl_dw_t
-    stx pl_i
-    lda tt_vis,x
-    beq pl_dw_tn
-    lda tt_sx,x
-    sta temp4
-    lda #96
-    sta pl_t0
-pl_dw_seg
-    lda pl_t0
-    sta temp5
-    lda #0
-    PLOT tower, 4
-    ldx pl_i
-    lda tt_sx,x
-    sta temp4
-    clc
-    lda pl_t0
-    adc #16
-    sta pl_t0
-    cmp #160
-    bcc pl_dw_seg
-    lda tt_y,x
-    sta temp5
-    lda tt_frz,x            ; frozen: it blinks
-    beq pl_dw_tt
-    lda pl_tick
-    and #4
-    bne pl_dw_tn
-pl_dw_tt
-    lda #0
-    PLOT turret, 4
-pl_dw_tn
-    ldx pl_i
-    dex
-    bpl pl_dw_t
-
-    ; crates
-    ldx #NCK-1
-pl_dw_k
-    stx pl_i
-    lda ck_vis,x
-    beq pl_dw_kn
-    lda ck_sx,x
-    sta temp4
-    lda ck_y,x
-    sta temp5
-    lda #0
-    PLOT crate, 5
-pl_dw_kn
-    ldx pl_i
-    dex
-    bpl pl_dw_k
-
     ; creatures: kind * 4 + facing * 2 + step; two bytes a frame
     ldx #NCR-1
 pl_dw_c
@@ -1670,33 +1896,109 @@ pl_dw_cn
     dex
     bpl pl_dw_c
 
-    ; the beam: 16-line segments from the shuttle down to the ground
-    lda pl_beam
-    beq pl_dw_nob
-    lda pl_y
-    clc
-    adc #4
+    ; crates
+    ldx #NCK-1
+pl_dw_k
+    stx pl_i
+    lda ck_vis,x
+    beq pl_dw_kn
+    lda ck_sx,x
+    sta temp4
+    lda ck_y,x
+    sta temp5
+    lda #0
+    PLOT crate, 5
+pl_dw_kn
+    ldx pl_i
+    dex
+    bpl pl_dw_k
+
+    ; towers: 3 segments, y 112-159, then their turrets
+    ldx #NTT-1
+pl_dw_t
+    stx pl_i
+    lda tt_vis,x
+    bne pl_dw_t1
+    jmp pl_dw_tn
+pl_dw_t1
+    lda #112
     sta pl_t0
-pl_dw_bs
-    lda #76
+pl_dw_seg
+    ldx pl_i
+    lda tt_sx,x
     sta temp4
     lda pl_t0
     sta temp5
-    lda pl_tick
-    and #2                  ; (frame 0 or 1, two bytes wide)
-    PLOT beam0, 3
+    lda #0
+    PLOT tower, 4
     clc
     lda pl_t0
     adc #16
     sta pl_t0
-    cmp #146                ; (the last one reaches the ground's surface)
-    bcc pl_dw_bs
+    cmp #160
+    bcc pl_dw_seg
+    ldx pl_i
+    lda tt_sx,x
+    sta temp4
+    lda tt_y,x
+    sta temp5
+    lda tt_frz,x            ; frozen: it blinks
+    beq pl_dw_tt
+    lda pl_tick
+    and #4
+    bne pl_dw_tn
+pl_dw_tt
+    lda #0
+    PLOT turret, 4
+pl_dw_tn
+    ldx pl_i
+    dex
+    bmi pl_dw_beam
+    jmp pl_dw_t
+
+    ; the beam, exactly from the shuttle (pl_y + 4) to the ground (160):
+    ; 16-line pieces from the ground up while they fit, and one more at the
+    ; top (overlapping: it's the same column)
+pl_dw_beam
+    lda pl_beam
+    beq pl_dw_nob
+    lda #144
+    sta pl_t0
+pl_dw_bs
+    lda pl_y
+    clc
+    adc #4
+    cmp pl_t0
+    bcs pl_dw_btop          ; this piece would start above the shuttle
+    jsr pl_beampc
+    sec
+    lda pl_t0
+    sbc #16
+    sta pl_t0
+    jmp pl_dw_bs
+pl_dw_btop
+    sta pl_t0               ; the top piece, at the shuttle
+    jsr pl_beampc
 pl_dw_nob
 
-    ; the shuttle (blinks for a moment after a hit)
-    lda pl_hit
-    and #4
-    bne pl_dw_ns
+    ; the shuttle, or its wreck while the Ark builds another
+    lda pl_st
+    cmp #PL_DEAD
+    bne pl_dw_sh
+    lda pl_dead
+    cmp #PL_REBUILD-17
+    bcc pl_dw_ns
+    lda pl_boomx
+    sta temp4
+    lda pl_boomy
+    sta temp5
+    lda pl_dead
+    sec
+    sbc #PL_REBUILD-17      ; 17 down to 0
+    jsr dr_boomf
+    PLOT boom0, 4
+    jmp pl_dw_ns
+pl_dw_sh
     lda #76
     sta temp4
     sec
@@ -1739,11 +2041,13 @@ pl_dw_sn
     PLOT ring, 3
 pl_dw_np
 
-    ; the scanner (row 1): the whole planet in 128 pixels from x 16
+    ; the scanner (row 1): the whole planet in 128 pixels from x 16: the
+    ; shuttle and the creatures (the towers and the Ark never move: the
+    ; BASIC's scanner line marks them, characters, no sprites)
     lda pl_wx
     ldy pl_wxh
     jsr pl_scan
-    lda #17
+    lda #19
     sta temp5
     lda #0
     PLOT dot, 6
@@ -1768,19 +2072,17 @@ pl_dw_scn
     ldx pl_i
     dex
     bpl pl_dw_sc
-    ldx #NTT-1
-pl_dw_st
-    stx pl_i
-    lda tt_xl,x
-    ldy tt_xh,x
-    jsr pl_scan
-    lda #24
+    rts
+
+; a beam piece at line pl_t0
+pl_beampc
+    lda #76
+    sta temp4
+    lda pl_t0
     sta temp5
-    lda #0
-    PLOT dot, 4
-    ldx pl_i
-    dex
-    bpl pl_dw_st
+    lda pl_tick
+    and #2                  ; (frame 0 or 1, two bytes wide)
+    PLOT beam0, 3
     rts
 
 ; world x (A lo, Y hi) -> temp4 = its place on the scanner (x / 8 + 16)

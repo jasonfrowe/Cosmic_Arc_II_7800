@@ -104,7 +104,8 @@ songs and effects are written in `tools/music.py`.
 | zero page $B9-$BC | hwtest.asm |
 | $2300-$23FF | space.asm: rocks, bolts, the HUD's text |
 | $2400-$24FF | fighter.asm, pirates.asm, vec.asm, draw.asm: the fighter, shots, pirates, pods |
-| $2700-$27FF | surface.asm: the planet (shuttle, camera, creatures, crates, turrets, shots) |
+| $2700-$27FF | surface.asm: the planet (shuttle, camera, creatures, crates) |
+| $2200-$22FF | surface.asm: the planet's turrets and their shots |
 | $2500-$255F | sound.asm |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
@@ -171,17 +172,30 @@ assembly runs long with macros like `PLOT`.
 
 ## The planet's scrolling
 
-The ground is two rows of `tools/planet.py`'s map (horizon and soil, glyphs
-after the font in the same character block, so their codes are 128 on). Each
-row is stored 128 + 21 wide: the first 21 columns again at the end, so a
-21-column window never has to wrap. Every frame: `clearscreen`, then
-`plotmap pl_map 5 pl_fine 9 21 2 pl_col 0 149`, where `pl_col` = camera / 8
+The ground is one row of `tools/planet.py`'s map (grass along its top, soil;
+glyphs after the font in the same character block, so their codes are 128
+on), in zone 10. It's stored 128 + 21 wide: the first 21 columns again at the
+end, so a 21-column window never has to wrap. Every frame: `clearscreen`, then
+`plotmap pl_map 5 pl_fine 10 21 1 pl_col 0 149`, where `pl_col` = camera / 8
 and `pl_fine` = -(camera & 7). An x of 249-255 starts the row off the left
 edge, and MARIA wraps it. The camera is the shuttle's world x - 80, and a
 thing's screen x is (its x - camera) & 1023 (`pl_scrx`).
 
 `common.asm` (bank 1) holds what both modes use: the `PLOT` macro, the HUD's
 bar, the score, centred messages. `vec.asm` moved to bank 1 too.
+
+**MARIA's time on a line:** a row of 21 doublewide characters costs MARIA about
+200 of its cycles a line. With a horizon row in zone 9 as well, the sprites
+there (creatures, crates, towers, the beam) ran it out of time on the real console,
+so the last objects in the list vanished: creatures crossing the screen, and pieces of
+the beam. The emulator doesn't limit DMA, so it doesn't show this. The ground is
+now one row (zone 10), zone 9 has only sprites, and the creatures are drawn first.
+Keep wide character rows out of zones full of sprites.
+
+**Frame time:** the planet loop sits close to a frame. Each `plotsprite` is a few
+hundred cycles, and 8 scanner dots and a fourth tower segment pushed it to 30
+fps. Things that never move (the towers' and the Ark's scanner marks) are
+characters in the scanner's line instead.
 
 **Graphics space:** bank 17's main area is full (0 bytes). In 16-line zones the
 graphics share 256-byte-wide rows: the font with its terrain glyphs (144 bytes)
@@ -234,6 +248,10 @@ them, which is in while MARIA draws them.
 - **Many small sprites cost frames**: a tall tractor beam of 8-line pieces (up to
   11 `plotsprite`s) dropped 6% of the planet's frames. 16-line pieces, one a zone,
   fixed it.
+- **Calling across switched banks**: a bank-3 routine called `dr_boomf` in
+  bank 2, which isn't in on a planet. The assembler can't see it. `tools/bankcheck.py`
+  (run by the build) fails a build with a `jsr`/`jmp` from one switched bank into
+  another. Shared code goes in bank 1 (`common.asm`).
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

@@ -12,6 +12,7 @@ WORK="$ROOT/build/work"
 
 python3 "$ROOT/tools/music.py"
 python3 "$ROOT/tools/planet.py"
+python3 "$ROOT/tools/bankcheck.py" || { echo "BUILD FAILED: a call across switched banks"; exit 1; }
 
 rm -rf "$WORK"
 mkdir -p "$WORK"

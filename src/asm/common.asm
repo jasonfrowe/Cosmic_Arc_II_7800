@@ -107,3 +107,19 @@ sp_msgset
     sta sp_msglen
     stx sp_msgx
     rts
+
+; an explosion's timer (17 down) -> A = its frame's offset (one byte wide
+; frames would be the frame; boom frames are two bytes wide)
+dr_boomf
+    cmp #12
+    bcs dr_bf0
+    cmp #6
+    bcs dr_bf1
+    lda #4
+    rts
+dr_bf1
+    lda #2
+    rts
+dr_bf0
+    lda #0
+    rts

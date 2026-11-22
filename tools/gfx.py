@@ -339,26 +339,23 @@ def ring():
     return rows
 
 
-# Terrain: characters after the font (codes 128 on, (64 + n) * 2). Each is
-# 8 x 16 (a 16-line zone): the horizon row (hills, the ground's surface at
-# lines 12-13) and the soil row under it. a grass, b soil, c hills/rock.
-T_FLAT, T_HILL_L, T_HILL_M, T_HILL_R, T_ROCKS, T_DIRT1, T_DIRT2, T_DIRT3 = range(64, 72)
-GROUND = ["aaaaaaaa", "abaabaab", "bbbbbbbb", "bbbbbbbb"]
+# Terrain: characters after the font (codes 128 on, (64 + n) * 2). The
+# ground is one row of these (zone 10): grass along the top, soil under it,
+# the surface at the row's top line (y 160). One row only: a row of 21
+# doublewide characters costs MARIA about 200 cycles a line, and the zone
+# above (where the creatures stand) must keep its time for sprites.
+# a grass, b soil, c stones.
+T_GRASS1, T_GRASS2, T_GRASS3 = range(64, 67)
+TOP = ["aaaaaaaa", "abaabaab"]
 TILES = {
-    T_FLAT: ["........"] * 12 + GROUND,
-    T_HILL_L: ["........"] * 4 + [("." * (7 - i) + "c" * (i + 1)) for i in range(8)] + GROUND,
-    T_HILL_M: ["........"] * 4 + ["cccccccc"] * 8 + GROUND,
-    T_HILL_R: ["........"] * 4 + [("c" * (i + 1) + "." * (7 - i)) for i in range(8)] + GROUND,
-    T_ROCKS: ["........"] * 9 + ["..c.....", ".ccc..c.", "cccc.ccc"] + GROUND,
-    T_DIRT1: ["bbbbbbbb", "bbcbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
-              "bbbbbbcb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb", "bbbbbcbb",
-              "bbbbbbbb", "bbcbbbbb"],
-    T_DIRT2: ["bbbbbbbb", "bbbbbbcb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb", "bbbbcbbb", "bbbbbbbb",
-              "bbbbbbbb", "bcbbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bbcbbbbb", "bbbbbbbb",
-              "bbbbbbcb", "bbbbbbbb"],
-    T_DIRT3: ["bbbbbbbb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb",
-              "bbbbcbbb", "bbbbbbbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbcb", "bbbbbbbb", "bbbbbbbb",
-              "bbbcbbbb", "bbbbbbbb"],
+    T_GRASS1: TOP + ["bbbbbbbb", "bbcbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
+                     "bbbbbbcb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb", "bbbbbcbb"],
+    T_GRASS2: ["aaaaaaaa", "aabaaaba"] + ["bbbbbbbb", "bbbbbbcb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
+                     "bbbbcbbb", "bbbbbbbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb",
+                     "bbcbbbbb", "bbbbbbbb"],
+    T_GRASS3: ["aaaaaaaa", "baabaaab"] + ["bbbbbbbb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "bbbbbbbb",
+                     "cbbbbbbb", "bbbbbbbb", "bbbbcbbb", "bbbbbbbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbcb",
+                     "bbbbbbbb", "bbbbbbbb"],
 }
 
 

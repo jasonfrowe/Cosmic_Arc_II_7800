@@ -41,6 +41,8 @@ then link them together.
 - [x] Creatures with 6 behaviours (walker, hopper, runner, burrower, glider, blinker) from the RP6502 beasties; ore crates (heavy); turrets on towers (shoot, knock cargo loose); the 60 s clock and the klaxon; every creature delivered: the Ark's energy full
 - [x] One biome (bank 3: code and map); after each deep-space wave, a planet
 - [x] `tools/test_planet.sh`; `AUTOPLANET`; deep-space tests skip planets (`sp_noplanet`)
+- [x] From hardware: turrets destroy the shuttle (8 towers, one always in view); the Ark stays over its own spot; creatures struggle in the beam and react (stun, then beam); the shuttle stops while beaming; the beam always reaches the ground exactly; creatures no longer vanish (MARIA's line time: one ground row)
+- [x] `tools/bankcheck.py` in the build
 - [ ] A planet music track (the Arc theme for now)
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 

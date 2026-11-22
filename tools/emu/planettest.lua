@@ -17,22 +17,36 @@ emu.register_frame_done(function()
     m:write_u8(0x2386, 96)
     local wx = m:read_u8(0x2700) + 256 * m:read_u8(0x2701)
     local sy, hold, st = m:read_u8(0x2707), m:read_u8(0x270A), m:read_u8(0x2709)
-    if hold > 0 then held["P1 Up"] = true
+    local function toward(tx)
+      local dx = (tx - wx + 512) % 1024 - 512
+      if dx > 2 then held["P1 Right"] = true elseif dx < -2 then held["P1 Left"] = true end
+      return dx
+    end
+    if hold > 0 or m:read_u8(0x2716) == m:read_u8(0x2717) then
+      -- home: to the Ark's spot, then up into it
+      if math.abs(toward(512)) <= 6 then held["P1 Up"] = true end
     else
-      local best, bd, by
+      local best, bd, by, bstun
       for i = 0, 3 do
         local t, cs = m:read_u8(0x2720 + i), m:read_u8(0x2740 + i)
         if t > 0 and cs ~= 4 and cs ~= 3 then
           local cx = m:read_u8(0x2724 + i) + 256 * m:read_u8(0x2728 + i) + 4
           local dx = (cx - wx + 512) % 1024 - 512
-          if not bd or math.abs(dx) < math.abs(bd) then bd, best, by = dx, i, m:read_u8(0x2730 + i) end
+          if not bd or math.abs(dx) < math.abs(bd) then
+            bd, best, by, bstun = dx, i, m:read_u8(0x2730 + i), m:read_u8(0x2748 + i)
+          end
         end
       end
       if best then
-        if bd > 2 then held["P1 Right"] = true elseif bd < -2 then held["P1 Left"] = true end
-        if math.abs(bd) < 24 and sy < by - 14 then held["P1 Down"] = true end
-        if math.abs(bd) < 6 then held["P1 Button 1"] = true end
-        if st == 0 then held["P1 Down"] = true end
+        if st == 0 then held["P1 Down"] = true
+        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 1"] = true   -- lifting: hold on
+        else
+          if math.abs(bd) > 3 then toward((wx + bd) % 1024) end
+          if math.abs(bd) < 40 and sy < by - 14 then held["P1 Down"] = true end
+          if math.abs(bd) <= 3 then
+            if bstun == 0 then held["P1 Button 2"] = (f % 8 < 4) else held["P1 Button 1"] = true end
+          end
+        end
       end
     end
     local t = m:read_u8(0x271B)
