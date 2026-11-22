@@ -134,7 +134,7 @@ bytes of a line; the creatures come straight after it.
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F | sector.asm: the voyage (sector, fuel, stardate, credits, seed; $259F the tests' flag) (the boot check's before a game) |
-| $2600-$26FF | sector.asm: the galaxy by sector (warps, cells, info, flags) (the boot check's before a game) |
+| $2600-$26FF | sector.asm: the galaxy by sector (warps, cells, info, flags: visited, seen, jumps to safe space) (the boot check's before a game) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |
 
 7800basic leaves $2200-$27FF free. The save block (DESIGN.md 7.5) will go
@@ -192,7 +192,9 @@ tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
 tools/test_defense.sh # the planet's pulse: never hits a docked shuttle; finds one
                       # camped at the band's top, middle and foot; full speed
-tools/test_galaxy.sh   # the galaxy generator's rules, 8 seeds
+tools/test_galaxy.sh   # the galaxy generator's rules (and jumps to safe space), 8 seeds
+tools/test_depart.sh   # leaving an outer-rim port: encounters ~60%, waves by jumps to safe
+tools/test_cargo.sh    # ore beamed up halves the speed across; button 2 drops it
 tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane
 tools/test_spaceend.sh # the Ark waits for the saucer before leaving a wave; pirates

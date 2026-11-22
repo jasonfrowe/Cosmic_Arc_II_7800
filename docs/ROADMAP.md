@@ -55,6 +55,7 @@ then link them together.
 - [x] From hardware: dock on the move (up-left/up-right, near the ceiling); random pulse gaps over a steady full-band sweep: no safe line (tested at the band's top, middle, foot)
 - [x] Polish: twinkling stars (P5's three colours cycled); the Ark waits for the saucer before leaving a cleared wave; pirates leave when the Ark is lost; a planet HUD from new tiles (scanner with ends and markers, creature icons, energy icon, the shuttle's bay, the world's name); six worlds by palette (VERDA, RUBRA, GLACI, UMBRA, ARENA, TOXIS); planet music (D Dorian), the pirates' track when the storm comes; `test_spaceend.sh`
 - [x] A planet music track
+- [x] From hardware: button 2 drops the cargo (button 1 the beam); ore halves the top speed across; `test_cargo.sh`
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 
 ## M4: Sector map (first slice ✅ 2026-11-22)
@@ -62,6 +63,7 @@ then link them together.
 - [x] 40-column 320A screens (bank 4, its font at $A000; sCTRL/sCHARBASE switched)
 - [x] Sector view, star chart (what's been seen), fuel, stardate
 - [x] Encounter roll → deep space (a wave for the tier); planet sector → land; back to the map; `test_journey.sh`
+- [x] Encounters leaving a planet or port; an encounter's strength from the jumps back to safe space; `test_depart.sh`
 - [ ] Density / holo scanners, a chart cursor, one-way warps shown
 - [ ] The star's collapse (the stardate deadline)
 

@@ -106,11 +106,14 @@ saving. The galaxy itself is rebuilt from the seed on Continue.
   LAND ON PLANET / DOCK AT PORT, then each warp (the sector's number, what's
   there once visited, `?` before); fuel, credits, energy. Fire chooses,
   button 2 the star chart.
-- **Travel**: a warp costs a fuel and a stardate. An encounter on the way:
-  safe 0%, core 30%, mid-rim 45%, outer rim 60%, +25% into a nebula; its wave
-  by tier (core 1-2, mid 3-5, outer 6-8). Out of fuel: adrift to a random
-  neighbour, an encounter for sure. After an encounter or a planet, back to
-  the map.
+- **Travel**: a warp costs a fuel and a stardate. An encounter on the way
+  (odds by the destination's tier: safe 0%, core 30%, mid-rim 45%, outer rim
+  60%, +25% into a nebula), and **leaving a planet or a port** (the
+  sector's odds). An encounter's **strength is the jumps back to safe
+  space** (following the warps, one-way ones too): the wave is that many,
+  +0-1, at least 1, at most 10 (each sector's count is worked out with the
+  galaxy). Out of fuel: adrift to a random neighbour, an encounter for sure.
+  After an encounter or a planet, back to the map.
 - **Star chart**: what's been seen (visited, and their neighbours as `?`),
   the visited sectors' warps as lines; the Ark's sector marked.
 - **Ports for now**: docking fills the fuel (trading is the next slice).
@@ -355,6 +358,10 @@ ARENA, TOXIS.
 
 **Music:** its own track (D Dorian, plucked); the pirates' when the storm's
 coming.
+
+**Cargo:** button 1 is the beam, **button 2 drops** what the shuttle holds
+(it falls and lands, to be beamed up again). Ore is heavy: half speed up,
+and **half the top speed across**.
 
 ### 5.1 The surface
 

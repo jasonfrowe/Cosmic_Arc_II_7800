@@ -593,6 +593,7 @@ pl_fr_play
     jsr pl_crates
     jsr pl_defense
     jsr pl_screen
+    jsr pl_dropbtn
     jsr pl_beamwork
     jsr pl_checkall
     jsr pl_scanner
@@ -1122,8 +1123,8 @@ pl_sh_iup
     lda #SFX_DOCK
     jmp sfx
 pl_sh_o2
-    ; the beam on (button 2, low enough): the shuttle stops dead
-    lda sp_fire2
+    ; the beam on (button 1, low enough): the shuttle stops dead
+    lda sp_fire
     beq pl_sh_free
     lda pl_hold
     bne pl_sh_free
@@ -1197,21 +1198,31 @@ pl_sh_s8
     lda #0
     sta pl_vxl
 pl_sh_clamp
+    ; the top speed: PL_VMAX, half with ore aboard (heavy, as going up)
+    ldx #>PL_VMAX
+    lda pl_hold
+    cmp #HOLD_ORE
+    bne pl_sh_cl1
+    ldx #>(PL_VMAX/2)
+pl_sh_cl1
+    stx pl_t2
     lda pl_vxh
     bmi pl_sh_cn
-    cmp #>PL_VMAX
+    cmp pl_t2
     bcc pl_sh_mv
-    lda #<PL_VMAX
+    lda #0
     sta pl_vxl
-    lda #>PL_VMAX
+    lda pl_t2
     sta pl_vxh
     jmp pl_sh_mv
 pl_sh_cn
-    cmp #$FE                ; (-PL_VMAX: $FE00)
+    clc                     ; (-limit: 256 - limit)
+    adc pl_t2
     bcs pl_sh_mv
-    lda #$00
+    lda #0
     sta pl_vxl
-    lda #$FE
+    sec
+    sbc pl_t2
     sta pl_vxh
 pl_sh_mv
     clc
@@ -2041,6 +2052,26 @@ pl_ad_hit
     lda #SFX_HIT
     jmp sfx
 
+; button 2 (a fresh press): whatever the shuttle holds drops (it lands,
+; to be beamed up again)
+pl_dropbtn
+    lda sp_fire2
+    tax
+    eor pl_f2old
+    and sp_fire2
+    stx pl_f2old
+    beq pl_db_r
+    lda pl_st
+    cmp #PL_FLYING
+    bne pl_db_r
+    lda pl_hold
+    beq pl_db_r
+    jsr pl_drop
+    lda #SFX_CHIP
+    jmp sfx
+pl_db_r
+    rts
+
 ; whatever the shuttle holds or is lifting falls
 pl_drop
     lda pl_hold
@@ -2128,7 +2159,7 @@ pl_under_ck
 pl_beamwork
     lda #0
     sta pl_beam
-    lda sp_fire2            ; button 2: the beam
+    lda sp_fire             ; button 1: the beam
     bne pl_bw_try
     jmp pl_bw_off
 pl_bw_try

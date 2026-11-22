@@ -210,8 +210,7 @@ planetloop
   if joy0fire1 then sp_fire = 1
   sp_fire2 = 0
   if joy0fire0 then sp_fire2 = 1
-  rem (on a planet both buttons work the beam)
-  if sp_fire then sp_fire2 = 1
+  rem (on a planet: button 1 the beam, button 2 drops the cargo)
   asm
   jsr pl_frame
 end
@@ -241,7 +240,16 @@ end
   if pl_state <> 3 then goto planetloop
   rem out of energy on the planet: the game's over
   if sp_energy = 0 then goto planetlost
-  if gs_test = 0 then goto sector
+  if gs_test then goto planetnext
+  rem leaving the planet: an encounter? (the sector's odds)
+  asm
+  lda #BANK_MAP
+  jsr bank_in
+  jsr sv_depart
+end
+  if gs_go = 1 then goto encounter
+  goto sector
+planetnext
   asm
   lda #BANK_SPACE
   jsr bank_in

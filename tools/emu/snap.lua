@@ -168,14 +168,14 @@ emu.register_frame_done(function()
       end
       if best then
         if st == 0 then held["P1 Down"] = true
-        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 2"] = true   -- lifting: hold on
+        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 1"] = true   -- lifting: hold on
         else
           if math.abs(bd) > 3 then toward((wx + bd) % 1024) end
           if math.abs(bd) < 40 and sy < by - 14 and sy >= 72 then held["P1 Down"] = true end
         if math.abs(bd) < 40 and sy < 104 then held["P1 Down"] = true end   -- low enough to beam
         if sy < 72 then held["P1 Down"] = true end                        -- out of the tube
           if math.abs(bd) <= 3 then
-            held["P1 Button 2"] = true                                    -- the beam
+            held["P1 Button 1"] = true                                    -- the beam
           end
         end
       end

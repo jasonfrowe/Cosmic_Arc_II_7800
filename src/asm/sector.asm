@@ -38,7 +38,8 @@ gs_test   = $259F   ; (tests set it: fire on the title goes straight into
 gx_warp   = $2600   ; [64] warp bits (direction d: to the neighbour that way)
 gx_cell   = $2640   ; [64] its grid cell: row * 16 + column
 gx_info   = $2680   ; [64] type (bits 0-1), class or world (2-4), tier (6-7)
-gx_flag   = $26C0   ; [64] 1 visited, 2 seen (next to a visited one)
+gx_flag   = $26C0   ; [64] 1 visited, 2 seen (next to a visited one); bits
+                    ;   2-7: jumps back to safe space (the encounters' strength)
 
 GT_EMPTY  = 0
 GT_PORT   = 1
@@ -350,6 +351,59 @@ gx_n_ty
     sta gx_info,x
     dex
     bpl gx_n_sec
+    ; each sector's jumps back to safe space (following the warps, so
+    ; one-way ones count): gx_flag bits 2-7. Safe space 0; the rest
+    ; relaxed until nothing changes (gc_s: cell -> sector still)
+    ldx #63
+gx_n_di
+    lda #63 << 2
+    cpx #10
+    bcs gx_n_d0
+    lda #0
+gx_n_d0
+    sta gx_flag,x
+    dex
+    bpl gx_n_di
+gx_n_dpass
+    lda #0
+    sta gc_ne               ; (changed)
+    ldx #63
+gx_n_dk
+    stx sv_t4
+    lda gx_cell,x
+    sta sv_t2
+    ldx #0
+gx_n_dd
+    stx sv_t3
+    ldy sv_t4
+    lda gx_warp,y
+    and gx_bit,x
+    beq gx_n_ddn
+    lda sv_t2
+    jsr gx_nb
+    tay
+    lda gc_s,y              ; the sector that way
+    tay
+    lda gx_flag,y
+    clc
+    adc #1 << 2             ; its distance + 1
+    bcs gx_n_ddn            ; (not reached yet: 63 + 1 would wrap)
+    ldy sv_t4
+    cmp gx_flag,y
+    bcs gx_n_ddn
+    sta gx_flag,y
+    inc gc_ne
+gx_n_ddn
+    ldx sv_t3
+    inx
+    cpx #8
+    bne gx_n_dd
+    ldx sv_t4
+    dex
+    cpx #10
+    bcs gx_n_dk
+    lda gc_ne
+    bne gx_n_dpass
     ; ports: home, one more in safe space, one in the core, two mid-rim,
     ; two in the outer rim (TradeWars classes: buys/sells a bit each)
     lda #0
@@ -1078,7 +1132,8 @@ sv_i_dock
     sta gs_msg
     inc sv_dirty
     lda #SFX_POD
-    jmp sfx
+    jsr sfx
+    jmp sv_depart           ; leaving: an encounter?
 
 ; warp to sector A: fuel, a stardate; maybe an encounter on the way
 sv_warp
@@ -1107,8 +1162,23 @@ sv_wp_go
     bne sv_wp_d
     inc gs_date+1
 sv_wp_d
-    ; the encounter: its odds and its wave by the destination's tier
-    ldx gs_dest
+    lda gs_dest
+    jsr sv_encroll
+    bcc sv_wp_none
+    rts
+sv_wp_none
+    jsr gx_arrive           ; straight there
+    lda #0
+    sta sv_sel
+    inc sv_dirty
+    lda #SFX_ARRIVE
+    jmp sfx
+; An encounter at sector A? (sv_t3: extra odds, %.) Its odds by the tier
+; (+25% in a nebula), its strength by the jumps back to safe space: the wave
+; is that many, +0-1 (at least 1, at most 10). C = 1: there is one (sp_wave
+; set, gs_go = 1: the BASIC goes to deep space).
+sv_encroll
+    tax
     lda gx_info,x
     rol
     rol
@@ -1122,37 +1192,56 @@ sv_wp_d
     lda gx_info,x
     and #3
     cmp #GT_NEBULA          ; nebulae: pirates hide in them
-    bne sv_wp_nn
+    bne sv_er_nn
     lda sv_t3
     clc
     adc #25
     sta sv_t3
-sv_wp_nn
-    sty sv_t4
+sv_er_nn
+    stx sv_t4
     lda #100
     jsr gx_rand
     cmp sv_t3
-    bcs sv_wp_none
-    ; an encounter: deep space, a wave for the tier (the BASIC goes)
-    ldy sv_t4
-    lda sv_encspan,y
+    bcs sv_er_no
+    ldx sv_t4
+    lda gx_flag,x           ; the jumps back to safe space
+    lsr
+    lsr
+    sta sv_t2
+    lda #2
     jsr gx_rand
-    ldy sv_t4
     clc
-    adc sv_encwave,y
-    sta sp_wave             ; (sp_return's next wave is this + 1)
+    adc sv_t2               ; + 0-1
+    beq sv_er_w             ; (sp_wave: the wave - 1)
+    sec
+    sbc #1
+sv_er_w
+    cmp #10
+    bcc sv_er_w2
+    lda #9
+sv_er_w2
+    sta sp_wave
     jsr sv_wavebcd
     lda #1
     sta gs_go
     lda #SFX_LAUNCH
-    jmp sfx
-sv_wp_none
-    jsr gx_arrive           ; straight there
+    jsr sfx
+    sec
+    rts
+sv_er_no
+    clc
+    rts
+
+; Leaving a planet or a port (sector gs_sec): an encounter? (C = 1, gs_go)
+sv_depart
+    lda gs_sec
+    sta gs_dest
     lda #0
-    sta sv_sel
-    inc sv_dirty
-    lda #SFX_ARRIVE
-    jmp sfx
+    sta gs_go
+    sta sv_t3
+    lda gs_sec
+    jmp sv_encroll
+
 ; sp_wavebcd = sp_wave in BCD (the HUD's wave number; sp_nextwave adds 1 to
 ; both)
 sv_wavebcd
@@ -1174,10 +1263,8 @@ sv_wb_d
     ora sv_t0
     sta sp_wavebcd
     rts
-; by tier (safe, core, mid, outer): the odds (%), the first wave - 1, waves
+; by tier (safe, core, mid, outer): the odds (%)
 sv_encodds .byte 0, 30, 45, 60
-sv_encwave .byte 0, 0, 2, 5
-sv_encspan .byte 1, 2, 3, 3
 
 ; ---------------------------------------------------------------------------
 ; The star chart: the grid (rows 1-8, columns 8-31: a node and a link a

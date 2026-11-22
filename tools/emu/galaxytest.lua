@@ -49,6 +49,22 @@ emu.register_frame_done(function()
     if nf ~= 64 then table.insert(bad, "only " .. nf .. " reachable from home") end
     if nb ~= 64 then table.insert(bad, "home unreachable from " .. (64 - nb)) end
     for k = 1, 63 do if dist[k] and dist[k - 1] and dist[k] < dist[k - 1] then table.insert(bad, "numbering not by distance at " .. (k + 1)) break end end
+    -- jumps back to safe space (sectors 1-10), following the warps
+    local ds = {}
+    for k = 0, 63 do ds[k] = k < 10 and 0 or 99 end
+    local changed = true
+    while changed do
+      changed = false
+      for k = 10, 63 do for _, v in ipairs(out[k]) do
+        if ds[v] + 1 < ds[k] then ds[k] = ds[v] + 1; changed = true end
+      end end
+    end
+    local maxd = 0
+    for k = 0, 63 do
+      local g = m:read_u8(0x26C0 + k) >> 2
+      if g ~= ds[k] then table.insert(bad, string.format("sector %d: %d jumps to safe space, stored %d", k + 1, ds[k], g)) break end
+      if ds[k] > maxd then maxd = ds[k] end
+    end
     local ports, tierports, nebsafe = 0, {[0] = 0, 0, 0, 0}, 0
     for k = 0, 63 do
       local t, tier = info[k] & 3, info[k] >> 6
@@ -59,8 +75,8 @@ emu.register_frame_done(function()
     if tierports[0] < 2 then table.insert(bad, "fewer than 2 ports in safe space") end
     for t = 1, 3 do if tierports[t] < 1 then table.insert(bad, "no port in tier " .. t) end end
     if nebsafe > 0 then table.insert(bad, "a nebula in safe space") end
-    print(string.format("seed %d: %d warps (%d one-way), ports %d/%d/%d/%d, farthest %d hops: %s",
-      seed, links, oneway, tierports[0], tierports[1], tierports[2], tierports[3], dist[63] or -1,
+    print(string.format("seed %d: %d warps (%d one-way), ports %d/%d/%d/%d, farthest %d hops, %d from safe space: %s",
+      seed, links, oneway, tierports[0], tierports[1], tierports[2], tierports[3], dist[63] or -1, maxd,
       #bad == 0 and "ok" or table.concat(bad, "; ")))
     print("result " .. (#bad == 0 and 1 or 0))
     manager:machine():exit()

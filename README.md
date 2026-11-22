@@ -32,8 +32,8 @@ Controls:
 - **The fighter:** it flies the way the joystick points, button 1 fires,
   button 2 calls it home.
 - **The shuttle (on a planet):** hold down to drop it out of the Ark; the
-  joystick flies it; either button is the tractor beam (the shuttle stops
-  while it's on). Dodge the defences' pulse (it fires across the screen at
+  joystick flies it; button 1 is the tractor beam (the shuttle stops
+  while it's on), button 2 drops what it holds. Dodge the defences' pulse (it fires across the screen at
   the guns' height when they flash). To dock, stop under the Ark's doorway
   and push straight up: it flies itself up the tunnel and in.
 - **The storm:** when the klaxon sounds, get back aboard: docked, the stick
