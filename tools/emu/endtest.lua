@@ -10,6 +10,7 @@ end
 local mode = os.getenv("MODE") or "saucer"
 local f, t0, bad, departed, overf, gonef, prevft = 0, nil, 0, nil, nil, nil, 0
 emu.register_frame_done(function()
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x259F, 1)   -- (test: fire on the title, straight into deep space)
   f = f + 1
   local m = manager:machine().devices[":maincpu"].spaces["program"]
   local held = {}

@@ -9,6 +9,7 @@ for tag, port in pairs(manager:machine():ioport().ports) do
   for name, field in pairs(port.fields) do fields[name] = field end
 end
 emu.register_frame_done(function()
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x259F, 1)   -- (test: fire on the title, straight into deep space)
   f = f + 1
   local m = manager:machine().devices[":maincpu"].spaces["program"]
   m:write_u8(0x23EF, 1)

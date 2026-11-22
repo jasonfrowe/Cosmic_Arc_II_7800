@@ -14,6 +14,7 @@ local D = {[0]={"P1 Up"},{"P1 Up","P1 Right"},{"P1 Right"},{"P1 Down","P1 Right"
 local f, most, waves = 0, {}, 0
 local lastticks, stalled, stall = nil, 0, 0   -- the game loop must keep running
 emu.register_frame_done(function()
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x259F, 1)   -- (test: fire on the title, straight into deep space)
   f = f + 1
   manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x23EF, 1)   -- no planets
   local m = manager:machine().devices[":maincpu"].spaces["program"]

@@ -95,6 +95,19 @@ Header (`tools/a78header.py` over what 7800basic writes):
 `userinterrupt` every frame. `mus_mask` (bits 0-3) mutes voices. The
 songs and effects are written in `tools/music.py`.
 
+## The map's screens (320A)
+
+The sector view and star chart are 320A with 1-byte characters: 40
+columns. 7800basic puts its saved `sCTRL` and `sCHARBASE` into MARIA at
+every `drawscreen`, so `sv_enter` sets them ($43, the 40-column font) and
+`sv_leave` puts the game's back ($50, `font`). The font (`font320.asm`,
+from `tools/gfx.py`) is in bank 4 at $A000 (the same 4K pattern as the
+game's font at $C000, safe from holey DMA), glyph n at byte 2n so the text
+codes are the game's. Each glyph line is a page; page p is line 15 - p.
+Text is 12 rows of 40 in the planet's RAM ($2200, $2700: free on the map),
+two 20-character objects a row (`plotcharacters` from asm). Every colour of
+a palette is set the same (320A).
+
 ## Graphics blocks
 
 7800basic fills a graphics block a line (256 bytes) at a time, in
@@ -120,7 +133,8 @@ bytes of a line; the creatures come straight after it.
 | $2560-$2571 | surface.asm: the planet scanner's line (18 characters, its ends included) |
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
-| $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
+| $2590-$259F | sector.asm: the voyage (sector, fuel, stardate, credits, seed; $259F the tests' flag) (the boot check's before a game) |
+| $2600-$26FF | sector.asm: the galaxy by sector (warps, cells, info, flags) (the boot check's before a game) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |
 
 7800basic leaves $2200-$27FF free. The save block (DESIGN.md 7.5) will go
@@ -178,6 +192,8 @@ tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
 tools/test_defense.sh # the planet's pulse: never hits a docked shuttle; finds one
                       # camped at the band's top, middle and foot; full speed
+tools/test_galaxy.sh   # the galaxy generator's rules, 8 seeds
+tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane
 tools/test_spaceend.sh # the Ark waits for the saucer before leaving a wave; pirates
                        # leave when the Ark is lost

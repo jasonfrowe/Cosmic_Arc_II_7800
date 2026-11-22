@@ -62,6 +62,10 @@
   dim starch3 = $2577
   dim twtick = $2575
   dim pl_world = $27F0
+  dim gs_test = $259F
+  dim gs_go = $259B
+  dim gs_seed = $2597
+  dim twtick2 = $2579
   rem surface.asm (the planet)
   dim pl_state = $2714
   dim pl_fine = $2719
@@ -119,6 +123,8 @@ titleloop
   if !joy0fire1 then fireheld = 0 : goto titleloop
   if fireheld then goto titleloop
   fireheld = 1
+  rem (tests: gs_test set, straight into deep space, waves and planets)
+  if gs_test = 0 then goto newgame
 
   rem ======================================================================
   rem Deep space (space.asm)
@@ -165,7 +171,8 @@ end
   drawscreen
   gosub twinkle
 
-  if sp_state = 4 then goto planet
+  if sp_state = 4 && gs_test then goto planet
+  if sp_state = 4 then goto sector
   if sp_state <> 2 then goto gameloop
   rem the Ark is lost: fire (pressed anew) for the title
   if !joy0fire1 then fireheld = 0 : goto gameloop
@@ -177,6 +184,7 @@ end
   rem The planet (surface.asm, bank 3): the Ark in orbit, the ground (two
   rem rows of the map, scrolled), the sprites, the HUD. Then back up.
 planettest
+  gs_test = 1
   asm
   jsr sp_new
 end
@@ -233,6 +241,7 @@ end
   if pl_state <> 3 then goto planetloop
   rem out of energy on the planet: the game's over
   if sp_energy = 0 then goto planetlost
+  if gs_test = 0 then goto sector
   asm
   lda #BANK_SPACE
   jsr bank_in
@@ -249,6 +258,76 @@ end
   gosub spacepal
   fireheld = 1
   goto title
+
+  rem ======================================================================
+  rem A new game: deep space reset, the galaxy from the seed (the timing of
+  rem the press), the sector map (sector.asm, bank 4: 320A text)
+newgame
+  gs_seed[0] = twtick : gs_seed[1] = twtick2 : gs_seed[2] = rand : gs_seed[3] = INTIM
+  asm
+  lda #BANK_SPACE
+  jsr bank_in
+  jsr sp_new
+  lda #BANK_MAP
+  jsr bank_in
+  jsr gx_new
+end
+sector
+  asm
+  lda #BANK_MAP
+  jsr bank_in
+  jsr sv_enter
+  lda #MUS_TITLE
+  jsr mu_switch
+end
+  gosub mappal
+sectorloop
+  t = 8
+  if joy0up then t = 0
+  if joy0down then t = 4
+  if joy0right then t = 2
+  if joy0left then t = 6
+  if joy0up && joy0right then t = 1
+  if joy0down && joy0right then t = 3
+  if joy0down && joy0left then t = 5
+  if joy0up && joy0left then t = 7
+  sp_joy = t
+  sp_fire = 0
+  if joy0fire1 then sp_fire = 1
+  sp_fire2 = 0
+  if joy0fire0 then sp_fire2 = 1
+  clearscreen
+  asm
+  jsr sv_frame
+end
+  drawscreen
+  if gs_go = 1 then goto encounter
+  if gs_go = 2 then goto landplanet
+  goto sectorloop
+  rem an encounter on the way: deep space, a wave for the tier
+encounter
+  asm
+  jsr sv_leave
+  lda #BANK_SPACE
+  jsr bank_in
+  jsr sp_return
+end
+  gosub spacepal
+  gosub drawstars
+  goto gameloop
+landplanet
+  asm
+  jsr sv_leave
+end
+  gosub spacepal
+  goto planet
+  rem the map's colours (320A text: every colour of a palette the same)
+mappal
+  BACKGRND = $00
+  P0C1 = $0E : P0C2 = $0E : P0C3 = $0E
+  P1C1 = $1C : P1C2 = $1C : P1C3 = $1C
+  P2C1 = $9C : P2C2 = $9C : P2C3 = $9C
+  return
 
   rem ======================================================================
   rem Palettes: deep space's, and a planet's
@@ -273,6 +352,7 @@ spacepal
   rem round a 32-step brightness cycle, a third of the way apart
 twinkle
   twtick = twtick + 1
+  if twtick = 0 then twtick2 = twtick2 + 1
   t = (twtick / 4) & 31
   P5C1 = twink1[t]
   t = (t + 11) & 31
@@ -439,11 +519,24 @@ end
   inline surface.asm
   inline planetmap.asm
 
+  rem ======================================================================
+  rem  Bank 4: the sector map (sector.asm), and its 40-column font at $A000
+  rem  (MARIA reads it from here while the map shows)
+  rem ======================================================================
   bank 4
   rem signature, read at $8000 by hwtest.asm
   asm
   .byte "CA",4
 end
+  inline sector.asm
+  asm
+  if . > $A000
+  echo "bank 4: the code reaches the font's place ($A000)"
+  err
+  endif
+  ds $A000 - ., 0
+end
+  inline font320.asm
 
   bank 5
   rem signature, read at $8000 by hwtest.asm

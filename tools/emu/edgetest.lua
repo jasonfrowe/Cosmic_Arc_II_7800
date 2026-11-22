@@ -9,6 +9,7 @@ end
 local f, out, jumps, samples = 0, 0, 0, 0
 local px, py = {}, {}
 emu.register_frame_done(function()
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x259F, 1)   -- (test: fire on the title, straight into deep space)
   f = f + 1
   manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x23EF, 1)   -- no planets
   local m = manager:machine().devices[":maincpu"].spaces["program"]

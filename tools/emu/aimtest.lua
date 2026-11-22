@@ -7,6 +7,7 @@ end
 local combos = {{"P1 Up"},{"P1 Up","P1 Right"},{"P1 Right"},{"P1 Down","P1 Right"},{"P1 Down"},{"P1 Down","P1 Left"},{"P1 Left"},{"P1 Up","P1 Left"}}
 local f=0
 emu.register_frame_done(function()
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x259F, 1)   -- (test: fire on the title, straight into deep space)
   f=f+1
   local hold = {}
   if f>=300 and f<=305 then hold["P1 Button 1"]=true end

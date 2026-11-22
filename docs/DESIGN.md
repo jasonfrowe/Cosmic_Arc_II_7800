@@ -89,6 +89,32 @@ and otherwise re-rolls:
 Only the seed and what has changed (visits, stock, populations) need
 saving. The galaxy itself is rebuilt from the seed on Continue.
 
+### 3.2b As built (M4, first slice)
+
+- **Generator** (`sector.asm`, bank 4): 64 sectors on the 12 x 8 grid. A
+  random spanning tree from home (every sector reachable, both ways), 60
+  tries at extra warps between neighbours, the first 5 of those one-way;
+  sectors numbered breadth-first from home (so by distance); tiers by number
+  (1-10 safe, 11-15 core, 16-40 mid-rim, 41-64 outer rim). Planets 40%
+  (a world each, the planet palettes), nebulae 12% (not in safe space), the
+  rest empty; ports at home, one more in safe space, one in the core, two
+  mid-rim, two outer rim, a random class each. Seed: the frames to the New
+  Game press (16 bits), `rand`, the RIOT timer. `tools/test_galaxy.sh`
+  checks the rules for 8 seeds.
+- **Sector view** (320A, 40 columns): the sector, its tier, the stardate;
+  what's here (a port's class, a planet's world); the choices, two a row:
+  LAND ON PLANET / DOCK AT PORT, then each warp (the sector's number, what's
+  there once visited, `?` before); fuel, credits, energy. Fire chooses,
+  button 2 the star chart.
+- **Travel**: a warp costs a fuel and a stardate. An encounter on the way:
+  safe 0%, core 30%, mid-rim 45%, outer rim 60%, +25% into a nebula; its wave
+  by tier (core 1-2, mid 3-5, outer 6-8). Out of fuel: adrift to a random
+  neighbour, an encounter for sure. After an encounter or a planet, back to
+  the map.
+- **Star chart**: what's been seen (visited, and their neighbours as `?`),
+  the visited sectors' warps as lines; the Ark's sector marked.
+- **Ports for now**: docking fills the fuel (trading is the next slice).
+
 ### 3.3 Making the map drawable (technical design decision)
 
 The 7800 can't draw arbitrary lines cheaply, so the galaxy is a **graph laid

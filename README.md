@@ -38,6 +38,8 @@ Controls:
   and push straight up: it flies itself up the tunnel and in.
 - **The storm:** when the klaxon sounds, get back aboard: docked, the stick
   fires the Ark's laser up, left or right at the rock coming in.
+- **The sector map:** the stick picks a choice (a warp, landing, docking),
+  fire goes; button 2 shows the star chart.
 - On the title, button 2 opens the hardware check; Select goes straight to a
   planet (for testing).
 

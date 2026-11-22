@@ -189,6 +189,7 @@ emu.register_frame_done(function()
     if name:match("^P1 ") or name == "Select" then field:set_value(held[name] and 1 or 0) end
   end
   if os.getenv("NOPLANET") then mem():write_u8(0x23EF, 1) end
+  if os.getenv("NOPLANET") or os.getenv("AUTOPLAY") or os.getenv("TESTMODE") then mem():write_u8(0x259F, 1) end
   if os.getenv("WAVELOG") and f > 330 then
     local m = mem()
     m:write_u8(0x2386, 96)

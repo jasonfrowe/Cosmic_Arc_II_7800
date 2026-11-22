@@ -57,10 +57,13 @@ then link them together.
 - [x] A planet music track
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 
-## M4: Sector map
-- [ ] Seeded galaxy generator (grid-laid graph, warp bitmasks, rules in DESIGN §3.2)
-- [ ] Sector view, galactic chart, fog of war, fuel, stardate
-- [ ] Encounter roll → M1/M2; planet sector → M3
+## M4: Sector map (first slice ✅ 2026-11-22)
+- [x] Seeded galaxy generator (grid-laid graph, warp bitmasks, rules in DESIGN §3.2); `test_galaxy.sh`
+- [x] 40-column 320A screens (bank 4, its font at $A000; sCTRL/sCHARBASE switched)
+- [x] Sector view, star chart (what's been seen), fuel, stardate
+- [x] Encounter roll → deep space (a wave for the tier); planet sector → land; back to the map; `test_journey.sh`
+- [ ] Density / holo scanners, a chart cursor, one-way warps shown
+- [ ] The star's collapse (the stardate deadline)
 
 ## M5: Starports
 - [ ] 320A tabbed menus: Commodities, Bio-Bounty, Shipyard
