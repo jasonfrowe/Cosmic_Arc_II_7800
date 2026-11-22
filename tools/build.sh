@@ -28,6 +28,7 @@ if [ ! -f cosmicarc.bas.a78 ] || grep -q -i -E "error|unresolved|Compilation fai
     echo "BUILD FAILED (full log: build/work/build.log)"
     exit 1
 fi
+python3 "$ROOT/tools/gfxcheck.py" 7800.asm || { echo "BUILD FAILED: a group of frames split across graphics blocks"; exit 1; }
 python3 "$ROOT/tools/a78header.py" cosmicarc.bas.a78 "$ROOT/build/cosmicarc.a78"
 cp cosmicarc.bas.bin "$ROOT/build/cosmicarc.bin"
 grep -E "bytes of ROM space left|used as zone memory|bytes left in the 7800basic reserved area" build.log || true

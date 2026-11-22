@@ -58,8 +58,8 @@
   dim hud_bot2 = $24D0
   dim sp_msg = $23D0
   dim starch = $23F0
-  dim starch2 = $23F1
-  dim starch3 = $23FE
+  dim starch2 = $2576
+  dim starch3 = $2577
   dim twtick = $2575
   dim pl_world = $27F0
   rem surface.asm (the planet)
@@ -523,6 +523,32 @@ end
   rem ======================================================================
   bank 17
   incgraphic gfx/font.png 160A 0 1 2 3
+  rem (frame groups must stay contiguous in one block: tools/gfxcheck.py;
+  rem the creatures straight after the font, which takes 180 of a line's 256)
+  incgraphic gfx/creature00.png 160A 0 1 2 3
+  incgraphic gfx/creature01.png 160A 0 1 2 3
+  incgraphic gfx/creature02.png 160A 0 1 2 3
+  incgraphic gfx/creature03.png 160A 0 1 2 3
+  incgraphic gfx/creature04.png 160A 0 1 2 3
+  incgraphic gfx/creature05.png 160A 0 1 2 3
+  incgraphic gfx/creature06.png 160A 0 1 2 3
+  incgraphic gfx/creature07.png 160A 0 1 2 3
+  incgraphic gfx/creature08.png 160A 0 1 2 3
+  incgraphic gfx/creature09.png 160A 0 1 2 3
+  incgraphic gfx/creature10.png 160A 0 1 2 3
+  incgraphic gfx/creature11.png 160A 0 1 2 3
+  incgraphic gfx/creature12.png 160A 0 1 2 3
+  incgraphic gfx/creature13.png 160A 0 1 2 3
+  incgraphic gfx/creature14.png 160A 0 1 2 3
+  incgraphic gfx/creature15.png 160A 0 1 2 3
+  incgraphic gfx/creature16.png 160A 0 1 2 3
+  incgraphic gfx/creature17.png 160A 0 1 2 3
+  incgraphic gfx/creature18.png 160A 0 1 2 3
+  incgraphic gfx/creature19.png 160A 0 1 2 3
+  incgraphic gfx/creature20.png 160A 0 1 2 3
+  incgraphic gfx/creature21.png 160A 0 1 2 3
+  incgraphic gfx/creature22.png 160A 0 1 2 3
+  incgraphic gfx/creature23.png 160A 0 1 2 3
   incgraphic gfx/ark.png 160A 0 1 2 3
   incgraphic gfx/rock_l.png 160A 0 1 2 3
   incgraphic gfx/rock_m.png 160A 0 1 2 3
@@ -551,30 +577,6 @@ end
   incgraphic gfx/dot.png 160A 0 1 2 3
   incgraphic gfx/pod0.png 160A 0 1 2 3
   incgraphic gfx/pod1.png 160A 0 1 2 3
-  incgraphic gfx/creature00.png 160A 0 1 2 3
-  incgraphic gfx/creature01.png 160A 0 1 2 3
-  incgraphic gfx/creature02.png 160A 0 1 2 3
-  incgraphic gfx/creature03.png 160A 0 1 2 3
-  incgraphic gfx/creature04.png 160A 0 1 2 3
-  incgraphic gfx/creature05.png 160A 0 1 2 3
-  incgraphic gfx/creature06.png 160A 0 1 2 3
-  incgraphic gfx/creature07.png 160A 0 1 2 3
-  incgraphic gfx/creature08.png 160A 0 1 2 3
-  incgraphic gfx/creature09.png 160A 0 1 2 3
-  incgraphic gfx/creature10.png 160A 0 1 2 3
-  incgraphic gfx/creature11.png 160A 0 1 2 3
-  incgraphic gfx/creature12.png 160A 0 1 2 3
-  incgraphic gfx/creature13.png 160A 0 1 2 3
-  incgraphic gfx/creature14.png 160A 0 1 2 3
-  incgraphic gfx/creature15.png 160A 0 1 2 3
-  incgraphic gfx/creature16.png 160A 0 1 2 3
-  incgraphic gfx/creature17.png 160A 0 1 2 3
-  incgraphic gfx/creature18.png 160A 0 1 2 3
-  incgraphic gfx/creature19.png 160A 0 1 2 3
-  incgraphic gfx/creature20.png 160A 0 1 2 3
-  incgraphic gfx/creature21.png 160A 0 1 2 3
-  incgraphic gfx/creature22.png 160A 0 1 2 3
-  incgraphic gfx/creature23.png 160A 0 1 2 3
   incgraphic gfx/beam0.png 160A 0 1 2 3
   incgraphic gfx/beam1.png 160A 0 1 2 3
   incgraphic gfx/crate.png 160A 0 1 2 3

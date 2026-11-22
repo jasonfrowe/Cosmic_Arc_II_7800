@@ -95,6 +95,16 @@ Header (`tools/a78header.py` over what 7800basic writes):
 `userinterrupt` every frame. `mus_mask` (bits 0-3) mutes voices. The
 songs and effects are written in `tools/music.py`.
 
+## Graphics blocks
+
+7800basic fills a graphics block a line (256 bytes) at a time, in
+`incgraphic` order, and moves on to the next block ($E000) when a line is
+full. The code finds a frame as the first frame's address plus frame x
+width, so **every group of numbered frames must stay in one block**:
+`tools/gfxcheck.py` fails the build if a group is split. (The creatures
+split once when the font grew: frames 6-23 read glyphs.) The font is 180
+bytes of a line; the creatures come straight after it.
+
 ## RAM
 
 | Where | What |
@@ -108,7 +118,7 @@ songs and effects are written in `tools/music.py`.
 | $2200-$22FF | surface.asm: the planet's turrets and their shots |
 | $2500-$255F | sound.asm |
 | $2560-$2571 | surface.asm: the planet scanner's line (18 characters, its ends included) |
-| $2575 | the stars' twinkle counter (BASIC) |
+| $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |

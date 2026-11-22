@@ -48,6 +48,11 @@ emu.register_frame_done(function()
   for name, field in pairs(fields) do if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end end
   if mode == "saucer" and (departed and f > departed + 10 or f > 3000) then
     print(string.format("saucer out at the wave's end: the Ark %s", not departed and "NEVER LEFT" or (bad == 1 and "LEFT WITHOUT IT" or string.format("waited, left %.1f s after the clear", (departed - t0) / 60))))
+    local mm = manager:machine().devices[":maincpu"].spaces["program"]
+    local c1, c2, c3 = mm:read_u8(0x23F0), mm:read_u8(0x2576), mm:read_u8(0x2577)
+    local starsok = (c1 == 126 and c2 == 144 and c3 == 146)
+    print(string.format("the stars' glyph cells after flying the saucer: %d %d %d (%s)", c1, c2, c3, starsok and "intact" or "OVERWRITTEN"))
+    if not starsok then bad = 1 end
     print(string.format("result %d %d", departed and 1 or 0, bad))
     manager:machine():exit()
   end
