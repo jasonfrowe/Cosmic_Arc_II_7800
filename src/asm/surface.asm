@@ -252,8 +252,8 @@ cr_react  = $27E4   ; [NCR] the shuttle overhead: 0 not decided, 1 reacts,
 pl_busy   = $27E8   ; something's rising in the beam already
 pl_world  = $27F0   ; the world (0-5: its palette and name; the BASIC reads)
 NWORLD    = 6
-pl_nodock = $27EA   ; just out of the Ark: no docking till it's left the
-                    ;   doorway (across, or DOCK_H+4 lines down)
+pl_nodock = $27EA   ; just out of the Ark: only straight up docks again till
+                    ;   it's left the doorway (across, or DOCK_H+4 lines down)
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -1277,8 +1277,11 @@ pl_sh_up
     lda pl_y
     cmp #PL_YMIN+DOCK_H+1
     bcs pl_sh_u0
-    lda pl_nodock
+    lda pl_nodock           ; just out: straight up goes back in at once;
+    beq pl_sh_dk            ;  up and across (flying away) doesn't
+    lda sp_joy
     bne pl_sh_u0
+pl_sh_dk
     jsr pl_underark
     bcc pl_sh_u0
     lda #AUTO_IN

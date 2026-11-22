@@ -7,6 +7,8 @@
 --  4. No accident: just out, fly up and away (up + left) for a second: it
 --     must not dock again.
 --  5. Docking with up held: the Ark mustn't fire until the stick's let go.
+--  7. Straight back: just out of the Ark, push up: it must go back in
+--     within 1 s (no need to fly away first).
 --  6. Docking on the move: from 70 px off and down in the band, fly at the
 --     Ark and, from 40 px off, hold up and towards it (a diagonal): it must
 --     dock within 3 s, from the right (up-left) and from the left (up-right).
@@ -71,7 +73,22 @@ emu.register_frame_done(function()
     elseif phase == "away" then
       held["P1 Up"] = true; held["P1 Left"] = true             -- off up and away
       if st == 0 or auto == 1 then results.accident = 1 end
-      if f - t0 > 60 then phase = "out"; side = 1; t0 = f end
+      if f - t0 > 60 then phase = "out2"; t0 = f end
+    elseif phase == "out2" then                              -- back in (any way)
+      if st == 1 and auto == 0 then
+        if dx > 2 then held["P1 Left"] = true elseif dx < -2 then held["P1 Right"] = true end
+        held["P1 Up"] = true
+      end
+      if st == 0 then phase = "relaunch"; t0 = f end
+      if f - t0 > 900 then results.back = -1; phase = "out"; side = 1; t0 = f end
+    elseif phase == "relaunch" then                          -- out again, holding down
+      held["P1 Down"] = true
+      if st == 1 and auto == 0 then phase = "upagain"; t0 = f end
+      if f - t0 > 300 then results.back = -1; phase = "out"; side = 1; t0 = f end
+    elseif phase == "upagain" then                           -- free: straight back up
+      held["P1 Up"] = true
+      if st == 0 then results.back = (f - t0) / 60; phase = "out"; side = 1; t0 = f
+      elseif f - t0 > 120 then results.back = -1; phase = "out"; side = 1; t0 = f end
     elseif phase == "out" then                               -- off to one side, low
       local k = side > 0 and "P1 Right" or "P1 Left"
       if st == 0 then held["P1 Down"] = true
@@ -103,9 +120,10 @@ emu.register_frame_done(function()
     print(string.format("flying up and away just out of the Ark: %s", results.accident and "DOCKED BY ACCIDENT" or "no dock"))
     print(string.format("docking with up still held: the Ark %s", results.fired and "FIRED" or "held its fire"))
     local function pr(v) return v and v >= 0 and string.format("%.1f s", v) or "FAILED" end
+    print(string.format("straight back in after coming out (push up): %s", pr(results.back)))
     print(string.format("docking on the move, from the right (up-left): %s", pr(results.pass1)))
     print(string.format("docking on the move, from the left (up-right): %s", pr(results["pass-1"])))
-    print(string.format("result %d %.2f %.2f %d %d %.2f %.2f", ahead, results.dock or -1, results.undock or -1, results.accident or 0, results.fired or 0, results.pass1 or -1, results["pass-1"] or -1))
+    print(string.format("result %d %.2f %.2f %d %d %.2f %.2f %.2f", ahead, results.dock or -1, results.undock or -1, results.accident or 0, results.fired or 0, results.pass1 or -1, results["pass-1"] or -1, results.back or -1))
     manager:machine():exit()
   end
 end)
