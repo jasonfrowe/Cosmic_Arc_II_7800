@@ -45,7 +45,8 @@ mapper is `a78_p450_ta` in the emulator):
 |---|---|---|
 | 1 | $4000, fixed | the BASIC (game flow), banks.asm, text, the sound player, music and effects, the SaveKey, the hardware check |
 | 2 | $8000, switched | deep space: space, fighter, pirates, vec, draw |
-| 3-16 | $8000, switched | to come: one per mode / biome / music set (DESIGN.md 7.2) |
+| 3 | $8000, switched | the planet: surface.asm and its map (MARIA reads the map as it draws) |
+| 4-16 | $8000, switched | to come: one per mode / biome / music set (DESIGN.md 7.2) |
 | 17 | $C000, fixed | graphics (MARIA reads them at any time), 7800basic's runtime |
 
 `bank_in` (`banks.asm`, A = bank) switches a bank in (`sta $8000` with the
@@ -103,6 +104,7 @@ songs and effects are written in `tools/music.py`.
 | zero page $B9-$BC | hwtest.asm |
 | $2300-$23FF | space.asm: rocks, bolts, the HUD's text |
 | $2400-$24FF | fighter.asm, pirates.asm, vec.asm, draw.asm: the fighter, shots, pirates, pods |
+| $2700-$27FF | surface.asm: the planet (shuttle, camera, creatures, crates, turrets, shots) |
 | $2500-$255F | sound.asm |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
@@ -156,11 +158,38 @@ tools/test_zones.sh   # late crowded waves: the fullest zone under 80% of its li
 tools/test_waves.sh   # 11 waves: none clears with a pirate about; the rocks'
                       # music comes back after the pirates are destroyed
 tools/test_edges.sh   # pirates never leave the screen or wrap (84,000 samples)
+tools/test_planet.sh  # Select -> a planet: the autopilot catches, the planet ends,
+                      # back to space; the loop runs every frame
+```
+
+The deep-space tests set `sp_noplanet` ($23EF) so waves go straight on without
+planets (`NOPLANET=1` for `snap.lua`).
+
+```
 ```
 
 `tools/fixbranches.py` turns each "Branch out of range" in the last build's
 log into the opposite branch round a `JMP`. Run it, then build again. The
 assembly runs long with macros like `PLOT`.
+
+## The planet's scrolling
+
+The ground is two rows of `tools/planet.py`'s map (horizon and soil, glyphs
+after the font in the same character block, so their codes are 128 on). Each
+row is stored 128 + 21 wide: the first 21 columns again at the end, so a
+21-column window never has to wrap. Every frame: `clearscreen`, then
+`plotmap pl_map 5 pl_fine 9 21 2 pl_col 0 149`, where `pl_col` = camera / 8
+and `pl_fine` = -(camera & 7). An x of 249-255 starts the row off the left
+edge, and MARIA wraps it. The camera is the shuttle's world x - 80, and a
+thing's screen x is (its x - camera) & 1023 (`pl_scrx`).
+
+`common.asm` (bank 1) holds what both modes use: the `PLOT` macro, the HUD's
+bar, the score, centred messages. `vec.asm` moved to bank 1 too.
+
+**Graphics space:** bank 17's main area is full (0 bytes). In 16-line zones the
+graphics share 256-byte-wide rows: the font with its terrain glyphs (144 bytes)
+and every sprite so far. Later graphics should go into the bank of the mode that uses
+them, which is in while MARIA draws them.
 
 ## Pitfalls found so far
 
@@ -201,6 +230,13 @@ assembly runs long with macros like `PLOT`.
   check later in the frame doesn't see the new one. A gunship spawned in the
   frame the wave-clear check ran, so the wave cleared with it on screen. Count
   a pirate as soon as it's placed (`pr_place`).
+- **`plotmap`'s map width must be a number**: an assembler name there
+  (`PL_MAPW`) is read as a variable's address, and the second row read the first
+  row's data.
+- **A name for both a variable and a routine** (`pl_frame`): give each its own.
+- **Many small sprites cost frames**: a tall tractor beam of 8-line pieces (up to
+  11 `plotsprite`s) dropped 6% of the planet's frames. 16-line pieces, one a zone,
+  fixed it.
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

@@ -28,6 +28,9 @@ local autoplay = tonumber(os.getenv("AUTOPLAY") or "")
 -- AUTOFIGHTER (optional, a frame): from then on, launch the fighter and fly
 -- it at the nearest pirate (or pod), firing when lined up. Logs kills.
 local autofighter = tonumber(os.getenv("AUTOFIGHTER") or "")
+-- AUTOPLANET (optional, a frame): on a planet, fly over the nearest creature,
+-- go down, beam it up, climb into the Ark. Logs the planet's state.
+local autoplanet = tonumber(os.getenv("AUTOPLANET") or "")
 
 local fields = {}
 for tag, port in pairs(manager:machine():ioport().ports) do
@@ -138,9 +141,38 @@ emu.register_frame_done(function()
         m2:read_u8(0x2387), m2:read_u8(0x2388), m2:read_u8(0x2389)))
     end
   end
-  for name, field in pairs(fields) do
-    if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end
+  if autoplanet and f >= autoplanet then
+    local m = mem()
+    local wx = m:read_u8(0x2700) + 256 * m:read_u8(0x2701)
+    local sy, hold, st = m:read_u8(0x2707), m:read_u8(0x270A), m:read_u8(0x2709)
+    if hold > 0 then
+      held["P1 Up"] = true
+    else
+      local best, bd, by
+      for i = 0, 3 do
+        local t, cs = m:read_u8(0x2720 + i), m:read_u8(0x2740 + i)
+        if t > 0 and cs ~= 4 and cs ~= 3 then
+          local cx = m:read_u8(0x2724 + i) + 256 * m:read_u8(0x2728 + i) + 4
+          local dx = (cx - wx + 512) % 1024 - 512
+          if not bd or math.abs(dx) < math.abs(bd) then bd, best, by = dx, i, m:read_u8(0x2730 + i) end
+        end
+      end
+      if best then
+        if bd > 2 then held["P1 Right"] = true elseif bd < -2 then held["P1 Left"] = true end
+        if math.abs(bd) < 24 and sy < by - 14 then held["P1 Down"] = true end
+        if math.abs(bd) < 6 then held["P1 Button 1"] = true end
+        if st == 0 then held["P1 Down"] = true end
+      end
+    end
+    if f % 300 == 0 then
+      print(string.format("frame %d: planet state %d, time %d, caught %d/%d, hold %d, shuttle y %d, Ark energy %d",
+        f, m:read_u8(0x2714), m:read_u8(0x2712), m:read_u8(0x2716), m:read_u8(0x2717), hold, sy, m:read_u8(0x2386)))
+    end
   end
+  for name, field in pairs(fields) do
+    if name:match("^P1 ") or name == "Select" then field:set_value(held[name] and 1 or 0) end
+  end
+  if os.getenv("NOPLANET") then mem():write_u8(0x23EF, 1) end
   if os.getenv("WAVELOG") and f > 330 then
     local m = mem()
     m:write_u8(0x2386, 96)

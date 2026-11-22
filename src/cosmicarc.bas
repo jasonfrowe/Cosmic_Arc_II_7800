@@ -57,6 +57,10 @@
   dim hud_bot2 = $24D0
   dim sp_msg = $23D0
   dim starch = $23F0
+  rem surface.asm (the planet)
+  dim pl_state = $2714
+  dim pl_fine = $2719
+  dim pl_col = $271A
   rem zero page
   dim fireheld = a
   dim fire2held = b
@@ -64,18 +68,7 @@
   rem Buttons: joy0fire1 is button 1 (fire; a one-button stick's too),
   rem joy0fire0 button 2 (as Gamma Force and Spacewar).
 
-  BACKGRND = $00
-  rem P0 text, P1 the Ark, P2 rocks, P3 bolts, aim, turret shots, pods and
-  rem the tether bar, P4 explosions and pirates, P5 stars, P6 the fighter,
-  rem P7 the energy bar
-  P0C1 = $0F
-  P1C1 = $44 : P1C2 = $42 : P1C3 = $4C
-  P2C1 = $62 : P2C2 = $66 : P2C3 = $6A
-  P3C1 = $98 : P3C2 = $9A : P3C3 = $0F
-  P4C1 = $04 : P4C2 = $36 : P4C3 = $1E
-  P5C1 = $06
-  P6C1 = $D4 : P6C2 = $DC : P6C3 = $0F
-  P7C1 = $C8
+  gosub spacepal
 
   characterset font
   rem the font is ASCII 32-95 (tools/gfx.py); ~ stands in for " and '
@@ -111,6 +104,7 @@ titleloop
   drawscreen
   if !joy0fire0 then fire2held = 0
   if joy0fire0 && !fire2held then fire2held = 1 : goto hwcheck
+  if switchselect then goto planettest
   if !joy0fire1 then fireheld = 0 : goto titleloop
   if fireheld then goto titleloop
   fireheld = 1
@@ -159,12 +153,97 @@ end
   if sp_msglen then plotchars sp_msg 0 sp_msgx 3 sp_msglen
   drawscreen
 
+  if sp_state = 4 then goto planet
   if sp_state <> 2 then goto gameloop
   rem the Ark is lost: fire (pressed anew) for the title
   if !joy0fire1 then fireheld = 0 : goto gameloop
   if fireheld then goto gameloop
   fireheld = 1
   goto title
+
+  rem ======================================================================
+  rem The planet (surface.asm, bank 3): the Ark in orbit, the ground (two
+  rem rows of the map, scrolled), the sprites, the HUD. Then back up.
+planettest
+  asm
+  jsr sp_new
+end
+planet
+  asm
+  lda #BANK_PLANET
+  jsr bank_in
+  jsr pl_new
+end
+  gosub planetpal
+planetloop
+  t = 8
+  if joy0up then t = 0
+  if joy0down then t = 4
+  if joy0right then t = 2
+  if joy0left then t = 6
+  if joy0up && joy0right then t = 1
+  if joy0down && joy0right then t = 3
+  if joy0down && joy0left then t = 5
+  if joy0up && joy0left then t = 7
+  sp_joy = t
+  sp_fire = 0
+  if joy0fire1 then sp_fire = 1
+  sp_fire2 = 0
+  if joy0fire0 then sp_fire2 = 1
+  asm
+  jsr pl_frame
+end
+  P7C1 = $C8
+  if sp_energy < 49 then P7C1 = $1C
+  if sp_energy < 25 then P7C1 = $36
+  clearscreen
+  plotsprite ark 1 56 32
+  rem (the map width as a number: a name is taken for a variable; = PL_MAPW)
+  plotmap pl_map 5 pl_fine 9 21 2 pl_col 0 149
+  plotchars '----------------' 5 16 1
+  asm
+  jsr pl_draw
+end
+  plotchars hud_top 0 0 0 20
+  plotchars hud_bot 7 0 11 10
+  plotchars hud_bot2 3 80 11 10
+  if sp_msglen then plotchars sp_msg 0 sp_msgx 5 sp_msglen
+  drawscreen
+  if pl_state <> 3 then goto planetloop
+  asm
+  lda #BANK_SPACE
+  jsr bank_in
+  jsr sp_return
+end
+  gosub spacepal
+  gosub drawstars
+  goto gameloop
+
+  rem ======================================================================
+  rem Palettes: deep space's, and a planet's
+spacepal
+  BACKGRND = $00
+  rem P0 text, P1 the Ark, P2 rocks, P3 bolts, aim, turret shots, pods and
+  rem the tether bar, P4 explosions and pirates, P5 stars, P6 the fighter,
+  rem P7 the energy bar
+  P0C1 = $0F
+  P1C1 = $44 : P1C2 = $42 : P1C3 = $4C
+  P2C1 = $62 : P2C2 = $66 : P2C3 = $6A
+  P3C1 = $98 : P3C2 = $9A : P3C3 = $0F
+  P4C1 = $04 : P4C2 = $36 : P4C3 = $1E
+  P5C1 = $06
+  P6C1 = $D4 : P6C2 = $DC : P6C3 = $0F
+  P7C1 = $C8
+
+  return
+
+  rem P2 creatures (yellow, pink, cyan), P5 the ground (grass, soil, hills),
+  rem the sky dark blue; the rest as deep space's
+planetpal
+  BACKGRND = $82
+  P2C1 = $1C : P2C2 = $4A : P2C3 = $9C
+  P5C1 = $C6 : P5C2 = $22 : P5C3 = $E4
+  return
 
   rem ======================================================================
   rem Stars (three a row, playfield rows 1-10), then save the screen as the
@@ -238,6 +317,8 @@ end
   rem Assembly files are copied flat into the build directory (tools/build.sh).
   inline mathunit.asm
   inline banks.asm
+  inline vec.asm
+  inline common.asm
   inline text.asm
   inline sound.asm
   inline music.asm
@@ -253,17 +334,22 @@ end
   asm
   .byte "CA",2
 end
-  inline vec.asm
   inline space.asm
   inline fighter.asm
   inline pirates.asm
   inline draw.asm
 
+  rem ======================================================================
+  rem  Bank 3: the planet (surface.asm, and its map: MARIA reads the map's
+  rem  character codes as it draws, so the map lives in this bank too)
+  rem ======================================================================
   bank 3
   rem signature, read at $8000 by hwtest.asm
   asm
   .byte "CA",3
 end
+  inline surface.asm
+  inline planetmap.asm
 
   bank 4
   rem signature, read at $8000 by hwtest.asm
@@ -377,3 +463,33 @@ end
   incgraphic gfx/dot.png 160A 0 1 2 3
   incgraphic gfx/pod0.png 160A 0 1 2 3
   incgraphic gfx/pod1.png 160A 0 1 2 3
+  incgraphic gfx/creature00.png 160A 0 1 2 3
+  incgraphic gfx/creature01.png 160A 0 1 2 3
+  incgraphic gfx/creature02.png 160A 0 1 2 3
+  incgraphic gfx/creature03.png 160A 0 1 2 3
+  incgraphic gfx/creature04.png 160A 0 1 2 3
+  incgraphic gfx/creature05.png 160A 0 1 2 3
+  incgraphic gfx/creature06.png 160A 0 1 2 3
+  incgraphic gfx/creature07.png 160A 0 1 2 3
+  incgraphic gfx/creature08.png 160A 0 1 2 3
+  incgraphic gfx/creature09.png 160A 0 1 2 3
+  incgraphic gfx/creature10.png 160A 0 1 2 3
+  incgraphic gfx/creature11.png 160A 0 1 2 3
+  incgraphic gfx/creature12.png 160A 0 1 2 3
+  incgraphic gfx/creature13.png 160A 0 1 2 3
+  incgraphic gfx/creature14.png 160A 0 1 2 3
+  incgraphic gfx/creature15.png 160A 0 1 2 3
+  incgraphic gfx/creature16.png 160A 0 1 2 3
+  incgraphic gfx/creature17.png 160A 0 1 2 3
+  incgraphic gfx/creature18.png 160A 0 1 2 3
+  incgraphic gfx/creature19.png 160A 0 1 2 3
+  incgraphic gfx/creature20.png 160A 0 1 2 3
+  incgraphic gfx/creature21.png 160A 0 1 2 3
+  incgraphic gfx/creature22.png 160A 0 1 2 3
+  incgraphic gfx/creature23.png 160A 0 1 2 3
+  incgraphic gfx/beam0.png 160A 0 1 2 3
+  incgraphic gfx/beam1.png 160A 0 1 2 3
+  incgraphic gfx/crate.png 160A 0 1 2 3
+  incgraphic gfx/tower.png 160A 0 1 2 3
+  incgraphic gfx/turret.png 160A 0 1 2 3
+  incgraphic gfx/ring.png 160A 0 1 2 3

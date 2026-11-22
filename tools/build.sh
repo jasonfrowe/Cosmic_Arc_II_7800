@@ -11,6 +11,7 @@ BASDIR="$ROOT/tools/7800basic"
 WORK="$ROOT/build/work"
 
 python3 "$ROOT/tools/music.py"
+python3 "$ROOT/tools/planet.py"
 
 rm -rf "$WORK"
 mkdir -p "$WORK"

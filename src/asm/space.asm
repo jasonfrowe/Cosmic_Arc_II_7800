@@ -83,6 +83,7 @@ ST_PLAY   = 0
 ST_CLEAR  = 1       ; "WAVE CLEAR", then the next wave
 ST_OVER   = 2       ; "ARC LOST"
 ST_START  = 3       ; "WAVE nn" before the rocks come
+ST_PLANET = 4       ; the wave's over: down to a planet (the BASIC goes)
 
 ; ---- RAM ($2300-$23FF) ----
 rk_t      = $2300   ; [NR]
@@ -136,6 +137,7 @@ sp_msg    = $23D0   ; 20
 sp_pwin   = $24F0   ; the pirate window: 8-frame steps left
 sp_msgtm  = $24F1   ; frames a timed message has left (0: it stays)
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
+sp_noplanet = $23EF ; not 0: waves go straight on, no planets (tests)
 
 ; ---------------------------------------------------------------------------
 sp_new
@@ -169,6 +171,21 @@ sp_clear_b
     dex
     bpl sp_clear_b
     rts
+
+; back from a planet: the fighter in its bay, the sky cleared, the next wave
+sp_return
+    lda #FT_DOCK
+    sta ft_st
+    jsr sp_clear
+    jsr pr_new
+    ldx #NS-1
+    lda #0
+sp_rt_s
+    sta sh_t,x
+    dex
+    bpl sp_rt_s
+    sta sp_msglen
+    jmp sp_nextwave
 
 ; the next wave: more rocks, faster, closer together
 sp_nextwave
@@ -626,24 +643,6 @@ sp_ah_nf
 sp_ah_r
     rts
 
-; add sc_m/sc_l (BCD: hundreds-thousands, tens-ones) to the score
-sc_m      = $24EE
-sc_l      = $24EF
-sc_add
-    sed
-    clc
-    lda sp_score+2
-    adc sc_l
-    sta sp_score+2
-    lda sp_score+1
-    adc sc_m
-    sta sp_score+1
-    lda sp_score
-    adc #0
-    sta sp_score
-    cld
-    rts
-
 ; slot X becomes an explosion
 sp_boom
     lda #RK_BOOM
@@ -861,7 +860,13 @@ sp_w_play
     bne sp_w_p2
     dec sp_timer
     bne sp_w_r
+    lda sp_noplanet         ; (tests of deep space alone set this)
+    beq sp_w_down
     jmp sp_nextwave
+sp_w_down
+    lda #ST_PLANET          ; down to a planet (the BASIC sees, and goes)
+    sta sp_state
+    rts
 sp_w_p2
     ; pirates still to come
     lda sp_praid
@@ -911,7 +916,9 @@ sp_w_rk2
     ora pr_live
     ora sp_praid
     ora sp_pgun
-    bne sp_w_r
+    beq sp_w_r_far919
+    jmp sp_w_r
+sp_w_r_far919
     ; wave clear (CLEAR_PAY energy: none for now)
     lda #ST_CLEAR
     sta sp_state
@@ -1067,50 +1074,7 @@ sp_hud_rl
     bpl sp_hud_rl
     rts
 
-; (hwp): character A, then X as 8 cells of 12, then a space
-hud_bar
-    ldy #0
-    sta (hwp),y
-    stx sp_t0
-    iny
-hud_b_full
-    lda sp_t0
-    cmp #12
-    bcc hud_b_part
-    sbc #12
-    sta sp_t0
-    lda #CH_BAR4
-    sta (hwp),y
-    iny
-    cpy #9
-    bne hud_b_full
-    beq hud_b_end
-hud_b_part
-    ldx #0                  ; the part cell: quarters of 12 (3 each)
-hud_b_q
-    cmp #3
-    bcc hud_b_qd
-    sbc #3
-    inx
-    bne hud_b_q
-hud_b_qd
-    lda bar_part,x
-    sta (hwp),y
-    iny
-hud_b_sp
-    cpy #10
-    beq hud_b_r
-    lda #CH_SPACE
-    sta (hwp),y
-    iny
-    bne hud_b_sp
-hud_b_end
-    lda #CH_SPACE
-    sta (hwp),y
-hud_b_r
-    rts
 
-bar_part .byte 0, CH_BAR1, CH_BAR2, CH_BAR3
 
 ; ---- messages in the middle of the screen ----
 sp_msg_wave
@@ -1153,28 +1117,4 @@ sp_msg_over
     lda #<tx_lost
     ldy #>tx_lost
     ldx #8
-; copy X characters from (A, Y) and centre them
-sp_msgcopy
-    sta hwp
-    sty hwp+1
-    stx sp_t0
-    ldy #0
-sp_mc_l
-    lda (hwp),y
-    sta sp_msg,y
-    iny
-    cpy sp_t0
-    bne sp_mc_l
-    lda sp_t0
-    asl
-    asl
-    sta sp_t1               ; width/2 in pixels = len * 4
-    sec
-    lda #80
-    sbc sp_t1
-    tax
-    lda sp_t0
-sp_msgset
-    sta sp_msglen
-    stx sp_msgx
-    rts
+    jmp sp_msgcopy

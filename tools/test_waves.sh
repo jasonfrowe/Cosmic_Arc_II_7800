@@ -5,7 +5,7 @@
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 A7800=${A7800:-$HOME/Software/a7800/mame64}
 cd "$(dirname "$A7800")"
-OUT=$(WAVELOG=1 AUTOPLAY=330 AUTOFIGHTER=330 INPUTS="300-305:P1 Button 1" SNAP_FRAMES=10000 \
+OUT=$(NOPLANET=1 WAVELOG=1 AUTOPLAY=330 AUTOFIGHTER=330 INPUTS="300-305:P1 Button 1" SNAP_FRAMES=10000 \
   "$A7800" a7800 -cart "$ROOT/build/cosmicarc.a78" -joy2 savekey -video none -sound none -nothrottle \
   -autoboot_script "$ROOT/tools/emu/snap.lua" -skip_gameinfo -nomouse 2>&1 | grep "state [0-9] song")
 CLEARS=$(echo "$OUT" | grep -c "state 1 song")

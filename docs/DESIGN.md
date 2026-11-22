@@ -243,6 +243,27 @@ get at them. Their centres stay inside the playfield (`pr_keepin`).
 The Ark holds high orbit at the top of the screen and the shuttle flies
 the surface below.
 
+### 5.0 As built (M3)
+
+The Ark hangs in orbit at the top of the screen and follows you round. The
+shuttle (the saucer) stays at the screen's centre while the ground scrolls under
+it. Down takes it out of the Ark's bay. Flying up into the Ark docks it and
+hands over what it holds: a creature (+12 Ark energy, 500 points) or an ore
+crate (200 points). Each cleared deep-space wave goes down to a planet,
+and the game returns to space when the planet's over.
+
+| | M3 numbers (knobs in `surface.asm`) |
+|---|---|
+| The surface | 1024 px round (6.4 screens), wraps |
+| The clock | 60 s, the klaxon from 15 s; time up with the shuttle out loses what it held and costs the Ark 12 |
+| Creatures | 2-4 a planet, kinds at random: walker, hopper, runner (flees a low shuttle or its beam), burrower (ducks underground), glider (flies), blinker (vanishes and turns up to 64 px away) |
+| The beam | takes a creature whose middle is within 6 px; lifts it 1 line a frame (a crate half that, and a crate halves the climb too); let go and it falls |
+| Stun pulse | button 2, every 2.5 s: creatures within 36 px stunned 2.5 s, turrets frozen 3.3 s |
+| Turrets | two towers; a shot every 2-3 s at a shuttle within 72 px across, its aim straying a little; a hit knocks the cargo loose and costs the Ark 4 |
+| All caught | the Ark's energy full again, 1,000 points |
+
+On a planet the Ark can't drop below 1 energy: only deep space ends the game.
+
 ### 5.1 The surface
 
 - **Horizontal smooth scrolling** over a surface **4-8 screens wide

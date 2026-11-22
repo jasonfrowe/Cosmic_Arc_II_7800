@@ -8,10 +8,11 @@ navigate a 64-sector galaxy of warps, starports and pirates, trading
 Fuel Ore, Organics and Equipment for upgrades, to fill the Ark's manifest
 before the star Alpha Ro collapses.
 
-**Status:** M2 (the fighter) done: defend the Ark against asteroid waves
-and pirates, with the 8-way laser or by launching the fighter.
+**Status:** M3 (the planet) done: defend the Ark in deep space, then go
+down to a scrolling planet and beam creatures up into the Ark before the
+klaxon.
 
-![The fighter](docs/m2_fighter.png)
+![The planet](docs/m3_planet.png)
 
 - [Design document](docs/DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -30,7 +31,11 @@ Controls:
 - **The Ark:** the joystick aims, button 1 fires, button 2 launches the fighter.
 - **The fighter:** it flies the way the joystick points, button 1 fires,
   button 2 calls it home.
-- On the title, button 2 opens the hardware check.
+- **The shuttle (on a planet):** the joystick flies it (down leaves the Ark,
+  up into the Ark docks and hands over its cargo), button 1 is the tractor
+  beam, button 2 the stun pulse.
+- On the title, button 2 opens the hardware check; Select goes straight to a
+  planet (for testing).
 
 ## Features (planned)
 

@@ -12,19 +12,6 @@
 dr_i      = $24CE
 dr_f      = $24CF
 
-    MAC PLOT            ; PLOT graphic, palette: A = frame * width (bytes)
-    clc
-    adc #<{1}
-    sta temp1
-    lda #>{1}
-    adc #0
-    sta temp2
-    lda #({2}<<5)|{1}_width_twoscompliment
-    sta temp3
-    lda #({1}_mode|%01000000)
-    sta temp6
-    jsr plotsprite
-    ENDM
 
 sp_draw
     ; the aim marker, while the Ark's own laser is on

@@ -35,11 +35,14 @@ then link them together.
 - [ ] Tune on hardware: fighter handling, tether rates, turret rate, pirate damage
 - [x] Deep space in its own bank (bank 2): bank 1 back to 10.4K free, bank 2 9.7K free
 
-## M3: Planet slice
-- [ ] Horizontal smooth-scroll engine with a wrapping surface
-- [ ] Shuttle, tractor beam, stun pulse, scanner strip
-- [ ] Creatures (first 6 behaviours), ore crates, turrets, klaxon timer
-- [ ] One biome bank
+## M3: Planet slice ✅ (2026-11-22)
+- [x] Horizontal smooth scroll over a wrapping surface (1024 px, 6.4 screens): `plotmap` with the coarse column, fine x off the left edge (MARIA wraps)
+- [x] Shuttle (the saucer): out of the Ark and back up into it to dock and hand over; tractor beam; stun pulse; scanner strip
+- [x] Creatures with 6 behaviours (walker, hopper, runner, burrower, glider, blinker) from the RP6502 beasties; ore crates (heavy); turrets on towers (shoot, knock cargo loose); the 60 s clock and the klaxon; every creature delivered: the Ark's energy full
+- [x] One biome (bank 3: code and map); after each deep-space wave, a planet
+- [x] `tools/test_planet.sh`; `AUTOPLANET`; deep-space tests skip planets (`sp_noplanet`)
+- [ ] A planet music track (the Arc theme for now)
+- [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 
 ## M4: Sector map
 - [ ] Seeded galaxy generator (grid-laid graph, warp bitmasks, rules in DESIGN §3.2)

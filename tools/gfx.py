@@ -256,19 +256,130 @@ POD = [art(".bb.\nbaab\nbccb\nbccb\nbccb\nbccb\nbaab\n.bb."),
        art(".bb.\nbaab\nbaab\nbaab\nbaab\nbaab\nbaab\n.bb.")]
 
 
+# ---------------------------------------------------------------------------
+# M3: the planet.
+
+RP6502 = Path.home() / "Software" / "rp6502" / "RP6502-Cosmic-Arc" / "Sprites"
+
+# Creatures: Cosmic Arc (RP6502)'s beasties: 5 kinds, each 2 frames facing
+# right then 2 facing left, 8 x 8; one 160A pixel per RP6502 pixel. A sixth
+# kind is the first again. Each kind takes one colour of the creatures'
+# palette (P2): a, b, c, a, b, c.
+CREATURE_ART = [0, 1, 2, 3, 4, 0]
+CREATURE_INK = "abcabc"
+
+
+def creature_frames():
+    src = Image.open(RP6502 / "beasties.png").convert("RGBA")
+    sp = src.load()
+    out = []
+    for kind, art_k in enumerate(CREATURE_ART):
+        for f in range(4):
+            x0 = (art_k * 4 + f) * 8
+            out.append(["".join(CREATURE_INK[kind] if sp[x0 + x, y][3] else "." for x in range(8))
+                        for y in range(8)])
+    return out
+
+
+# The tractor beam: 8 x 16 segments (one plotsprite a zone), stacked
+# shuttle to ground; two frames
+BEAM = [["..cbbc..", "..bccb.."] * 8, ["..bccb..", "..cbbc.."] * 8]
+
+# An ore crate, 8 x 8. a band, b box, c ore glints
+CRATE = art("""
+bbbbbbbb
+baaaaaab
+bcbbcbbb
+bbbcbbcb
+bcbbbbbb
+bbbbcbbb
+baaaaaab
+bbbbbbbb
+""")
+
+# A defence tower segment (8 x 16, stacked), and the turret that rides it
+TOWER = art("""
+..aaaa..
+..a..a..
+..aaaa..
+...aa...
+..a..a..
+..aaaa..
+..a..a..
+..aaaa..
+...aa...
+..a..a..
+..aaaa..
+..a..a..
+..aaaa..
+...aa...
+..a..a..
+..aaaa..
+""")
+TURRET = art("""
+...cc...
+...cc...
+..bccb..
+.bbbbbb.
+bbabbabb
+bbbbbbbb
+.bb..bb.
+.b....b.
+""")
+
+# The stun pulse: a ring, 16 x 16
+def ring():
+    rows = []
+    for y in range(16):
+        r = ""
+        for x in range(16):
+            d = ((x - 7.5) ** 2 / 64 + (y - 7.5) ** 2 / 56) ** 0.5
+            r += "c" if 0.82 < d < 1.0 else "."
+        rows.append(r)
+    return rows
+
+
+# Terrain: characters after the font (codes 128 on, (64 + n) * 2). Each is
+# 8 x 16 (a 16-line zone): the horizon row (hills, the ground's surface at
+# lines 12-13) and the soil row under it. a grass, b soil, c hills/rock.
+T_FLAT, T_HILL_L, T_HILL_M, T_HILL_R, T_ROCKS, T_DIRT1, T_DIRT2, T_DIRT3 = range(64, 72)
+GROUND = ["aaaaaaaa", "abaabaab", "bbbbbbbb", "bbbbbbbb"]
+TILES = {
+    T_FLAT: ["........"] * 12 + GROUND,
+    T_HILL_L: ["........"] * 4 + [("." * (7 - i) + "c" * (i + 1)) for i in range(8)] + GROUND,
+    T_HILL_M: ["........"] * 4 + ["cccccccc"] * 8 + GROUND,
+    T_HILL_R: ["........"] * 4 + [("c" * (i + 1) + "." * (7 - i)) for i in range(8)] + GROUND,
+    T_ROCKS: ["........"] * 9 + ["..c.....", ".ccc..c.", "cccc.ccc"] + GROUND,
+    T_DIRT1: ["bbbbbbbb", "bbcbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
+              "bbbbbbcb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb", "bbbbbcbb",
+              "bbbbbbbb", "bbcbbbbb"],
+    T_DIRT2: ["bbbbbbbb", "bbbbbbcb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb", "bbbbcbbb", "bbbbbbbb",
+              "bbbbbbbb", "bcbbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bbcbbbbb", "bbbbbbbb",
+              "bbbbbbcb", "bbbbbbbb"],
+    T_DIRT3: ["bbbbbbbb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb",
+              "bbbbcbbb", "bbbbbbbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbcb", "bbbbbbbb", "bbbbbbbb",
+              "bbbcbbbb", "bbbbbbbb"],
+}
+
+
 def font():
     src = Image.open(GFX / "menufont.png")
     sp = src.load()
     first, last = 32, 95
-    n = last - first + 1
+    n = last - first + 1 + len(TILES)
     # 16 lines a glyph (a 16-line zone), the letter in the top 8
     im = Image.new("P", (n * 8, 16), 0)
     im.putpalette(PNG_PALETTE)
     px = im.load()
-    for i in range(n):
+    for i in range(64):
         for y in range(8):
             for x in range(8):
                 px[i * 8 + x, y] = 1 if sp[(first + i) * 8 + x, y] else 0
+    for code, rows in TILES.items():
+        assert len(rows) == 16 and all(len(r) == 8 for r in rows), code
+        for y in range(16):
+            for x in range(8):
+                px[code * 8 + x, y] = ".abc".index(rows[y][x])
     # HUD bar segments (7 lines high, a gap below) and a star
     special = {
         91: ["aaaaaaa."] * 6,          # [ full
@@ -308,6 +419,14 @@ def main():
     save("dot", DOT)
     for i, fr in enumerate(POD):
         save(f"pod{i}", fr)
+    for i, fr in enumerate(creature_frames()):
+        save(f"creature{i:02d}", fr)
+    for i, fr in enumerate(BEAM):
+        save(f"beam{i}", fr)
+    save("crate", CRATE)
+    save("tower", TOWER)
+    save("turret", TURRET)
+    save("ring", ring())
     font()
     print("gfx: wrote", ", ".join(sorted(p.stem for p in GFX.glob("*.png"))))
 

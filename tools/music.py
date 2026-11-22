@@ -275,6 +275,11 @@ SFX = [
     ("PSHOT", 0, 2, sweep(12, 6, 14, 8, 2, 8)),         # a pirate shoots
     ("MISSILE", 1, 3, sweep(8, 20, 6, 6, 10, 16)),      # a missile launches
     ("POD", 1, 6, notes_fx(4, [11, 9, 7, 5], 3, 11)),   # a pod picked up
+    ("BEAM", 0, 1, [(6, 28, 4), (6, 26, 4), (6, 28, 3), (6, 30, 3)] * 4),  # the tractor beam hums
+    ("CAPTURE", 1, 5, notes_fx(4, [14, 11, 9], 3, 12)),  # a creature in the shuttle
+    ("DELIVER", 1, 6, notes_fx(4, [17, 14, 11, 8, 6], 3, 12)),  # handed over to the Ark
+    ("STUN", 1, 4, sweep(8, 2, 16, 14, 2, 14)),          # the stun pulse
+    ("KLAXON", 1, 7, notes_fx(1, [10, 14], 8, 12)),      # time's nearly up
 ]
 
 

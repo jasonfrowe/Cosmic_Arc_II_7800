@@ -15,6 +15,7 @@ local f, most, waves = 0, {}, 0
 local lastticks, stalled, stall = nil, 0, 0   -- the game loop must keep running
 emu.register_frame_done(function()
   f = f + 1
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x23EF, 1)   -- no planets
   local m = manager:machine().devices[":maincpu"].spaces["program"]
   local hold = {}
   if f >= 300 and f <= 305 then hold["P1 Button 1"] = true end

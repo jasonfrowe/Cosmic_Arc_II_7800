@@ -10,6 +10,7 @@ local f, out, jumps, samples = 0, 0, 0, 0
 local px, py = {}, {}
 emu.register_frame_done(function()
   f = f + 1
+  manager:machine().devices[":maincpu"].spaces["program"]:write_u8(0x23EF, 1)   -- no planets
   local m = manager:machine().devices[":maincpu"].spaces["program"]
   local hold = {}
   if f >= 300 and f <= 305 then hold["P1 Button 1"] = true end
