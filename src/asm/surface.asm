@@ -59,8 +59,8 @@ CR_STUN   = 150     ; frames a creature stays stunned
 TT_FREEZE = 200     ; frames a turret stays frozen
 DF_TOP    = 97      ; the guns' highest line, and lowest (they move as one;
 DF_BOT    = 145     ;   their pulse, 3 lower, covers the band: 100-148)
-DF_AIM    = 128     ; in 256: how often the guns' next height is the shuttle's
-                    ;   (else anywhere): no line is safe to sit on
+DF_DWELL  = 9       ; steps the guns pause at each end (the lines near the
+                    ;   ends are passed half as often: this evens it out)
 ; The pace rises with the level (sp_level), as Cosmic Arc's (RP6502): 4
 ; frames a step, one less a level, to 1; pulses 120 frames apart, 15 less a
 ; level, to 30. Ours: the same steps, pulses from 150 (to 45): our guns'
@@ -222,7 +222,8 @@ pl_arky   = $2775   ; the Ark's sprite line (PL_ARKY in orbit; the BASIC)
 pl_launch = $2776   ; frames down's been held, docked
 pl_auto   = $2777   ; flying itself in or out of the Ark (AUTO_IN / AUTO_OUT)
 df_y      = $27BA   ; the guns' line (all of them)
-df_tgt    = $27BB   ; the line the guns are heading for
+df_dir    = $27BB   ; the guns: 0 down, 1 up (a steady sweep: predictable)
+df_wait   = $27EB   ; steps left paused at an end
 df_cool   = $27BC   ; frames to the next pulse
 df_pulse  = $27BD   ; frames the pulse has left
 df_py     = $27BE   ; its line
@@ -404,9 +405,9 @@ pl_new_t
     ; pulses closer together each wave
     lda #DF_TOP
     sta df_y
-    lda #DF_BOT
-    sta df_tgt
     lda #0
+    sta df_dir
+    sta df_wait
     sta df_pulse
     sta pl_nodock
     ; this level's pace (as Cosmic Arc's: the level goes up only when every
@@ -1877,45 +1878,38 @@ pl_ck_n
 ; height for DF_PULSE frames. A shuttle the pulse touches is destroyed.
 ; No bullets: you dodge it (by height), and time the beam between pulses.
 pl_defense
-    ; the guns' height: a line every df_step frames, towards df_tgt; there,
-    ; a new one: half the time the shuttle's line, else anywhere in range
-    ; (never a sweep: a sweep and a steady pulse leave safe lines)
+    ; the guns' height: a steady sweep, end to end (the player can read it),
+    ; a line every df_step frames, pausing DF_DWELL steps at each end. (No
+    ; safe line: the sweep covers the band, the pulses come at random gaps.)
     dec df_tick
     bne pl_df_f
     lda df_step
     sta df_tick
-    lda df_y
-    cmp df_tgt
-    beq pl_df_new
-    bcc pl_df_dn
-    dec df_y
-    bcs pl_df_f
-pl_df_dn
+    lda df_wait
+    beq pl_df_mv
+    dec df_wait
+    jmp pl_df_f
+pl_df_mv
+    lda df_dir
+    bne pl_df_up
     inc df_y
+    lda df_y
+    cmp #DF_BOT
+    bcc pl_df_f
+    lda #1
+    sta df_dir
+    lda #DF_DWELL
+    sta df_wait
     bne pl_df_f
-pl_df_new
-    lda M_RND
-    cmp #DF_AIM
-    bcs pl_df_any
-    lda pl_y                ; the shuttle's line (its middle, the pulse's - 3)
-    sec
-    sbc #3
-    jmp pl_df_clamp
-pl_df_any
-    lda M_RND               ; anywhere: DF_TOP + 0..63, clamped
-    and #63
-    clc
-    adc #DF_TOP
-pl_df_clamp
-    cmp #DF_TOP
-    bcs pl_df_c1
-    lda #DF_TOP
-pl_df_c1
-    cmp #DF_BOT+1
-    bcc pl_df_c2
-    lda #DF_BOT
-pl_df_c2
-    sta df_tgt
+pl_df_up
+    dec df_y
+    lda df_y
+    cmp #DF_TOP+1
+    bcs pl_df_f
+    lda #0
+    sta df_dir
+    lda #DF_DWELL
+    sta df_wait
 pl_df_f
     ; the pulse
     lda df_pulse

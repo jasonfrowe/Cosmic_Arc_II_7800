@@ -4,7 +4,7 @@
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 A7800=${A7800:-$HOME/Software/a7800/mame64}
 cd "$(dirname "$A7800")"
-run() { HOVER=$1 "$A7800" a7800 -cart "$ROOT/build/cosmicarc.a78" -video none -sound none -nothrottle \
+run() { HOVER=$1 FRAMES=6000 "$A7800" a7800 -cart "$ROOT/build/cosmicarc.a78" -video none -sound none -nothrottle \
   -autoboot_script "$ROOT/tools/emu/defensetest.lua" -skip_gameinfo -nomouse 2>&1 | grep hovering; }
 OK=1
 # (fields: "hovering at line N: P pulses, L shuttles lost; loop ran R of T frames")

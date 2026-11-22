@@ -50,7 +50,7 @@ then link them together.
 - [x] From hardware: the Ark's doorway twice the shuttle's width, straight up only (no accidental docking); the defences' pace rises with the stage (stage 1: half the old speed, 2.5 s between pulses)
 - [x] From hardware: the flight band is the guns' range (never lands: fixes ore rising into the sky); the storm as Cosmic Arc's (klaxon, a rock at the Ark, the Ark's laser when docked); the Ark lower, a short tunnel; the defences' pace by level as the RP6502 game; `test_storm.sh`
 - [x] From hardware: the Ark doesn't fire on docking; 10 s from the klaxon to the rock, a slower rock always in sight (and on the scanner); no countdown; creatures react 75%; one thing in the beam; a solid, palette-cycled beam
-- [x] From hardware: dock on the move (up-left/up-right, near the ceiling); the guns roam and aim, random pulse gaps: no safe line (tested at the band's top, middle, foot)
+- [x] From hardware: dock on the move (up-left/up-right, near the ceiling); random pulse gaps over a steady full-band sweep: no safe line (tested at the band's top, middle, foot)
 - [ ] A planet music track (the Arc theme for now)
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 

@@ -31,7 +31,7 @@ emu.register_frame_done(function()
     local t = m:read_u8(0x271B); n = n + 1; if t ~= lastt then ran = ran + 1 end; lastt = t
   end
   for name, field in pairs(fields) do if name:match("^P1 ") or name == "Select" then field:set_value(held[name] and 1 or 0) end end
-  if f == 2700 then
+  if f == tonumber(os.getenv("FRAMES") or "2700") then
     print(string.format("hovering at line %d: %d pulses, %d shuttles lost; loop ran %d of %d frames", Y, pulses, deaths, ran, n))
     manager:machine():exit()
   end
