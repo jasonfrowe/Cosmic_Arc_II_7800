@@ -207,20 +207,26 @@ limps on to the destination. It isn't game over unless the hull is gone.
 ### 4.4b A wave's shape (as built)
 
 A wave (one deep-space scene, then a planet) is **8 rounds of large rocks:
-4, then the pirates, then 4**. Each round starts a second after the field
-is clear (3 rocks a round on the first wave, rising to 6). After round 4
-come the **pirate waves**, one after another, each once the last is
-destroyed: 2 on the first wave, rising to 4, each a little stronger
-(raiders, then gunships), with a couple of small rocks drifting through.
-After the last pirate, a longer breather (4 s) and "ROCKS INCOMING" (time to
-bring the saucer home), then rounds 5-8. The HUD shows the round (`R3/8`)
-or the pirate wave (`P1/2`). Knobs: `RD_*`, `PW_*`, `PR_AFTER` in
-`space.asm`. Under the autopilots the first wave takes about 70 s, the
-fifth about 2 minutes.
+4, then the pirates, then 4**. A round starts a second after its rocks are
+gone (3 rocks a round on the first wave, rising to 6). The pirates come
+**during round 4**, a few seconds in, while you're still shooting rocks:
+pirate waves one after another, each a moment after the last is destroyed,
+2 on the first wave rising to 4, each a little stronger (raiders, then
+gunships). Rocks keep coming while they're about: small ones in the pirate
+window (20 s from the first pirate, once a wave), then large ones again,
+pirates or not. When the last pirate is destroyed: a breather (4 s) and
+"ROCKS INCOMING" (time to bring the saucer home), then rounds 5-8. The HUD
+shows the round (`R3/8`), or the pirate wave (`P1/2`) while their music
+plays. Knobs: `RD_*`, `PW_*`, `PR_FIRST0`, `PR_AFTER` in `space.asm`.
+
+**Every lane takes the same time** to reach the Ark: a large rock travels
+about 55 square units to the hull up or down, 75 on a diagonal and 100
+across (the Ark is wide and short), so each lane's speed is scaled by its
+length (`lane_scale`; `tools/test_arrival.sh`).
 
 ### 4.5 The pirate window
 
-When a wave's first pirate arrives, "PIRATES!" flashes up, and for the next
+When a wave's first pirate arrives (once a wave), "PIRATES!" flashes up, and for the next
 20 seconds new rocks are **small ones only**, which the auto-turret and the
 Ark can handle. That's the window to launch the fighter and engage. It shuts
 after 20 seconds, or as soon as the last pirate is destroyed with none still to

@@ -194,13 +194,19 @@ emu.register_frame_done(function()
     m:write_u8(0x2386, 96)
     local st, song = m:read_u8(0x238C), m:read_u8(0x24FF)
     local rd, pw = m:read_u8(0x2399), m:read_u8(0x239A)
+    prevrk = prevrk or {}
+    for i = 0, 9 do                              -- a large rock new with pirates about
+      local t = m:read_u8(0x2300 + i)
+      if t == 1 and (prevrk[i] or 0) ~= 1 and m:read_u8(0x24E9) > 0 then bigpir = (bigpir or 0) + 1 end
+      prevrk[i] = t
+    end
     if st ~= (laststate or -1) or song ~= (lastsong or -1) or rd ~= (lastrd or -1) or pw ~= (lastpw or -1) then
       lastrd, lastpw = rd, pw
       local p = ""
       for i = 0, 5 do p = p .. m:read_u8(0x2460 + i) .. " " end
-      print(string.format("frame %d: wave %d round %d pirate wave %d/%d state %d song %d | pirate slots %s| pr_live %d pending %d/%d window %d rocks %d left %d",
+      print(string.format("frame %d: wave %d round %d pirate wave %d/%d state %d song %d | pirate slots %s| pr_live %d pending %d/%d window %d rocks %d left %d bigwithpirates %d",
         f, m:read_u8(0x238A), rd, pw, m:read_u8(0x23FE), st, song, p, m:read_u8(0x24E9), m:read_u8(0x24C1), m:read_u8(0x24C2),
-        m:read_u8(0x24F0), m:read_u8(0x2394), m:read_u8(0x238E)))
+        m:read_u8(0x24F0), m:read_u8(0x2394), m:read_u8(0x238E), bigpir or 0))
       laststate, lastsong = st, song
     end
   end

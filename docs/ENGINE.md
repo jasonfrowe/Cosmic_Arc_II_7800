@@ -118,6 +118,7 @@ bytes of a line; the creatures come straight after it.
 | $2200-$22FF | surface.asm: the planet's turrets and their shots |
 | $2500-$255F | sound.asm |
 | $2560-$2571 | surface.asm: the planet scanner's line (18 characters, its ends included) |
+| $2578 | space.asm: sp_pwused (the pirate window opened this wave) |
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F, $2600-$26FF | hwtest.asm (the boot check; reusable later) |
@@ -178,6 +179,7 @@ tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
 tools/test_defense.sh # the planet's pulse: never hits a docked shuttle; finds one
                       # camped at the band's top, middle and foot; full speed
+tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane
 tools/test_spaceend.sh # the Ark waits for the saucer before leaving a wave; pirates
                        # leave when the Ark is lost
 tools/test_storm.sh   # each way the rock comes: in sight 1.5 s+ unanswered; docked,

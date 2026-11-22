@@ -2,7 +2,9 @@
 # Play the waves (the laser and fighter autopilots, energy held full) and
 # check: every wave runs its 8 rounds of rocks with all its pirate waves
 # between rounds 4 and 5 before it clears; none clears with a pirate still
-# about; and the rocks' music comes back after the pirates.
+# about; the rocks' music comes back after the pirates; pirates arrive while
+# rocks are still about (mid-fight); and large rocks come back while pirates
+# are still about (the pirate window runs out).
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 A7800=${A7800:-$HOME/Software/a7800/mame64}
 cd "$(dirname "$A7800")"
@@ -15,6 +17,10 @@ BAD=$(echo "$OUT" | grep "state 1 song" | grep -E "slots [^|]*[123] ")
 EARLY=$(echo "$OUT" | grep "state 1 song" | awk '{ split($9, p, "/"); if ($6 != 8 || p[1] != p[2]) print }')
 BACK=$(echo "$OUT" | awk '/song 2/ { p = 1 } /state 0 song 1/ && p { n++ ; p = 0 } END { print n + 0 }')
 PIRW=$(echo "$OUT" | awk '{ split($9, p, "/"); if (p[1] > m) m = p[1] } END { print m + 0 }')
+# pirates' music starting (the first pirate) with rocks on the screen
+MIDFIGHT=$(echo "$OUT" | awk '/state 0 song 2/ && prev != 2 { for (i = 1; i <= NF; i++) if ($i == "rocks" && $(i+1) > 0) n++ } { for (i = 1; i <= NF; i++) if ($i == "song") prev = $(i+1) } END { print n + 0 }')
+BIGPIR=$(echo "$OUT" | tail -1 | awk '{ print $NF }')
+echo "pirates arriving mid-fight: $MIDFIGHT times; large rocks while pirates about: $BIGPIR"
 echo "waves cleared: $CLEARS; cleared early: $(echo "$EARLY" | grep -c state); cleared with a pirate about: $(echo "$BAD" | grep -c state); most pirate waves in a wave: $PIRW; rocks music back: $BACK times"
-[ -z "$BAD" ] && [ -z "$EARLY" ] && [ "$CLEARS" -ge 4 ] && [ "$BACK" -ge 3 ] && [ "$PIRW" -ge 3 ] \
+[ -z "$BAD" ] && [ -z "$EARLY" ] && [ "$CLEARS" -ge 4 ] && [ "$BACK" -ge 3 ] && [ "$PIRW" -ge 3 ] && [ "$MIDFIGHT" -ge 3 ] && [ "$BIGPIR" -ge 3 ] \
   && echo "wave test: PASS" || { echo "$BAD$EARLY"; echo "wave test: FAIL"; exit 1; }
