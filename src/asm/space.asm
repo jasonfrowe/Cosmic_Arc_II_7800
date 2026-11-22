@@ -58,20 +58,24 @@ WV_GAP0   = 110     ; frames between rocks: WV_GAP0 - WV_GAPSTEP * wave,
 WV_GAPSTEP = 10     ;   at least WV_GAPMIN
 WV_GAPMIN = 40
 WV_SPEED0 = $60     ; a large rock's speed (8.8 square units a frame):
-WV_SPEEDSTEP = 8    ;   WV_SPEED0 + WV_SPEEDSTEP * wave
+WV_SPEEDSTEP = 6    ;   WV_SPEED0 + WV_SPEEDSTEP * wave, at most WV_SPEEDMAX
+WV_SPEEDMAX = $78   ;   (from wave 4: about 2.75 s to the Ark; it was 8 a
+                    ;   wave, no limit: wave 6 2.3 s, too fast to handle.
+                    ;   Upgrades (faster fire, piercing bolts) are for more.)
 KID_SPEED = $20     ; a smaller rock goes this much faster a size step
 KID_SPLIT = $30     ; and the second piece of a split this much more again
 ROCK_HP   = 2       ; a rock's hits: the Ark's laser (and turret) does 2, the
 BOLT_DMG  = 2       ;   saucer's blasters 1: the saucer needs twice the shots
 FTR_DMG   = 1
-WV_RAID_FROM = 1    ; raiders from this wave: 1, one more every 2 waves,
-WV_RAIDMAX = 4      ;   at most this many
-WV_GUN_FROM = 3     ; a gunship from this wave
-WV_GUN2_FROM = 6    ; two from this one
+WV_RAID0  = 1       ; raiders: WV_RAID0 + wave (2 on wave 1), at most
+WV_RAIDMAX = 6      ;   this many
+WV_GUN_FROM = 2     ; a gunship from this wave,
+WV_GUN2_FROM = 4    ;   two from this one,
+WV_GUN3_FROM = 6    ;   three from this one
 WV_FINAL  = 2       ; the pirate deadline passed (the window shut): one more
                     ;   batch of large rocks, (the wave's count) - this
 PR_FIRST  = 200     ; frames into a wave before the first pirate
-PR_GAP    = 180     ; frames between pirates
+PR_GAP    = 120     ; frames between pirates
 PR_WINDOW = 150     ; when the wave's first pirate comes, new rocks are small
                     ;   ones (the Ark can see to them) for this many 8-frame
                     ;   steps (20 s): the time to launch the fighter
@@ -253,7 +257,7 @@ sp_nw_g2
     sta sp_gap
     lda #30
     sta sp_spawn
-    ; speed = WV_SPEED0 + WV_SPEEDSTEP * wave (8.8)
+    ; speed = WV_SPEED0 + WV_SPEEDSTEP * wave (8.8), at most WV_SPEEDMAX
     lda #WV_SPEEDSTEP
     sta M_B
     clc
@@ -263,18 +267,25 @@ sp_nw_g2
     lda M_P+1
     adc #>WV_SPEED0
     sta sp_spdh
-    ; pirates: raiders from WV_RAID_FROM (one more every 2 waves), gunships
-    ; from WV_GUN_FROM (two from WV_GUN2_FROM)
+    sec                     ; at most WV_SPEEDMAX
+    lda sp_spdl
+    sbc #<WV_SPEEDMAX
+    lda sp_spdh
+    sbc #>WV_SPEEDMAX
+    bcc sp_nw_sc
+    lda #<WV_SPEEDMAX
+    sta sp_spdl
+    lda #>WV_SPEEDMAX
+    sta sp_spdh
+sp_nw_sc
+    ; pirates: raiders WV_RAID0 + wave (at most WV_RAIDMAX), gunships from
+    ; WV_GUN_FROM (two from WV_GUN2_FROM, three from WV_GUN3_FROM)
     lda #0
     sta sp_praid
     sta sp_pgun
     lda sp_wave
-    sec
-    sbc #WV_RAID_FROM
-    bcc sp_nw_np
-    lsr
     clc
-    adc #1
+    adc #WV_RAID0
     cmp #WV_RAIDMAX+1
     bcc sp_nw_r
     lda #WV_RAIDMAX
@@ -285,6 +296,9 @@ sp_nw_r
     bcc sp_nw_np
     inc sp_pgun
     cmp #WV_GUN2_FROM
+    bcc sp_nw_np
+    inc sp_pgun
+    cmp #WV_GUN3_FROM
     bcc sp_nw_np
     inc sp_pgun
 sp_nw_np
@@ -983,6 +997,12 @@ sp_w_p2
     beq sp_w_rocks
     dec sp_ptm
     bne sp_w_rocks
+    jsr pr_alloc            ; no free slot: try again shortly (not lost)
+    bcc sp_w_slot
+    lda #20
+    sta sp_ptm
+    bne sp_w_rocks
+sp_w_slot
     lda #PR_GAP
     sta sp_ptm
     lda #PR_RAID

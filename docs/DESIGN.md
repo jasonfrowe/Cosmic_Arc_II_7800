@@ -207,9 +207,13 @@ limps on to the destination. It isn't game over unless the hull is gone.
 ### 4.4b A wave's shape (as built)
 
 A wave is a batch of large rocks (3 + the wave number) with the pirates
-mixed in: raiders from wave 1 (one more every other wave, up to 4), a
-gunship from wave 3, two from wave 6, arriving on their own timer while the
-rocks are about (the pirate window, 4.5). When the pirate deadline passes
+mixed in: raiders 1 + the wave number (2 on wave 1, up to 6), a gunship from
+wave 2, two from wave 4, three from wave 6, 2 s apart (a pirate waits for a
+free slot rather than being lost), arriving on their own timer while the
+rocks are about (the pirate window, 4.5). Large rocks get faster each wave
+up to a limit from wave 4 (about 2.75 s to the Ark; uncapped, wave 6 was
+2.3 s and too fast): more than that is for upgrades (faster fire, piercing
+bolts) and the sector tiers. When the pirate deadline passes
 (the window shuts: its 20 s run out, or the last pirate's destroyed), **one
 more batch of large rocks** comes in with the rest, no warning, no pause
 (`WV_FINAL`). The wave's done when everything's clear. (An "8 rounds" structure was tried and dropped: it lost the

@@ -33,6 +33,7 @@ then link them together.
 - [x] From hardware: the pirate window (small rocks only for 20 s after the first pirate), rocks hurt pirates (who dodge them on the math unit), the fighter docks only with button 2
 - [x] From hardware: directional fighter controls; music for the title, rocks and pirates
 - [x] From hardware: back to the original waves (8 rounds tried and dropped), plus more rocks when the pirate deadline passes and more pirates (raiders from wave 1, up to 4; gunships from 3, two from 6); every lane the same time to the Ark (`test_arrival.sh`)
+- [x] From hardware: more pirates (raiders 2-6, gunships 1-3 from wave 2, 2 s apart; none lost when the slots are full); the rocks' speed capped from wave 4 (2.75 s to the Ark)
 - [ ] Tune on hardware: fighter handling, tether rates, turret rate, pirate damage
 - [x] Deep space in its own bank (bank 2): bank 1 back to 10.4K free, bank 2 9.7K free
 

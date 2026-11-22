@@ -33,7 +33,7 @@ emu.register_frame_done(function()
     prev = st
   end
   for name, field in pairs(fields) do if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end end
-  if f == 12400 then
+  if f == 16400 then
     print(string.format("trips home %d, deaths on the way %d", trips, deaths))
     print(string.format("result %d %d", trips, deaths))
     manager:machine():exit()
