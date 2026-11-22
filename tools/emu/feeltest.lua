@@ -1,6 +1,6 @@
 -- Feel test (the planet): what a player notices.
---  1. Bullets: flying right at full speed, firing right, the shots pull away
---     from the shuttle (screen x grows each frame).
+--  1. (Bullets: gone with the shuttle's blasters; the defences' pulse is
+--     dodged instead.)
 --  2. Docking: about 20 pixels off the Ark's middle, not lined up, just push
 --     up: it must dock within 2 s.
 --  3. Undocking: hold down: within 2 s it's out of the tunnel and can move.
@@ -19,7 +19,7 @@ emu.register_frame_done(function()
   local held = {}
   if f >= 290 and f <= 296 then held["Select"] = true end
   if f > 340 then
-    for i = 0, 7 do mm:write_u8(0x2228 + i, 100) end
+    mm:write_u8(0x27BC, 200)                               -- no pulses
     mm:write_u8(0x2386, 96); mm:write_u8(0x2712, 50)       -- energy and time held
   end
   local st, y, auto = mm:read_u8(0x2709), mm:read_u8(0x2707), mm:read_u8(0x2777)

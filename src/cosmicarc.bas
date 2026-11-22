@@ -65,6 +65,7 @@
   dim pl_arksx = $2770
   dim pl_arkv = $2771
   dim pl_arky = $2775
+  dim pl_scans = $27C0
   rem zero page
   dim fireheld = a
   dim fire2held = b
@@ -194,6 +195,8 @@ planetloop
   if joy0fire1 then sp_fire = 1
   sp_fire2 = 0
   if joy0fire0 then sp_fire2 = 1
+  rem (on a planet both buttons work the beam)
+  if sp_fire then sp_fire2 = 1
   asm
   jsr pl_frame
 end
@@ -206,8 +209,9 @@ end
   rem the ground: one row (zone 10). (The map width as a number: a name is
   rem taken for a variable; = PL_MAPW)
   plotmap pl_map 5 pl_fine 10 21 1 pl_col 0 149
-  rem the scanner's line: + a tower (one every 128 pixels), # the Ark
-  plotchars '-+-+-+-+#+-+-+-+' 5 16 1
+  rem the scanner (surface.asm pl_scanner): + towers, # the Ark,
+  rem * creatures, @ the shuttle
+  plotchars pl_scans 5 16 1 16
   asm
   jsr pl_draw
 end
@@ -510,3 +514,4 @@ end
   incgraphic gfx/tower.png 160A 0 1 2 3
   incgraphic gfx/turret.png 160A 0 1 2 3
   incgraphic gfx/tunnel.png 160A 0 1 2 3
+  incgraphic gfx/pulse.png 160A 0 1 2 3

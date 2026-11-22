@@ -164,6 +164,8 @@ tools/test_planet.sh  # Select -> a planet: the autopilot catches, the planet en
 tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
                       # docking from near the Ark by pushing up < 2 s; undocking < 2 s
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
+tools/test_defense.sh # the planet's pulse: never hits above the guns' range, does in
+                      # it; full speed while it fires
 ```
 
 The deep-space tests set `sp_noplanet` ($23EF) so waves go straight on without
@@ -272,6 +274,10 @@ them, which is in while MARIA draws them.
 - **Cutting code by label**: search for the label at the start of a line
   (`"\nlabel\n"`), not the first match: a branch to it comes first and the cut
   takes the wrong lines (it happened three times).
+- **7800basic's `plotsprite` drops a sprite at x = 0** (the pulse's left half
+  vanished). Use x = 1.
+- **Sprites cost frames; characters don't.** The planet's scanner dots (5 sprites)
+  and tall towers dropped frames. The scanner is now a RAM text line, rebuilt each frame.
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

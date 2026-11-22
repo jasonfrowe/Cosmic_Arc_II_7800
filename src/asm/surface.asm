@@ -48,9 +48,12 @@ PL_STUNCD = 150     ; frames between stun pulses
 PL_STUNR  = 36      ; a pulse reaches this far across (and down)
 CR_STUN   = 150     ; frames a creature stays stunned
 TT_FREEZE = 200     ; frames a turret stays frozen
-TT_GAP    = 45      ; frames between a turret's shots (+ up to 31)
-TT_SPREAD = 15      ; its aim strays up to +-TT_SPREAD/2 (of 256 a turn)
-TS_SPEED  = $0200
+DF_TOP    = 100     ; the guns' highest line, and lowest (they move as one)
+DF_BOT    = 146
+DF_STEP   = 2       ; frames a line (a power of 2)
+DF_PERIOD0 = 120    ; frames between pulses: 120 - 10 a wave, at least 40
+DF_WARN   = 24      ; frames the guns flash before they fire
+DF_PULSE  = 6       ; frames a pulse lasts
 SHUTTLE_DMG = 12    ; the shuttle shot down costs the Ark this
 PL_REBUILD = 150    ; frames until the Ark launches another
 CR_PAY    = 12      ; Ark energy for a creature delivered
@@ -197,6 +200,12 @@ pl_boomy  = $2774
 pl_arky   = $2775   ; the Ark's sprite line (PL_ARKY in orbit; the BASIC)
 pl_launch = $2776   ; frames down's been held, docked
 pl_auto   = $2777   ; flying itself in or out of the Ark (AUTO_IN / AUTO_OUT)
+df_y      = $27BA   ; the guns' line (all of them)
+df_dir    = $27BB
+df_cool   = $27BC   ; frames to the next pulse
+df_pulse  = $27BD   ; frames the pulse has left
+df_py     = $27BE   ; its line
+df_period = $27BF
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -213,6 +222,7 @@ ps_vyl    = $22B0
 ps_vyh    = $22B4
 ps_sx     = $22B8
 ps_vis    = $22BC
+pl_scans  = $27C0   ; [16] the scanner's line (the BASIC plots it)
 pl_t0     = $27B0
 pl_t1     = $27B1
 pl_t2     = $27B2
@@ -331,7 +341,7 @@ pl_new_kf
     sta ck_y,x
     dex
     bpl pl_new_kf
-    ; turrets: a tower every 128 pixels from 64, at different heights
+    ; towers: one every 128 pixels from 64
     ldx #NTT-1
 pl_new_t
     txa
@@ -343,21 +353,36 @@ pl_new_t
     txa
     lsr
     sta tt_xh,x
-    lda M_RND
-    and #31
-    clc
-    adc #100
-    sta tt_y,x
-    lda M_RND
-    and #1
-    sta tt_dir,x
-    lda M_RND
-    and #63
-    clc
-    adc #60
-    sta tt_cool,x
     dex
     bpl pl_new_t
+    ; the defences: the guns at the top; the first pulse a little later;
+    ; pulses closer together each wave
+    lda #DF_TOP
+    sta df_y
+    lda #0
+    sta df_dir
+    sta df_pulse
+    lda sp_wave
+    sta M_A
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    lda #10
+    sta M_B
+    sec
+    lda #DF_PERIOD0
+    sbc M_P
+    bcc pl_new_dp
+    cmp #40
+    bcs pl_new_dp2
+pl_new_dp
+    lda #40
+pl_new_dp2
+    sta df_period
+    clc
+    adc #60
+    sta df_cool
     jsr pl_camera
     lda #MUS_TITLE          ; (the Arc theme, for now)
     jsr mu_switch
@@ -460,13 +485,11 @@ pl_fr_play
     jsr pl_camera
     jsr pl_creatures
     jsr pl_crates
-    jsr pl_turrets
+    jsr pl_defense
     jsr pl_screen
-    jsr pl_shots
     jsr pl_beamwork
-    jsr pl_fire
-    jsr pl_pshots
     jsr pl_checkall
+    jsr pl_scanner
     jmp pl_hud
 
 ; ---- the clock ----
@@ -1081,21 +1104,6 @@ pl_sc_t
 pl_sc_tn
     dex
     bpl pl_sc_t
-    ldx #NTS-1
-pl_sc_s
-    lda #0
-    sta ts_vis,x
-    lda ts_t,x
-    beq pl_sc_sn
-    ldy ts_xh,x
-    lda ts_xl,x
-    jsr pl_scrx
-    bcc pl_sc_sn
-    sta ts_sx,x
-    inc ts_vis,x
-pl_sc_sn
-    dex
-    bpl pl_sc_s
     rts
 
 ; ---- creatures ----
@@ -1462,221 +1470,73 @@ pl_ck_n
     bpl pl_ck_l
     rts
 
-; ---- turrets: up and down their towers; a shot at the shuttle ----
-pl_turrets
-    ldx #NTT-1
-pl_tt_l
-    stx pl_i
-    lda tt_frz,x            ; out (shot): counts down every 4 frames
-    beq pl_tt_go
+; ---- the planet's defences (as Cosmic Arc's, RP6502) ----
+; Every gun moves as one: up and down its tower between DF_TOP and DF_BOT.
+; Every so often (DF_PERIOD, less each wave) the guns flash a warning
+; (DF_WARN frames), then fire: a pulse right across the screen at their
+; height for DF_PULSE frames. A shuttle the pulse touches is destroyed.
+; No bullets: you dodge it (by height), and time the beam between pulses.
+pl_defense
+    ; the guns' height: a step every DF_STEP frames
     lda pl_tick
-    and #3
-    bne pl_tt_out
-    dec tt_frz,x
-pl_tt_out
-    jmp pl_tt_n
-pl_tt_go
-    lda pl_tick
-    and #1
-    bne pl_tt_f
-    lda tt_dir,x
-    bne pl_tt_up
-    inc tt_y,x
-    lda tt_y,x
-    cmp #140
-    bcc pl_tt_f
-    inc tt_dir,x
-    bne pl_tt_f
-pl_tt_up
-    dec tt_y,x
-    lda tt_y,x
-    cmp #104
-    bcs pl_tt_f
+    and #DF_STEP-1
+    bne pl_df_f
+    lda df_dir
+    bne pl_df_up
+    inc df_y
+    lda df_y
+    cmp #DF_BOT
+    bcc pl_df_f
+    inc df_dir
+    bne pl_df_f
+pl_df_up
+    dec df_y
+    lda df_y
+    cmp #DF_TOP+1
+    bcs pl_df_f
     lda #0
-    sta tt_dir,x
-pl_tt_f
-    lda tt_cool,x
-    beq pl_tt_shoot
-    dec tt_cool,x
-    jmp pl_tt_n
-pl_tt_shoot
-    lda pl_auto             ; (flying itself in or out: left alone)
-    beq pl_tt_noauto_far1483
-    jmp pl_tt_noauto
-pl_tt_noauto_far1483
+    sta df_dir
+pl_df_f
+    ; the pulse
+    lda df_pulse
+    beq pl_df_cool
+    dec df_pulse
+    ; the shuttle in it? (its middle within 4 lines of the pulse's)
     lda pl_st
     cmp #PL_FLYING
-    beq pl_tt_n_far947
-    jmp pl_tt_n
-pl_tt_n_far947
-    lda tt_vis,x            ; on the screen (pl_screen, last frame)
-    bne pl_tt_n_far951
-    jmp pl_tt_n
-pl_tt_n_far951
-    lda tt_sx,x
-    sta pl_t0               ; its screen x (any turret on the screen fires)
-    cmp #156
-    bcc pl_tt_on            ; (not one half off the left)
-    jmp pl_tt_n
-pl_tt_on
-    ldx pl_i
-    lda M_RND
-    and #31
-    clc
-    adc #TT_GAP
-    sta tt_cool,x
-    ; a shot from the turret's top at the shuttle
-    ldy #NTS-1
-pl_tt_sl
-    lda ts_t,y
-    beq pl_tt_sg
-    dey
-    bpl pl_tt_sl
-    jmp pl_tt_n
-pl_tt_sg
-    sty pl_t1
-    lda #1
-    sta ts_t,y
-    lda tt_xl,x
-    clc
-    adc #2
-    sta ts_xl,y
-    lda tt_xh,x
-    adc #0
-    and #3
-    sta ts_xh,y
-    lda tt_y,x
-    sta ts_y,y
-    lda #0
-    sta ts_xf,y
-    sta ts_yf,y
-    lda pl_t0
-    clc
-    adc #4
-    sta v_t0
-    lda tt_y,x
-    sta v_t1
-    lda #80
-    sta v_t2
+    bne pl_df_r
+    lda pl_auto             ; (flying itself in or out: safe)
+    bne pl_df_r
     lda pl_y
-    sta v_t3
-    jsr vec_angle
-    sta pl_t2               ; the aim strays a little
-    lda M_RND
-    and #TT_SPREAD
     sec
-    sbc #TT_SPREAD/2
-    clc
-    adc pl_t2
-    pha
-    lda #<TS_SPEED
-    sta v_t0
-    lda #>TS_SPEED
-    sta v_t1
-    pla
-    jsr vec_rot
-    ldy pl_t1
-    lda vx_l
-    sta ts_vxl,y
-    lda vx_h
-    sta ts_vxh,y
-    lda vy_l
-    sta ts_vyl,y
-    lda vy_h
-    sta ts_vyh,y
-    lda #SFX_PSHOT
-    jsr sfx
-pl_tt_n
-    ldx pl_i
-    dex
-    bmi pl_tt_r
-    jmp pl_tt_l
-pl_tt_r
-    rts
-
-pl_tt_noauto
-    jmp pl_tt_n
-
-; ---- turret shots: move; hit the shuttle ----
-pl_shots
-    ldx #NTS-1
-pl_ts_l
-    lda ts_t,x
-    bne pl_ts_go
-    jmp pl_ts_n
-pl_ts_go
-    clc
-    lda ts_xf,x
-    adc ts_vxl,x
-    sta ts_xf,x
-    lda ts_xl,x
-    adc ts_vxh,x
-    sta ts_xl,x
-    lda ts_vxh,x
-    and #$80
-    beq pl_ts_p
-    lda #$FF
-pl_ts_p
-    adc ts_xh,x
-    and #3
-    sta ts_xh,x
-    clc
-    lda ts_yf,x
-    adc ts_vyl,x
-    sta ts_yf,x
-    lda ts_y,x
-    adc ts_vyh,x
-    sta ts_y,x
-    cmp #24
-    bcc pl_ts_k
-    cmp #160
-    bcs pl_ts_k
-    ; off the screen across: gone
-    ldy ts_xh,x
-    lda ts_xl,x
-    stx pl_i
-    jsr pl_scrx
-    ldx pl_i
-    bcc pl_ts_k
-    ; the shuttle (centre 80, pl_y): +-5 across, +-4 down
-    clc
-    adc #2
-    sec
-    sbc #80
-    bcs pl_ts_dx
+    sbc df_py
+    bcs pl_df_dy
     eor #$FF
     adc #1
-pl_ts_dx
-    cmp #6
-    bcs pl_ts_n
-    lda pl_auto             ; (flying itself in or out: shots miss it)
-    bne pl_ts_n
-    lda pl_st
-    cmp #PL_FLYING
-    bne pl_ts_n
-    lda ts_y,x
-    clc
-    adc #2
-    sec
-    sbc pl_y
-    bcs pl_ts_dy
-    eor #$FF
-    adc #1
-pl_ts_dy
+pl_df_dy
     cmp #5
-    bcs pl_ts_n
-    ; hit: the shuttle's destroyed
-    stx pl_i
-    jsr pl_shotdown
-    ldx pl_i
-pl_ts_k
-    lda #0
-    sta ts_t,x
-pl_ts_n
-    dex
-    bmi pl_ts_r
-    jmp pl_ts_l
-pl_ts_r
+    bcs pl_df_r
+    jmp pl_shotdown
+pl_df_cool
+    dec df_cool
+    beq pl_df_fire
+    lda df_cool
+    cmp #DF_WARN
+    bne pl_df_r
+    lda #SFX_MISSILE        ; the warning: the guns light up
+    jmp sfx
+pl_df_fire
+    lda df_period
+    sta df_cool
+    lda #DF_PULSE
+    sta df_pulse
+    clc
+    lda df_y
+    adc #3                  ; the gun's middle
+    sta df_py
+    lda #SFX_PSHOT
+    jmp sfx
+pl_df_r
     rts
 
 ; the shuttle's shot down: its cargo falls, the Ark pays, and builds another
@@ -1807,263 +1667,6 @@ pl_under_ck
     sbc #0
     and #3
     sta ck_xh,x
-    rts
-
-; ---- the shuttle's blasters (button 1), as the saucer's ----
-pl_fire
-    ldx sp_joy              ; the aim: the way the stick last pointed
-    cpx #8
-    bcs pl_fi_k
-    stx pl_aim
-pl_fi_k
-    lda pl_cool
-    beq pl_fi_c
-    dec pl_cool
-    rts
-pl_fi_c
-    lda sp_fire
-    bne pl_fi_r_far1802
-    jmp pl_fi_r
-pl_fi_r_far1802
-    lda pl_st
-    cmp #PL_FLYING
-    beq pl_fi_r_far1805
-    jmp pl_fi_r
-pl_fi_r_far1805
-    lda pl_y                ; (not from inside the Ark's tube)
-    cmp #PL_YMIN
-    bcc pl_fi_r
-    lda #PL_FGAP
-    sta pl_cool
-    ; the two guns: either side, square to the aim
-    lda pl_aim
-    asl
-    asl
-    asl
-    asl
-    asl
-    clc
-    adc #$C0
-    sta pl_t0               ; the angle
-    lda #3
-    sta v_t1
-    lda #0
-    sta v_t0
-    lda pl_t0
-    clc
-    adc #$40
-    jsr vec_rot
-    lda vx_h
-    sta pl_t1               ; one gun's offset across
-    lda vy_h
-    sta pl_t2               ; ... and down
-    lda #<PL_SHOT
-    sta v_t0
-    lda #>PL_SHOT
-    sta v_t1
-    lda pl_t0
-    jsr vec_rot
-    clc                     ; plus the shuttle's own speed across
-    lda vx_l
-    adc pl_vxl
-    sta vx_l
-    lda vx_h
-    adc pl_vxh
-    sta vx_h
-    lda pl_t1
-    jsr pl_shot1
-    lda pl_t1
-    eor #$FF
-    clc
-    adc #1
-    sta pl_t1
-    lda pl_t2
-    eor #$FF
-    clc
-    adc #1
-    sta pl_t2
-    lda pl_t1
-    jsr pl_shot1
-    lda #SFX_FSHOT
-    jmp sfx
-pl_fi_r
-    rts
-
-; a shot from the shuttle, A (= pl_t1) across and pl_t2 down from its
-; middle, velocity vx/vy
-pl_shot1
-    ldy #NPS-1
-pl_s1_f
-    lda ps_t,y
-    beq pl_s1_go
-    dey
-    bpl pl_s1_f
-    rts
-pl_s1_go
-    lda #PL_SHLIFE
-    sta ps_t,y
-    lda pl_t1
-    clc
-    adc pl_wx
-    sta ps_xl,y
-    lda pl_t1
-    and #$80
-    beq pl_s1_p
-    lda #$FF
-pl_s1_p
-    adc pl_wxh
-    and #3
-    sta ps_xh,y
-    clc
-    lda pl_y
-    adc pl_t2
-    sta ps_y,y
-    lda #$80
-    sta ps_xf,y
-    sta ps_yf,y
-    lda vx_l
-    sta ps_vxl,y
-    lda vx_h
-    sta ps_vxh,y
-    lda vy_l
-    sta ps_vyl,y
-    lda vy_h
-    sta ps_vyh,y
-    rts
-
-; the shuttle's shots: move; hit creatures (dead: lost for good) and
-; turrets (out for TT_DISABLE)
-pl_pshots
-    ldx #NPS-1
-pl_ps_l
-    stx pl_i
-    lda #0
-    sta ps_vis,x
-    lda ps_t,x
-    bne pl_ps_go
-    jmp pl_ps_n
-pl_ps_go
-    dec ps_t,x
-    bne pl_ps_mv
-    jmp pl_ps_n
-pl_ps_mv
-    clc
-    lda ps_xf,x
-    adc ps_vxl,x
-    sta ps_xf,x
-    lda ps_xl,x
-    adc ps_vxh,x
-    sta ps_xl,x
-    lda ps_vxh,x
-    and #$80
-    beq pl_ps_p
-    lda #$FF
-pl_ps_p
-    adc ps_xh,x
-    and #3
-    sta ps_xh,x
-    clc
-    lda ps_yf,x
-    adc ps_vyl,x
-    sta ps_yf,x
-    lda ps_y,x
-    adc ps_vyh,x
-    sta ps_y,x
-    cmp #PL_YMIN-8
-    bcs pl_ps_k_far1880
-    jmp pl_ps_k
-pl_ps_k_far1880
-    cmp #170
-    bcc pl_ps_k_far1882
-    jmp pl_ps_k
-pl_ps_k_far1882
-    ldy ps_xh,x
-    lda ps_xl,x
-    jsr pl_scrx
-    ldx pl_i
-    bcs pl_ps_k_far1887
-    jmp pl_ps_k
-pl_ps_k_far1887
-    sta ps_sx,x
-    inc ps_vis,x
-    ; the shot's middle: (sx + 2, y + 2)
-    clc
-    adc #2
-    sta pl_t0
-    lda ps_y,x
-    clc
-    adc #2
-    sta pl_t1
-    ; creatures
-    ldy #NCR-1
-pl_ps_c
-    lda cr_t,y
-    beq pl_ps_cn
-    lda cr_vis,y
-    beq pl_ps_cn
-    lda cr_st,y
-    cmp #CS_HELD
-    beq pl_ps_cn
-    cmp #CS_DIE
-    beq pl_ps_cn
-    sec
-    lda pl_t0
-    sbc cr_sx,y
-    cmp #8
-    bcs pl_ps_cn
-    sec
-    lda pl_t1
-    sbc cr_y,y
-    cmp #8
-    bcs pl_ps_cn
-    ; a creature shot: gone for good
-    lda #CS_DIE
-    sta cr_st,y
-    lda #17
-    sta cr_tm,y
-    inc pl_killed
-    lda #SFX_BOOM
-    jsr sfx
-    ldx pl_i
-    jmp pl_ps_k
-pl_ps_cn
-    dey
-    bpl pl_ps_c
-    ; turrets
-    ldy #NTT-1
-pl_ps_t
-    lda tt_vis,y
-    beq pl_ps_tn
-    sec
-    lda pl_t0
-    sbc tt_sx,y
-    cmp #8
-    bcs pl_ps_tn
-    sec
-    lda pl_t1
-    sbc tt_y,y
-    cmp #8
-    bcs pl_ps_tn
-    lda #TT_DISABLE/4       ; (tt_frz counts in 4s: see pl_turrets)
-    sta tt_frz,y
-    lda #SFX_CHIP
-    jsr sfx
-    ldx pl_i
-    jmp pl_ps_k
-pl_ps_tn
-    dey
-    bpl pl_ps_t
-    jmp pl_ps_n
-pl_ps_k
-    lda #0
-    sta ps_t,x
-    sta ps_vis,x
-pl_ps_n
-    ldx pl_i
-    dex
-    bmi pl_ps_r
-    jmp pl_ps_l
-pl_ps_r
     rts
 
 ; ---- the tractor beam ----
@@ -2326,13 +1929,67 @@ pl_ca_nb
 pl_ca_r
     rts
 
+; ---- the scanner (row 1): the whole planet in 16 characters, 64 pixels
+; each: + the towers, # the Ark, * a creature, @ the shuttle. Characters,
+; not sprites: sprites cost frames (5 of them here dropped some).
+pl_scanner
+    ldx #15
+pl_sn_c
+    lda pl_scanbase,x
+    sta pl_scans,x
+    dex
+    bpl pl_sn_c
+    ldx #NCR-1
+pl_sn_cr
+    lda cr_t,x
+    beq pl_sn_crn
+    lda cr_st,x
+    cmp #CS_HELD
+    beq pl_sn_crn
+    lda cr_xl,x
+    ldy cr_xh,x
+    jsr pl_scanix
+    lda #("*"-32)*2
+    sta pl_scans,y
+pl_sn_crn
+    dex
+    bpl pl_sn_cr
+    lda pl_wx
+    ldy pl_wxh
+    jsr pl_scanix
+    lda #("@"-32)*2
+    sta pl_scans,y
+    rts
+
+; world x (A lo, Y hi) -> Y = its scanner character, x / 64 (0-15)
+pl_scanix
+    asl                     ; (lo's top 2 bits into hi)
+    sta pl_gt
+    tya
+    rol
+    asl pl_gt
+    rol
+    and #15
+    tay
+    rts
+
+; the scanner's line without creatures: "-+-+-+-+#+-+-+-+" (towers at
+; 64 + 128 n: characters 1, 3, ...; the Ark at 512: character 8)
+pl_scanbase
+    .byte ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2
+    .byte ("#"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2, ("-"-32)*2, ("+"-32)*2
+
 ; ---- the HUD (rebuilt every 4th frame: it's text, and frames are tight) ----
 ;   top:    "000000  TIME 45  2/4"
 ;   bottom: "A" + the Ark's energy  |  "HOLD BEAST" / "HOLD  ORE " / "HOLD  ----"
 pl_hud
-    lda pl_tick
-    and #3
+    lda pl_tick             ; the top line on one frame in 4, the bottom two
+    and #3                  ; frames on (spread: frames are tight)
     beq pl_hud_go
+    cmp #2
+    bne pl_hud_r
+    jmp pl_hud_bot
+pl_hud_r
     rts
 pl_hud_go
     ldy #0
@@ -2396,7 +2053,8 @@ pl_hd_t
     lda pl_total
     jsr tx_digit
     sta hud_top,y
-    ; bottom
+    rts
+pl_hud_bot
     lda #<hud_bot
     sta hwp
     lda #>hud_bot
@@ -2491,7 +2149,9 @@ pl_dw_kn
     dex
     bpl pl_dw_k
 
-    ; towers: 3 segments, y 112-159, then their turrets
+    ; towers: from the guns (df_y) down to the ground (160: towers stand on
+    ; the top level), 16-line pieces from the ground up and one at the top;
+    ; the gun on top (flashing in another colour as it's about to fire)
     ldx #NTT-1
 pl_dw_t
     stx pl_i
@@ -2499,31 +2159,38 @@ pl_dw_t
     bne pl_dw_t1
     jmp pl_dw_tn
 pl_dw_t1
-    lda #112
+    lda #144
     sta pl_t0
 pl_dw_seg
-    ldx pl_i
-    lda tt_sx,x
-    sta temp4
-    lda pl_t0
-    sta temp5
-    lda #0
-    PLOT tower, 4
     clc
+    lda df_y
+    adc #8
+    cmp pl_t0
+    bcs pl_dw_stop
+    jsr pl_towerpc
+    sec
     lda pl_t0
-    adc #16
+    sbc #16
     sta pl_t0
-    cmp #160
-    bcc pl_dw_seg
+    jmp pl_dw_seg
+pl_dw_stop
+    sta pl_t0               ; the top piece, under the gun
+    jsr pl_towerpc
     ldx pl_i
     lda tt_sx,x
     sta temp4
-    lda tt_y,x
+    lda df_y
     sta temp5
-    lda tt_frz,x            ; out (shot): another colour
+    lda df_cool             ; warning: the gun flashes
+    cmp #DF_WARN
+    bcs pl_dw_tt
+    lda df_pulse
+    bne pl_dw_tt
+    lda pl_tick
+    and #4
     beq pl_dw_tt
     lda #0
-    PLOT turret, 3
+    PLOT turret, 1
     jmp pl_dw_tn
 pl_dw_tt
     lda #0
@@ -2531,8 +2198,30 @@ pl_dw_tt
 pl_dw_tn
     ldx pl_i
     dex
-    bmi pl_dw_beam
+    bmi pl_dw_pulse
     jmp pl_dw_t
+
+    ; the pulse: right across the screen at the guns' height (two 80-wide
+    ; pieces)
+pl_dw_pulse
+    lda df_pulse
+    beq pl_dw_beam
+    lda #1
+    sta temp4
+    sec
+    lda df_py
+    sbc #1
+    sta temp5
+    lda #0
+    PLOT pulse, 4
+    lda #80
+    sta temp4
+    sec
+    lda df_py
+    sbc #1
+    sta temp5
+    lda #0
+    PLOT pulse, 4
 
     ; the beam, exactly from the shuttle (pl_y + 4) to the ground (pl_gnd):
     ; 16-line pieces from the ground up while they fit, and one more at the
@@ -2617,71 +2306,18 @@ pl_dw_sh
     PLOT saucer0, 6
 pl_dw_ns
 
-    ; the shuttle's shots
-    ldx #NPS-1
-pl_dw_p
-    stx pl_i
-    lda ps_vis,x
-    beq pl_dw_pn
-    lda ps_sx,x
-    sta temp4
-    lda ps_y,x
-    sta temp5
-    lda #0
-    PLOT dot, 6
-pl_dw_pn
-    ldx pl_i
-    dex
-    bpl pl_dw_p
 
-    ; turret shots
-    ldx #NTS-1
-pl_dw_s
-    stx pl_i
-    lda ts_vis,x
-    beq pl_dw_sn
-    lda ts_sx,x
-    sta temp4
-    lda ts_y,x
-    sta temp5
-    lda #0
-    PLOT dot, 4
-pl_dw_sn
-    ldx pl_i
-    dex
-    bpl pl_dw_s
+    rts
 
-    ; the scanner (row 1): the whole planet in 128 pixels from x 16: the
-    ; shuttle and the creatures (the towers and the Ark never move: the
-    ; BASIC's scanner line marks them, characters, no sprites)
-    lda pl_wx
-    ldy pl_wxh
-    jsr pl_scan
-    lda #19
-    sta temp5
-    lda #0
-    PLOT dot, 6
-    ldx #NCR-1
-pl_dw_sc
-    stx pl_i
-    lda cr_t,x
-    beq pl_dw_scn
-    lda cr_st,x
-    cmp #CS_HIDE
-    beq pl_dw_scn
-    cmp #CS_HELD
-    beq pl_dw_scn
-    lda cr_xl,x
-    ldy cr_xh,x
-    jsr pl_scan
-    lda #22
-    sta temp5
-    lda #0
-    PLOT dot, 2
-pl_dw_scn
+; a tower piece at line pl_t0 (tower pl_i)
+pl_towerpc
     ldx pl_i
-    dex
-    bpl pl_dw_sc
+    lda tt_sx,x
+    sta temp4
+    lda pl_t0
+    sta temp5
+    lda #0
+    PLOT tower, 4
     rts
 
 ; a beam piece at line pl_t0

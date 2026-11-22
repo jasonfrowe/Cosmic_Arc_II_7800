@@ -16,7 +16,7 @@ emu.register_frame_done(function()
   local onplanet = f > 340 and m:read_u8(0x2714) < 3
   if onplanet then
     m:write_u8(0x2386, 96)
-    for i = 0, 7 do m:write_u8(0x2228 + i, 100) end     -- turrets out: this tests catching
+    m:write_u8(0x27BC, 200)                              -- no pulses: this tests catching
     local wx = m:read_u8(0x2700) + 256 * m:read_u8(0x2701)
     local sy, hold, st = m:read_u8(0x2707), m:read_u8(0x270A), m:read_u8(0x2709)
     local function toward(tx)

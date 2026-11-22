@@ -268,14 +268,14 @@ ground scrolls under it.
 |---|---|
 | The surface | 1024 px round (6.4 screens), wraps; rolling ground in one character row |
 | The clock | 60 s, the klaxon from 15 s; time up with the shuttle out: its cargo lost, the Ark -12 |
-| Blasters | button 1, as the saucer's: twin shots the way the stick last pointed, 3 px a frame across plus the shuttle's own speed (they always outrun it). **A shot creature is dead**, lost for good. **A shot turret is out for 10 s** (drawn in another colour) |
-| The beam | button 2, with the shuttle low (line 104 or lower, as the RP6502 lander beams near the surface): **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame and **struggles**: a pixel across every 8 frames, dropping if it gets more than 5 px out. In testing, 70-85% of creatures in the beam were caught. Crates rise a quarter line a frame and halve the climb. |
+| The beam | either button, with the shuttle low (line 104 or lower, as the RP6502 lander beams near the surface): **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame and **struggles**: a pixel across every 8 frames, dropping if it gets more than 5 px out. In testing, 70-85% of creatures in the beam were caught. Crates rise a quarter line a frame and halve the climb. |
 | Creatures | 2-4 a planet. **None ever hides.** A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, dodger dashes away; the glider (bobbing between lines 112 and 144) hurries; the skitterer is always quick and twitchy |
-| Turrets | **a tower every 128 px** (8; one always in view). Each on the screen fires every 45-76 frames at the flying shuttle, its aim straying a little. **A hit destroys the shuttle**: its cargo falls, the Ark loses 12, and launches another 2.5 s later |
-| All caught or shot | the planet's done; **every one caught (none shot)**: the Ark's energy full again, 1,000 points |
+| The defences | **as in Cosmic Arc (RP6502): a pulse to dodge, no bullets.** A tower every 128 px (one always in view); every gun moves as one, up and down between lines 100 and 146. Every 2 s (less each wave, at least 0.7 s) the guns flash (24 frames' warning), then a pulse crosses the whole screen at their height for 6 frames. **A shuttle it touches is destroyed**: its cargo falls, the Ark loses 12, and launches another 2.5 s later. Above the guns' range (the shuttle flies up to line 80) is safe, but the beam only works low: catching is timing the beam between pulses |
+| All caught | the planet's done: the Ark's energy full again, 1,000 points |
 
-(An earlier version had a stun pulse on button 2, and burrowers and blinkers that
-hid. Hiding read as creatures vanishing, so it's gone.)
+(Earlier versions had a stun pulse, burrowers and blinkers that hid (it read
+as creatures vanishing), and shuttle blasters aimed with the stick that moved it,
+which was too hard and cost frames. All gone in favour of the original's dodge.)
 
 The Ark's energy running out on a planet ends the game, as in deep space.
 

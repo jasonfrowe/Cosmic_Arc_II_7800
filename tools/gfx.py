@@ -333,6 +333,10 @@ bbbbbbbb
 TUNNEL = [("acccccca" if y % 4 == 0 else ".a....a.") for y in range(16)]
 
 
+# The defences' pulse: right across the screen, 80 x 4, drawn twice
+PULSE = ["b" * 80, "c" * 80, "c" * 80, "b" * 80]
+
+
 # (unused now: the stun pulse is gone)
 def ring():
     rows = []
@@ -460,6 +464,7 @@ def main():
     save("tower", TOWER)
     save("turret", TURRET)
     save("tunnel", TUNNEL)
+    save("pulse", PULSE)
     font()
     print("gfx: wrote", ", ".join(sorted(p.stem for p in GFX.glob("*.png"))))
 
