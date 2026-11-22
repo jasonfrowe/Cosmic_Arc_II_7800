@@ -1,9 +1,11 @@
 -- Feel test (the planet): what a player notices.
 --  1. (Bullets: gone with the shuttle's blasters; the defences' pulse is
 --     dodged instead.)
---  2. Docking: about 20 pixels off the Ark's middle, not lined up, just push
---     up: it must dock within 2 s.
+--  2. Docking: a few pixels off the Ark's middle (in its doorway, twice the
+--     shuttle's width), stopped, just push up: it must dock within 2 s.
 --  3. Undocking: hold down: within 2 s it's out of the tunnel and can move.
+--  4. No accident: just out, fly up and away (up + left) for a second: it
+--     must not dock again.
 -- Turrets are held out. tools/test_feel.sh
 local fields = {}
 for tag, port in pairs(manager:machine():ioport().ports) do
@@ -48,17 +50,22 @@ emu.register_frame_done(function()
       if f - t0 > 200 then phase = "back"; t0 = f end
     elseif phase == "back" then
       -- back to about 20 px left of the Ark's middle, then up to the ceiling
-      local want = -20
-      if dx > want + 3 then held["P1 Left"] = true elseif dx < want - 3 then held["P1 Right"] = true
-      else phase = "dock"; t0 = f end
+      local want = -4
+      local vx = mm:read_u8(0x2704)                         -- (the whole-pixel speed)
+      if dx > want + 1 then held["P1 Left"] = true elseif dx < want - 1 then held["P1 Right"] = true
+      elseif vx == 0 then phase = "dock"; t0 = f end         -- lined up and stopped
     elseif phase == "dock" then
       held["P1 Up"] = true                                  -- just push up
       if st == 0 then results.dock = (f - t0) / 60; phase = "undock"; t0 = f end
       if f - t0 > 600 then results.dock = -1; phase = "undock"; t0 = f end
     elseif phase == "undock" then
       held["P1 Down"] = true
-      if st == 1 and auto == 0 then results.undock = (f - t0) / 60; phase = "done" end
+      if st == 1 and auto == 0 then results.undock = (f - t0) / 60; phase = "away"; t0 = f end
       if f - t0 > 300 then results.undock = -1; phase = "done" end
+    elseif phase == "away" then
+      held["P1 Up"] = true; held["P1 Left"] = true             -- off up and away
+      if st == 0 or auto == 1 then results.accident = 1 end
+      if f - t0 > 60 then phase = "done" end
     end
   end
   for name, field in pairs(fields) do
@@ -66,9 +73,10 @@ emu.register_frame_done(function()
   end
   if phase == "done" or f > 4000 then
     print(string.format("bullets pulling away from the shuttle: %d frames of shots", ahead))
-    print(string.format("docking from 20 px off, just pushing up: %s", results.dock and results.dock >= 0 and string.format("%.1f s", results.dock) or "FAILED"))
+    print(string.format("docking from 4 px off, just pushing up: %s", results.dock and results.dock >= 0 and string.format("%.1f s", results.dock) or "FAILED"))
     print(string.format("undocking, holding down: %s", results.undock and results.undock >= 0 and string.format("%.1f s", results.undock) or "FAILED"))
-    print(string.format("result %d %.2f %.2f", ahead, results.dock or -1, results.undock or -1))
+    print(string.format("flying up and away just out of the Ark: %s", results.accident and "DOCKED BY ACCIDENT" or "no dock"))
+    print(string.format("result %d %.2f %.2f %d", ahead, results.dock or -1, results.undock or -1, results.accident or 0))
     manager:machine():exit()
   end
 end)

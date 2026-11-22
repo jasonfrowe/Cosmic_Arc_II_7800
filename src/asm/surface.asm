@@ -50,8 +50,12 @@ CR_STUN   = 150     ; frames a creature stays stunned
 TT_FREEZE = 200     ; frames a turret stays frozen
 DF_TOP    = 100     ; the guns' highest line, and lowest (they move as one)
 DF_BOT    = 146
-DF_STEP   = 2       ; frames a line (a power of 2)
-DF_PERIOD0 = 120    ; frames between pulses: 120 - 10 a wave, at least 40
+DF_STEP1  = 4       ; frames a line the guns move on the first stage; one
+                    ;   less each stage after, to 1
+DF_PERIOD1 = 150    ; frames between pulses on the first stage (2.5 s);
+DF_PERIODSTEP = 15  ;   this much less each stage after,
+DF_PERIODMIN = 45   ;   to no less than this (0.75 s)
+; (the stage: sp_wave, the wave just cleared; the first planet is stage 1)
 DF_WARN   = 24      ; frames the guns flash before they fire
 DF_PULSE  = 6       ; frames a pulse lasts
 SHUTTLE_DMG = 12    ; the shuttle shot down costs the Ark this
@@ -67,9 +71,10 @@ GROUND_Y  = 152     ; a creature's top on the highest ground (the surface
 GLIDE_Y   = 124     ; a glider starts here, and bobs between lines 112 and 144
                     ;   (low enough for the beam: BEAM_MINY)
 ARK_WX    = 512     ; the Ark's centre on the planet
-DOCK_ZONE = 40      ; pushing up at the ceiling this near the Ark (either
-                    ;   side; it is 48 wide, and a shuttle coming in fast
-                    ;   coasts on): the shuttle goes in by itself
+DOCK_ZONE = 8       ; pushing up at the ceiling this near the Ark's middle
+                    ;   (either side: a doorway twice the shuttle's width):
+                    ;   the shuttle goes in by itself. (Wider, and flying
+                    ;   away from the Ark upwards docked by accident.)
 AUTO_IN   = 1       ; pl_auto: going in (centring, up the tunnel)
 AUTO_OUT  = 2       ; ... coming out (down the tunnel)
 LAUNCH_HOLD = 6     ; frames down's held, docked, to come out
@@ -206,6 +211,8 @@ df_cool   = $27BC   ; frames to the next pulse
 df_pulse  = $27BD   ; frames the pulse has left
 df_py     = $27BE   ; its line
 df_period = $27BF
+df_step   = $27D0   ; frames a line, this stage
+df_tick   = $27D1
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -362,22 +369,42 @@ pl_new_t
     lda #0
     sta df_dir
     sta df_pulse
+    ; this stage's pace: stage = sp_wave (1 on the first planet)
     lda sp_wave
+    bne pl_new_lv
+    lda #1
+pl_new_lv
+    sec
+    sbc #1                  ; stages after the first
+    sta pl_t0
+    lda #DF_STEP1           ; frames a line: DF_STEP1 - stages after, >= 1
+    sec
+    sbc pl_t0
+    bcc pl_new_s1
+    bne pl_new_s2
+pl_new_s1
+    lda #1
+pl_new_s2
+    sta df_step
+    sta df_tick
+    lda pl_t0               ; frames between pulses: DF_PERIOD1 - 15 a stage
     sta M_A
     lda #0
     sta M_A+1
     sta M_B+1
     sta M_CTRL
-    lda #10
+    lda #DF_PERIODSTEP
     sta M_B
     sec
-    lda #DF_PERIOD0
+    lda #DF_PERIOD1
     sbc M_P
     bcc pl_new_dp
-    cmp #40
+    ldy M_P+1
+    bne pl_new_dp
+    cmp #DF_PERIODMIN
     bcs pl_new_dp2
 pl_new_dp
-    lda #40
+    lda #DF_PERIODMIN
 pl_new_dp2
     sta df_period
     clc
@@ -893,8 +920,11 @@ pl_sh_u1
     dec pl_y
     rts
 pl_sh_ceil
-    ; at the ceiling, pushing up: anywhere near the Ark (DOCK_ZONE either
-    ; side), it goes in by itself
+    ; at the ceiling, pushing straight up (not up and to a side: that's
+    ; flying away), in the Ark's doorway (DOCK_ZONE either side of its
+    ; middle): it goes in by itself
+    lda sp_joy
+    bne pl_sh_r
     jsr pl_underark
     bcc pl_sh_r
     lda #AUTO_IN
@@ -1477,10 +1507,11 @@ pl_ck_n
 ; height for DF_PULSE frames. A shuttle the pulse touches is destroyed.
 ; No bullets: you dodge it (by height), and time the beam between pulses.
 pl_defense
-    ; the guns' height: a step every DF_STEP frames
-    lda pl_tick
-    and #DF_STEP-1
+    ; the guns' height: a line every df_step frames
+    dec df_tick
     bne pl_df_f
+    lda df_step
+    sta df_tick
     lda df_dir
     bne pl_df_up
     inc df_y

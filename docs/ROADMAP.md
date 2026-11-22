@@ -47,6 +47,7 @@ then link them together.
 - [x] From hardware: no stun; the shuttle fires like the saucer (button 1), the beam on button 2; shot turrets out 10 s; shot creatures dead; RP6502 docking (inside the Ark; hold down to come out; up the tube and let go to dock); no hiding creatures; catchable without a stun (70-85% in the beam)
 - [x] From hardware: bullets outrun the shuttle; the saucer called home is safe; easy docking with the Ark's tunnel (push up near it: in by itself; hold down: out by itself); `test_feel.sh`, `test_recall.sh`
 - [x] From hardware: the RP6502 defences (guns that move as one, a screen-wide pulse to dodge) instead of shuttle bullets; both buttons the beam; frame rate held (scanner as characters); `test_defense.sh`
+- [x] From hardware: the Ark's doorway twice the shuttle's width, straight up only (no accidental docking); the defences' pace rises with the stage (stage 1: half the old speed, 2.5 s between pulses)
 - [ ] A planet music track (the Arc theme for now)
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 

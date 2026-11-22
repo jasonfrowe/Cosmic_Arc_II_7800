@@ -256,12 +256,15 @@ the surface below.
 The Ark hangs over **one spot** of the planet and doesn't follow the shuttle.
 **Docking is easy, with a tunnel as in the RP6502 game.** A tunnel hangs under
 the Ark down to the shuttle's ceiling (line 80), which nothing else can climb
-above. To dock, push up at the ceiling anywhere within 40 px of the Ark: the
-shuttle centres itself, flies up the tunnel and goes inside, handing over its
+above. To dock, get under the Ark's doorway (within 8 px of its middle: twice
+the shuttle's width) and push **straight** up at the ceiling. The shuttle
+centres itself, flies up the tunnel and goes inside. Up and to a side is flying away, and never
+docks (a wider doorway docked players flying off upwards by accident). It handing over its
 cargo (a creature: +12 Ark energy, 500 points; an ore crate: 200 points).
 Docked, it's inside the Ark (not seen). Hold down a moment and it drops out
 of the tunnel by itself. Going in and coming out, nothing can hit it. Tested:
-docking from 20 px off by just pushing up takes 1.1 s, undocking 0.6 s. The shuttle stays at the screen's centre while the
+docking from the doorway by pushing up takes 1.1 s, undocking 0.6 s, and flying up
+and away just out of the Ark doesn't dock. The shuttle stays at the screen's centre while the
 ground scrolls under it.
 
 | | Numbers (knobs in `surface.asm`) |
@@ -270,7 +273,7 @@ ground scrolls under it.
 | The clock | 60 s, the klaxon from 15 s; time up with the shuttle out: its cargo lost, the Ark -12 |
 | The beam | either button, with the shuttle low (line 104 or lower, as the RP6502 lander beams near the surface): **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame and **struggles**: a pixel across every 8 frames, dropping if it gets more than 5 px out. In testing, 70-85% of creatures in the beam were caught. Crates rise a quarter line a frame and halve the climb. |
 | Creatures | 2-4 a planet. **None ever hides.** A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, dodger dashes away; the glider (bobbing between lines 112 and 144) hurries; the skitterer is always quick and twitchy |
-| The defences | **as in Cosmic Arc (RP6502): a pulse to dodge, no bullets.** A tower every 128 px (one always in view); every gun moves as one, up and down between lines 100 and 146. Every 2 s (less each wave, at least 0.7 s) the guns flash (24 frames' warning), then a pulse crosses the whole screen at their height for 6 frames. **A shuttle it touches is destroyed**: its cargo falls, the Ark loses 12, and launches another 2.5 s later. Above the guns' range (the shuttle flies up to line 80) is safe, but the beam only works low: catching is timing the beam between pulses |
+| The defences | **as in Cosmic Arc (RP6502): a pulse to dodge, no bullets.** A tower every 128 px (one always in view); every gun moves as one, up and down between lines 100 and 146, **at a pace that rises with the stage** (the wave just cleared): stage 1 a line every 4 frames and a pulse every 2.5 s; each stage a frame a line faster (to 1) and 0.25 s sooner (to 0.75 s). Before each pulse the guns flash (24 frames' warning), then a pulse crosses the whole screen at their height for 6 frames. **A shuttle it touches is destroyed**: its cargo falls, the Ark loses 12, and launches another 2.5 s later. Above the guns' range (the shuttle flies up to line 80) is safe, but the beam only works low: catching is timing the beam between pulses |
 | All caught | the planet's done: the Ark's energy full again, 1,000 points |
 
 (Earlier versions had a stun pulse, burrowers and blinkers that hid (it read
