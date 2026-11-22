@@ -251,24 +251,27 @@ the surface below.
 
 ### 5.0 As built (M3, after playtesting)
 
-The Ark hangs over **one spot** of the planet. It doesn't follow the shuttle,
-which has to come back to it: under the Ark it can fly up into the bay to dock
-and hand over its cargo (a creature: +12 Ark energy, 500 points; an ore crate:
-200 points). Anywhere else it can't climb to the Ark's height. The shuttle
-(the saucer) stays at the screen's centre while the ground scrolls under it.
-Each cleared deep-space wave goes down to a planet, and the game returns to
-space when it's over.
+The Ark hangs over **one spot** of the planet and doesn't follow the shuttle.
+**Docking works as in the RP6502 game:** docked, the shuttle is inside the
+Ark (not seen). Hold down a moment and it comes out of the bay. To dock again,
+fly under the Ark and up its tube; at the top, let go of up and it goes inside,
+handing over its cargo (a creature: +12 Ark energy, 500 points; an ore crate:
+200 points). In the tube it only goes up and down, and it can't climb to the
+Ark's height anywhere else. The shuttle stays at the screen's centre while the
+ground scrolls under it.
 
 | | Numbers (knobs in `surface.asm`) |
 |---|---|
-| The surface | 1024 px round (6.4 screens), wraps; the ground is one character row |
+| The surface | 1024 px round (6.4 screens), wraps; rolling ground in one character row |
 | The clock | 60 s, the klaxon from 15 s; time up with the shuttle out: its cargo lost, the Ark -12 |
-| The beam | button 1: **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame; unstunned, it **struggles** (a pixel across every 4 frames) and drops if it gets more than 5 px out (unstunned walkers and runners got free about 3 times in 4 in testing). Crates rise a quarter line a frame and halve the climb. |
-| Stun pulse | button 2, every 2.5 s: creatures within 36 px stunned 2.5 s (they don't react or struggle), turrets frozen 3.3 s. **Stun, then beam.** |
-| Creatures | 2-4 a planet. A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, burrower digs in, glider (always bobbing between lines 96 and 136) hurries, blinker teleports when the beam touches it |
-| Gunships (deep space) | as fast as raiders, launch their first missile half a second after parking, then every 100 frames, up to 3 in the air; a missile costs the Ark 12. Unanswered, one drains a full Ark in 30 s |
-| Turrets | **a tower every 128 px** (8; one always in view). Each on the screen fires every 45-76 frames at the flying shuttle, aim straying a little. **A hit destroys the shuttle**: its cargo falls, the Ark loses 12, and launches another 2.5 s later |
-| All caught | the Ark's energy full again, 1,000 points |
+| Blasters | button 1, as the saucer's: twin shots the way the stick last pointed. **A shot creature is dead**, lost for good. **A shot turret is out for 10 s** (drawn in another colour) |
+| The beam | button 2, with the shuttle low (line 104 or lower, as the RP6502 lander beams near the surface): **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame and **struggles**: a pixel across every 8 frames, dropping if it gets more than 5 px out. In testing, 70-85% of creatures in the beam were caught. Crates rise a quarter line a frame and halve the climb. |
+| Creatures | 2-4 a planet. **None ever hides.** A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, dodger dashes away; the glider (bobbing between lines 112 and 144) hurries; the skitterer is always quick and twitchy |
+| Turrets | **a tower every 128 px** (8; one always in view). Each on the screen fires every 45-76 frames at the flying shuttle, its aim straying a little. **A hit destroys the shuttle**: its cargo falls, the Ark loses 12, and launches another 2.5 s later |
+| All caught or shot | the planet's done; **every one caught (none shot)**: the Ark's energy full again, 1,000 points |
+
+(An earlier version had a stun pulse on button 2, and burrowers and blinkers that
+hid. Hiding read as creatures vanishing, so it's gone.)
 
 The Ark's energy running out on a planet ends the game, as in deep space.
 

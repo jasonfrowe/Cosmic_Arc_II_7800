@@ -259,6 +259,9 @@ them, which is in while MARIA draws them.
   negative step, and the carry counted once. The blinker's teleport added its
   -64..63 step as unsigned, with the carry counted twice, and threw it 200-500
   pixels across the planet ("creatures jumping around", found on hardware).
+- **"Disappearing" can be the design.** Burrowers ducking under and blinkers
+  teleporting read as a rendering bug from the player's chair, and made creatures
+  impossible to catch. Nothing alive hides now.
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

@@ -31,9 +31,11 @@ Controls:
 - **The Ark:** the joystick aims, button 1 fires, button 2 launches the fighter.
 - **The fighter:** it flies the way the joystick points, button 1 fires,
   button 2 calls it home.
-- **The shuttle (on a planet):** the joystick flies it (down leaves the Ark,
-  up into the Ark docks and hands over its cargo), button 1 is the tractor
-  beam, button 2 the stun pulse.
+- **The shuttle (on a planet):** hold down to bring it out of the Ark; the
+  joystick flies it; button 1 fires its blasters (the way the stick last
+  pointed: shoot turrets, not creatures); button 2 is the tractor beam (low
+  over the ground, and the shuttle stops while it's on). To dock, fly under
+  the Ark, up its tube to the top, and let go of up.
 - On the title, button 2 opens the hardware check; Select goes straight to a
   planet (for testing).
 

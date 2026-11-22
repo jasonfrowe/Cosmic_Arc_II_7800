@@ -44,6 +44,7 @@ then link them together.
 - [x] From hardware: turrets destroy the shuttle (8 towers, one always in view); the Ark stays over its own spot; creatures struggle in the beam and react (stun, then beam); the shuttle stops while beaming; the beam always reaches the ground exactly; creatures no longer vanish (MARIA's line time: one ground row)
 - [x] `tools/bankcheck.py` in the build
 - [x] From hardware: blinkers' jumps (a sign bug), rolling ground, out of energy on a planet ends the game, the Ark comes and goes between scenes, gunships a threat, rocks destroy the saucer, the saucer needs twice the shots
+- [x] From hardware: no stun; the shuttle fires like the saucer (button 1), the beam on button 2; shot turrets out 10 s; shot creatures dead; RP6502 docking (inside the Ark; hold down to come out; up the tube and let go to dock); no hiding creatures; catchable without a stun (70-85% in the beam)
 - [ ] A planet music track (the Arc theme for now)
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 

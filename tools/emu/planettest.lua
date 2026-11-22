@@ -1,7 +1,8 @@
 -- Planet test: Select on the title (a planet at once), then the planet
 -- autopilot (snap.lua's AUTOPLANET, copied here): catches creatures, docks.
 -- Checks: creatures caught, the planet ends and play goes back to deep
--- space, and the planet loop ran every frame. tools/test_planet.sh
+-- space, and the planet loop ran every frame. Turrets are held out (shot):
+-- it tests catching and docking. tools/test_planet.sh
 local fields = {}
 for tag, port in pairs(manager:machine():ioport().ports) do
   for name, field in pairs(port.fields) do fields[name] = field end
@@ -15,6 +16,7 @@ emu.register_frame_done(function()
   local onplanet = f > 340 and m:read_u8(0x2714) < 3
   if onplanet then
     m:write_u8(0x2386, 96)
+    for i = 0, 7 do m:write_u8(0x2228 + i, 100) end     -- turrets out: this tests catching
     local wx = m:read_u8(0x2700) + 256 * m:read_u8(0x2701)
     local sy, hold, st = m:read_u8(0x2707), m:read_u8(0x270A), m:read_u8(0x2709)
     local function toward(tx)
@@ -24,7 +26,8 @@ emu.register_frame_done(function()
     end
     if hold > 0 or m:read_u8(0x2716) == m:read_u8(0x2717) then
       -- home: to the Ark's spot, then up into it
-      if math.abs(toward(512)) <= 6 then held["P1 Up"] = true end
+      -- up the tube to the top, then let go of up: docked
+      if math.abs(toward(512)) <= 6 and sy > 58 then held["P1 Up"] = true end
     else
       local best, bd, by, bstun
       for i = 0, 3 do
@@ -39,12 +42,14 @@ emu.register_frame_done(function()
       end
       if best then
         if st == 0 then held["P1 Down"] = true
-        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 1"] = true   -- lifting: hold on
+        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 2"] = true   -- lifting: hold on
         else
           if math.abs(bd) > 3 then toward((wx + bd) % 1024) end
-          if math.abs(bd) < 40 and sy < by - 14 then held["P1 Down"] = true end
+          if math.abs(bd) < 40 and sy < by - 14 and sy >= 72 then held["P1 Down"] = true end
+        if math.abs(bd) < 40 and sy < 104 then held["P1 Down"] = true end   -- low enough to beam
+        if sy < 72 then held["P1 Down"] = true end                        -- out of the tube
           if math.abs(bd) <= 3 then
-            if bstun == 0 then held["P1 Button 2"] = (f % 8 < 4) else held["P1 Button 1"] = true end
+            held["P1 Button 2"] = true                                    -- the beam
           end
         end
       end

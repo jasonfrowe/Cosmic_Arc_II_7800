@@ -152,7 +152,8 @@ emu.register_frame_done(function()
     end
     if hold > 0 or m:read_u8(0x2716) == m:read_u8(0x2717) then
       -- home: to the Ark's spot, then up into it
-      if math.abs(toward(512)) <= 6 then held["P1 Up"] = true end
+      -- up the tube to the top, then let go of up: docked
+      if math.abs(toward(512)) <= 6 and sy > 58 then held["P1 Up"] = true end
     else
       local best, bd, by, bstun
       for i = 0, 3 do
@@ -167,12 +168,14 @@ emu.register_frame_done(function()
       end
       if best then
         if st == 0 then held["P1 Down"] = true
-        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 1"] = true   -- lifting: hold on
+        elseif m:read_u8(0x2740 + best) == 2 then held["P1 Button 2"] = true   -- lifting: hold on
         else
           if math.abs(bd) > 3 then toward((wx + bd) % 1024) end
-          if math.abs(bd) < 40 and sy < by - 14 then held["P1 Down"] = true end
+          if math.abs(bd) < 40 and sy < by - 14 and sy >= 72 then held["P1 Down"] = true end
+        if math.abs(bd) < 40 and sy < 104 then held["P1 Down"] = true end   -- low enough to beam
+        if sy < 72 then held["P1 Down"] = true end                        -- out of the tube
           if math.abs(bd) <= 3 then
-            if bstun == 0 then held["P1 Button 2"] = (f % 8 < 4) else held["P1 Button 1"] = true end
+            held["P1 Button 2"] = true                                    -- the beam
           end
         end
       end
