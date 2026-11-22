@@ -161,6 +161,9 @@ tools/test_waves.sh   # 11 waves: none clears with a pirate about; the rocks'
 tools/test_edges.sh   # pirates never leave the screen or wrap (84,000 samples)
 tools/test_planet.sh  # Select -> a planet: the autopilot catches, the planet ends,
                       # back to space; the loop runs every frame
+tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
+                      # docking from near the Ark by pushing up < 2 s; undocking < 2 s
+tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
 ```
 
 The deep-space tests set `sp_noplanet` ($23EF) so waves go straight on without
@@ -262,6 +265,13 @@ them, which is in while MARIA draws them.
 - **"Disappearing" can be the design.** Burrowers ducking under and blinkers
   teleporting read as a rendering bug from the player's chair, and made creatures
   impossible to catch. Nothing alive hides now.
+- **Test what the player feels, not only what the code does.** Bullets slower than
+  the shuttle, the recall path through rocks, and docking that needed pixel-perfect
+  lining up all passed the mechanical tests. `test_feel.sh` and `test_recall.sh`
+  measure them directly, and each was checked to fail on the old build.
+- **Cutting code by label**: search for the label at the start of a line
+  (`"\nlabel\n"`), not the first match: a branch to it comes first and the cut
+  takes the wrong lines (it happened three times).
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

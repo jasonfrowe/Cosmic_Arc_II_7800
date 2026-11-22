@@ -530,7 +530,7 @@ pr_co_life
     lda #MISS_DMG
     jmp sp_arkdmg
 pr_co_f
-    jsr ft_isout
+    jsr ft_canhit           ; (called home: nothing can hurt it)
     bcc pr_co_r
     ldy pr_t,x
     ; |dx| < half width + 4, |dy| < half height + 5

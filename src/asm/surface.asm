@@ -57,17 +57,24 @@ CR_PAY    = 12      ; Ark energy for a creature delivered
 LOST_DMG  = 12      ; ... lost at time up with the shuttle out
 
 PL_DOCKY  = 58      ; the shuttle's centre, docked in the Ark's bay
-PL_YMIN   = 72      ; the highest it flies, away from the Ark
+PL_YMIN   = 80      ; the ceiling: the highest it flies (the tunnel's foot)
+TUNNEL_Y  = 56      ; the tunnel under the Ark: lines 56-79 (two pieces)
 GROUND_Y  = 152     ; a creature's top on the highest ground (the surface
                     ;   at line 160; it's 160-168: pl_ground)
 GLIDE_Y   = 124     ; a glider starts here, and bobs between lines 112 and 144
                     ;   (low enough for the beam: BEAM_MINY)
 ARK_WX    = 512     ; the Ark's centre on the planet
-ARK_DOCKX = 8       ; the shuttle can go up into it within this, across
+DOCK_ZONE = 40      ; pushing up at the ceiling this near the Ark (either
+                    ;   side; it is 48 wide, and a shuttle coming in fast
+                    ;   coasts on): the shuttle goes in by itself
+AUTO_IN   = 1       ; pl_auto: going in (centring, up the tunnel)
+AUTO_OUT  = 2       ; ... coming out (down the tunnel)
 LAUNCH_HOLD = 6     ; frames down's held, docked, to come out
-PL_SHOT   = $0300   ; the shuttle's blasters (as the saucer's): speed
+PL_SHOT   = $0600   ; the shuttle's blasters: 3 px a frame across (6 lines up
+                    ;   or down), plus the shuttle's own speed: always well
+                    ;   ahead of it (the shuttle tops out at 2 px a frame)
 PL_FGAP   = 10      ;   frames between pairs
-PL_SHLIFE = 40
+PL_SHLIFE = 28
 TT_DISABLE = 600    ; frames a shot turret is out (10 s)
 NPS       = 4       ; the shuttle's shots
 
@@ -189,7 +196,7 @@ pl_boomx  = $2773   ; where it went down
 pl_boomy  = $2774
 pl_arky   = $2775   ; the Ark's sprite line (PL_ARKY in orbit; the BASIC)
 pl_launch = $2776   ; frames down's been held, docked
-pl_dockup = $2777   ; at the tube's top: docks when up's let go
+pl_auto   = $2777   ; flying itself in or out of the Ark (AUTO_IN / AUTO_OUT)
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -603,8 +610,8 @@ pl_sh_dr
 pl_sh_alive
     cmp #PL_DOCKED
     bne pl_sh_out
-    ; docked: inside the Ark (not drawn). Hold down a moment (as in the
-    ; RP6502 game): it comes out of the bay
+    ; docked: inside the Ark (not drawn). Hold down a moment: it comes out
+    ; and drops down the tunnel, clear of it, by itself
     ldx sp_joy
     cpx #8
     bcs pl_sh_dk0
@@ -617,10 +624,11 @@ pl_sh_alive
     bcc pl_sh_dr
     lda #PL_FLYING
     sta pl_st
+    lda #AUTO_OUT
+    sta pl_auto
     lda #0
     sta pl_vxl
     sta pl_vxh
-    sta pl_dockup
     lda #PL_DOCKY+2
     sta pl_y
     lda #<ARK_WX
@@ -634,22 +642,85 @@ pl_sh_dk0
     sta pl_launch
     rts
 pl_sh_out
-    ; up at the top of the Ark's tube, and up let go: docked (the RP6502
-    ; game's way: no docking by accident)
-    lda pl_dockup
-    beq pl_sh_o2
-    ldx sp_joy
-    cpx #8
-    bcs pl_sh_dock
-    lda pl_updown,x
-    bmi pl_sh_o2
-pl_sh_dock
+    ; going in or coming out of the Ark: it flies itself (and nothing can
+    ; hit it meanwhile)
+    lda pl_auto
+    bne pl_sh_o2_far634
+    jmp pl_sh_o2
+pl_sh_o2_far634
+    lda #0
+    sta pl_vxl
+    sta pl_vxh
+    lda pl_auto
+    cmp #AUTO_IN
+    beq pl_sh_in
+    inc pl_y                ; out: down the tunnel, to clear of it
+    lda pl_y
+    cmp #PL_YMIN+6
+    bcc pl_sh_ar
+    lda #0
+    sta pl_auto
+pl_sh_ar
+    rts
+pl_sh_in
+    ; in: slide over to the tunnel (2 px a frame), up it, and inside
+    sec
+    lda pl_wx
+    sbc #<ARK_WX
+    sta pl_t0
+    lda pl_wxh
+    sbc #>ARK_WX
+    and #3
+    beq pl_sh_ir            ; right of it (or on it)
+    lda pl_t0               ; left of it: -1..-DOCK_ZONE
+    cmp #$FE
+    bcs pl_sh_ion
+    clc
+    lda pl_wx
+    adc #2
+    sta pl_wx
+    lda pl_wxh
+    adc #0
+    and #3
+    sta pl_wxh
+    jmp pl_sh_iup
+pl_sh_ir
+    lda pl_t0
+    cmp #3
+    bcc pl_sh_ion
+    sec
+    lda pl_wx
+    sbc #2
+    sta pl_wx
+    lda pl_wxh
+    sbc #0
+    and #3
+    sta pl_wxh
+    jmp pl_sh_iup
+pl_sh_ion
+    lda #<ARK_WX            ; on it
+    sta pl_wx
+    lda #>ARK_WX
+    sta pl_wxh
+pl_sh_iup
+    dec pl_y
+    lda pl_y
+    cmp #PL_DOCKY+1
+    bcs pl_sh_ar
+    lda #PL_DOCKY           ; inside: docked, and the cargo handed over
+    sta pl_y
+    lda #<ARK_WX
+    sta pl_wx
+    lda #>ARK_WX
+    sta pl_wxh
     lda #PL_DOCKED
     sta pl_st
     lda #0
+    sta pl_auto
     sta pl_launch
-    sta pl_dockup
-    jmp pl_deliver
+    jsr pl_deliver
+    lda #SFX_DOCK
+    jmp sfx
 pl_sh_o2
     ; the beam on (button 2, low enough): the shuttle stops dead
     lda sp_fire2
@@ -793,29 +864,22 @@ pl_sh_up
     and #1
     beq pl_sh_r
 pl_sh_u1
-    ; under the Ark it may go on up into it; anywhere else, no higher
-    ; than PL_YMIN
-    jsr pl_underark
-    bcs pl_sh_u2
-    lda pl_y
+    lda pl_y                ; below the ceiling (PL_YMIN): up
     cmp #PL_YMIN+1
-    bcc pl_sh_r
-pl_sh_u2
-    lda pl_y
-    cmp #PL_DOCKY+1
-    bcc pl_sh_top
+    bcc pl_sh_ceil
     dec pl_y
-    lda pl_y                ; (the moment it gets there, not a frame on:
-    cmp #PL_DOCKY+1         ;  up let go at once still docks)
-    bcc pl_sh_top
     rts
-pl_sh_top
-    lda #1                  ; at the top: it docks when up's let go
-    sta pl_dockup
+pl_sh_ceil
+    ; at the ceiling, pushing up: anywhere near the Ark (DOCK_ZONE either
+    ; side), it goes in by itself
+    jsr pl_underark
+    bcc pl_sh_r
+    lda #AUTO_IN
+    sta pl_auto
 pl_sh_r
     rts
 
-; C = 1: the shuttle is under the Ark (within ARK_DOCKX across)
+; C = 1: the shuttle is near the Ark (within DOCK_ZONE across)
 pl_underark
     sec
     lda pl_wx
@@ -827,12 +891,12 @@ pl_underark
     beq pl_ua_p
     cmp #3
     bne pl_ua_no
-    lda pl_t0               ; a little to the left: -1..-ARK_DOCKX
-    cmp #256-ARK_DOCKX
+    lda pl_t0               ; a little to the left: -1..-DOCK_ZONE
+    cmp #256-DOCK_ZONE
     rts                     ; (C = 1 when it's that near)
 pl_ua_p
     lda pl_t0
-    cmp #ARK_DOCKX+1
+    cmp #DOCK_ZONE+1
     bcs pl_ua_no
     sec
     rts
@@ -1436,6 +1500,10 @@ pl_tt_f
     dec tt_cool,x
     jmp pl_tt_n
 pl_tt_shoot
+    lda pl_auto             ; (flying itself in or out: left alone)
+    beq pl_tt_noauto_far1483
+    jmp pl_tt_noauto
+pl_tt_noauto_far1483
     lda pl_st
     cmp #PL_FLYING
     beq pl_tt_n_far947
@@ -1526,6 +1594,9 @@ pl_tt_n
 pl_tt_r
     rts
 
+pl_tt_noauto
+    jmp pl_tt_n
+
 ; ---- turret shots: move; hit the shuttle ----
 pl_shots
     ldx #NTS-1
@@ -1578,6 +1649,8 @@ pl_ts_p
 pl_ts_dx
     cmp #6
     bcs pl_ts_n
+    lda pl_auto             ; (flying itself in or out: shots miss it)
+    bne pl_ts_n
     lda pl_st
     cmp #PL_FLYING
     bne pl_ts_n
@@ -1749,10 +1822,14 @@ pl_fi_k
     rts
 pl_fi_c
     lda sp_fire
-    beq pl_fi_r
+    bne pl_fi_r_far1802
+    jmp pl_fi_r
+pl_fi_r_far1802
     lda pl_st
     cmp #PL_FLYING
-    bne pl_fi_r
+    beq pl_fi_r_far1805
+    jmp pl_fi_r
+pl_fi_r_far1805
     lda pl_y                ; (not from inside the Ark's tube)
     cmp #PL_YMIN
     bcc pl_fi_r
@@ -1786,6 +1863,13 @@ pl_fi_c
     sta v_t1
     lda pl_t0
     jsr vec_rot
+    clc                     ; plus the shuttle's own speed across
+    lda vx_l
+    adc pl_vxl
+    sta vx_l
+    lda vx_h
+    adc pl_vxh
+    sta vx_h
     lda pl_t1
     jsr pl_shot1
     lda pl_t1
@@ -2476,6 +2560,29 @@ pl_dw_btop
     sta pl_t0               ; the top piece, at the shuttle
     jsr pl_beampc
 pl_dw_nob
+
+    ; the Ark's tunnel, under it in orbit (where the shuttle docks)
+    lda pl_arkv
+    beq pl_dw_nt
+    lda pl_arky
+    cmp #PL_ARKY
+    bne pl_dw_nt
+    clc
+    lda pl_arksx
+    adc #20                 ; (the Ark's middle - 4)
+    sta pl_t0
+    sta temp4
+    lda #TUNNEL_Y
+    sta temp5
+    lda #0
+    PLOT tunnel, 1
+    lda pl_t0
+    sta temp4
+    lda #TUNNEL_Y+8
+    sta temp5
+    lda #0
+    PLOT tunnel, 1
+pl_dw_nt
 
     ; the shuttle, or its wreck while the Ark builds another
     lda pl_st

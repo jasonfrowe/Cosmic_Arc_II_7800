@@ -509,4 +509,4 @@ end
   incgraphic gfx/crate.png 160A 0 1 2 3
   incgraphic gfx/tower.png 160A 0 1 2 3
   incgraphic gfx/turret.png 160A 0 1 2 3
-  incgraphic gfx/ring.png 160A 0 1 2 3
+  incgraphic gfx/tunnel.png 160A 0 1 2 3

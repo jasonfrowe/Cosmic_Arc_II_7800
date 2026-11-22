@@ -520,7 +520,8 @@ sp_h_live
 sp_h_bolts
     stx sp_slot
     ; the rock against the fighter: its box against the fighter's (+-4, +-5)
-    jsr ft_isout
+    ; (called home, it's safe: going back shouldn't be a death sentence)
+    jsr ft_canhit
     bcc sp_h_nf
     ldx sp_slot
     ldy rk_t,x

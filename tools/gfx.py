@@ -327,7 +327,13 @@ bbbbbbbb
 .b....b.
 """)
 
-# The stun pulse: a ring, 16 x 16
+# The Ark's tunnel (under it, down to the shuttle's ceiling: where to dock,
+# as in the RP6502 game), 8 x 16, drawn twice: rails, a ring every 4 lines.
+# In the Ark's palette: a hull, c lights.
+TUNNEL = [("acccccca" if y % 4 == 0 else ".a....a.") for y in range(16)]
+
+
+# (unused now: the stun pulse is gone)
 def ring():
     rows = []
     for y in range(16):
@@ -453,7 +459,7 @@ def main():
     save("crate", CRATE)
     save("tower", TOWER)
     save("turret", TURRET)
-    save("ring", ring())
+    save("tunnel", TUNNEL)
     font()
     print("gfx: wrote", ", ".join(sorted(p.stem for p in GFX.glob("*.png"))))
 

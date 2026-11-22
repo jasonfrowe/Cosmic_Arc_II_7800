@@ -504,8 +504,12 @@ ft_fi_go
 ; ---- damage: A off the tether; nothing left and the fighter is lost ----
 ft_hurt
     sta vec_tmp
+    lda ft_st               ; called home: safe
+    cmp #FT_OUT
+    bne ft_hu_no
     lda ft_flash            ; just hit: a moment's grace
     beq ft_hu_go
+ft_hu_no
     rts
 ft_hu_go
     lda ft_teth
@@ -630,7 +634,7 @@ sh_hits
     lda #PSHOT_DMG
     jmp sp_arkdmg
 sh_h_ftr
-    jsr ft_isout
+    jsr ft_canhit           ; (called home: nothing can hurt it)
     bcc sh_h_r
     lda sh_x,x
     sec
@@ -709,6 +713,15 @@ sh_h_rn
     bpl sh_h_rk
     ; pirates
     jmp pr_shothit
+
+; C = 1 when the fighter can be hurt: only when the player's flying it (not
+; called home: that's a safe way back, and rocks used to kill it en route)
+ft_canhit
+    lda ft_st
+    cmp #FT_OUT
+    beq ft_io_y
+    clc
+    rts
 
 ; C = 1 when the fighter is flying (out or homing)
 ft_isout

@@ -178,7 +178,9 @@ limps on to the destination. It isn't game over unless the hull is gone.
   direction each frame, so it has some weight but goes where it's pointed. Button 1
   fires twin blasters the way the stick last pointed. It wraps at the screen's edges.
   (The first version used asteroid-style turn and thrust, which didn't work well.)
-- Button 2 recalls the fighter (it flies home on autopilot and docks). Only
+- Button 2 recalls the fighter (it flies home on autopilot and docks), **and
+  nothing can hurt it on the way** (rocks, shots, missiles): calling it home is
+  the safe way out. Only
   button 2 docks it: flying into the bay doesn't, since that's too easy to do by
   mistake. A dry tether also brings it home.
 - **Tether energy** drains while the fighter is out (a full tether lasts
@@ -252,19 +254,21 @@ the surface below.
 ### 5.0 As built (M3, after playtesting)
 
 The Ark hangs over **one spot** of the planet and doesn't follow the shuttle.
-**Docking works as in the RP6502 game:** docked, the shuttle is inside the
-Ark (not seen). Hold down a moment and it comes out of the bay. To dock again,
-fly under the Ark and up its tube; at the top, let go of up and it goes inside,
-handing over its cargo (a creature: +12 Ark energy, 500 points; an ore crate:
-200 points). In the tube it only goes up and down, and it can't climb to the
-Ark's height anywhere else. The shuttle stays at the screen's centre while the
+**Docking is easy, with a tunnel as in the RP6502 game.** A tunnel hangs under
+the Ark down to the shuttle's ceiling (line 80), which nothing else can climb
+above. To dock, push up at the ceiling anywhere within 40 px of the Ark: the
+shuttle centres itself, flies up the tunnel and goes inside, handing over its
+cargo (a creature: +12 Ark energy, 500 points; an ore crate: 200 points).
+Docked, it's inside the Ark (not seen). Hold down a moment and it drops out
+of the tunnel by itself. Going in and coming out, nothing can hit it. Tested:
+docking from 20 px off by just pushing up takes 1.1 s, undocking 0.6 s. The shuttle stays at the screen's centre while the
 ground scrolls under it.
 
 | | Numbers (knobs in `surface.asm`) |
 |---|---|
 | The surface | 1024 px round (6.4 screens), wraps; rolling ground in one character row |
 | The clock | 60 s, the klaxon from 15 s; time up with the shuttle out: its cargo lost, the Ark -12 |
-| Blasters | button 1, as the saucer's: twin shots the way the stick last pointed. **A shot creature is dead**, lost for good. **A shot turret is out for 10 s** (drawn in another colour) |
+| Blasters | button 1, as the saucer's: twin shots the way the stick last pointed, 3 px a frame across plus the shuttle's own speed (they always outrun it). **A shot creature is dead**, lost for good. **A shot turret is out for 10 s** (drawn in another colour) |
 | The beam | button 2, with the shuttle low (line 104 or lower, as the RP6502 lander beams near the surface): **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame and **struggles**: a pixel across every 8 frames, dropping if it gets more than 5 px out. In testing, 70-85% of creatures in the beam were caught. Crates rise a quarter line a frame and halve the climb. |
 | Creatures | 2-4 a planet. **None ever hides.** A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, dodger dashes away; the glider (bobbing between lines 112 and 144) hurries; the skitterer is always quick and twitchy |
 | Turrets | **a tower every 128 px** (8; one always in view). Each on the screen fires every 45-76 frames at the flying shuttle, its aim straying a little. **A hit destroys the shuttle**: its cargo falls, the Ark loses 12, and launches another 2.5 s later |
