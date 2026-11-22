@@ -69,7 +69,7 @@ then link them together.
 
 ## Music
 - [x] Six voices (lead, bass, harmony, pad, drums, hats) on the two POKEYs; the music in its own bank (5)
-- [x] Generated songs from RPMegaChopperII's composer (`tools/musicgen`): the map's track
+- [x] Generated songs from RPMegaChopperII's composer (`tools/musicgen`): the map's track; the title's (`skip_intro`: in strong, no build-up)
 - [ ] More generated tracks (starport, ending); the hand-written ones redone?
 
 ## M5: Starports

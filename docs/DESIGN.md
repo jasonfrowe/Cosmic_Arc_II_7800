@@ -605,7 +605,7 @@ and loads whole.
 
 | Song | Where | |
 |---|---|---|
-| `MUS_TITLE` | the title, the hardware check | the Arc theme, D minor |
+| `MUS_TITLE` | the title, the hardware check | **generated** (seed 7800, silvergun, D minor, 118 bpm; no intro) |
 | `MUS_ROCKS` | deep space | A minor, driving eighths in the bass |
 | `MUS_PIRATES` | from "PIRATES!" until the pirates are gone and the window has closed; a planet's storm | E Phrygian, faster, stabs, a chugging bass, toms |
 | `MUS_PLANET` | a planet | D Dorian, a plucked lead |
@@ -623,7 +623,9 @@ to be 16 sixteenths). **Generated songs** (`GENERATED` in `tools/music.py`):
 `tools/musicgen` (vendored from RPMegaChopperII's OPL2 composer, its
 styles and Pocket Operations drum patterns) composes; `song_generated`
 turns each 64-row chunk into a subroutine per voice and each voice's order
-list into calls. A song is its seed, style and mood: change one and rebuild
+list into calls. `skip_intro` starts a song at its first (nearly) full
+section and loops there: the composer's intros bring one part in at a
+time, wrong when something's happening on screen. A song is its seed, style and mood: change one and rebuild
 to hear another roll. A new style added to `musicgen/compose.py` works here
 as it is.
 
