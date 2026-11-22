@@ -165,9 +165,6 @@ tools/test_planet.sh  # Select -> a planet: the autopilot catches, the planet en
 The deep-space tests set `sp_noplanet` ($23EF) so waves go straight on without
 planets (`NOPLANET=1` for `snap.lua`).
 
-```
-```
-
 `tools/fixbranches.py` turns each "Branch out of range" in the last build's
 log into the opposite branch round a `JMP`. Run it, then build again. The
 assembly runs long with macros like `PLOT`.
