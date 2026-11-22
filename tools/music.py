@@ -280,6 +280,9 @@ SFX = [
     ("DELIVER", 1, 6, notes_fx(4, [17, 14, 11, 8, 6], 3, 12)),  # handed over to the Ark
     ("STUN", 1, 4, sweep(8, 2, 16, 14, 2, 14)),          # the stun pulse
     ("KLAXON", 1, 7, notes_fx(1, [10, 14], 8, 12)),      # time's nearly up
+    ("CHIP", 1, 2, sweep(2, 4, 8, 9, 2, 5)),             # a rock chipped, not broken
+    ("ARRIVE", 1, 3, sweep(4, 28, 12, 6, 10, 40)),      # the Ark comes in
+    ("DEPART", 1, 3, sweep(4, 12, 28, 10, 4, 40)),      # ... and leaves
 ]
 
 

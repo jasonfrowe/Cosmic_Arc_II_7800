@@ -212,6 +212,12 @@ come, and then large rocks come back. (`PR_WINDOW` in `space.asm`.) The pirates'
 music plays while any are about or coming, and the rocks' music comes back when
 the last one goes. Each wave starts with the rocks' music.
 
+### 4.5b The saucer and rocks
+
+A rock that hits the saucer destroys it outright (the Ark builds another). Rocks
+take 2 hits: the Ark's laser (and auto-turret) does 2, the saucer's blasters 1,
+so the saucer needs twice the shots.
+
 ### 4.6 Rocks are everyone's hazard
 
 A rock hurts whatever it hits: the Ark, the fighter, a raider or a gunship. A
@@ -260,10 +266,21 @@ space when it's over.
 | The beam | button 1: **the shuttle stops dead**. A creature whose middle is within 5 px rises half a line a frame; unstunned, it **struggles** (a pixel across every 4 frames) and drops if it gets more than 5 px out (unstunned walkers and runners got free about 3 times in 4 in testing). Crates rise a quarter line a frame and halve the climb. |
 | Stun pulse | button 2, every 2.5 s: creatures within 36 px stunned 2.5 s (they don't react or struggle), turrets frozen 3.3 s. **Stun, then beam.** |
 | Creatures | 2-4 a planet. A low shuttle overhead (within 28 px, below line 96) sets them off: walker turns about at random and hurries, hopper jumps away, runner sprints, burrower digs in, glider (always bobbing between lines 96 and 136) hurries, blinker teleports when the beam touches it |
+| Gunships (deep space) | as fast as raiders, launch their first missile half a second after parking, then every 100 frames, up to 3 in the air; a missile costs the Ark 12. Unanswered, one drains a full Ark in 30 s |
 | Turrets | **a tower every 128 px** (8; one always in view). Each on the screen fires every 45-76 frames at the flying shuttle, aim straying a little. **A hit destroys the shuttle**: its cargo falls, the Ark loses 12, and launches another 2.5 s later |
 | All caught | the Ark's energy full again, 1,000 points |
 
-On a planet the Ark can't drop below 1 energy: only deep space ends the game.
+The Ark's energy running out on a planet ends the game, as in deep space.
+
+**The ground** rises and falls: within its one character row the surface sits
+at three levels (0, 4 or 8 lines down) with slopes between. Creatures, crates,
+the beam and the shuttle's lowest point follow it. The towers stand on flat
+ground at the top level.
+
+**Coming and going** (as in the RP6502 game): the Ark comes down from the top
+of the screen to start a scene, at the game's start, each new wave, and on a planet
+with the shuttle aboard. It climbs off the top when the scene's done. A fighter
+that's out when a wave ends is taken aboard first.
 
 ### 5.1 The surface
 

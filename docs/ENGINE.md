@@ -172,7 +172,10 @@ assembly runs long with macros like `PLOT`.
 
 ## The planet's scrolling
 
-The ground is one row of `tools/planet.py`'s map (grass along its top, soil;
+The ground is one row of `tools/planet.py`'s map. Its surface rises and falls
+over three levels, 0, 4 or 8 lines into the row, with slope characters between.
+`pl_hd`/`pl_hs` give each column's depth and slope, and `pl_ground` turns a
+world x into the surface's line. The row is grass along the surface, soil under it,
 glyphs after the font in the same character block, so their codes are 128
 on), in zone 10. It's stored 128 + 21 wide: the first 21 columns again at the
 end, so a 21-column window never has to wrap. Every frame: `clearscreen`, then
@@ -252,6 +255,10 @@ them, which is in while MARIA draws them.
   bank 2, which isn't in on a planet. The assembler can't see it. `tools/bankcheck.py`
   (run by the build) fails a build with a `jsr`/`jmp` from one switched bank into
   another. Shared code goes in bank 1 (`common.asm`).
+- **Adding a signed byte to a 16-bit value**: the high byte needs $FF for a
+  negative step, and the carry counted once. The blinker's teleport added its
+  -64..63 step as unsigned, with the carry counted twice, and threw it 200-500
+  pixels across the planet ("creatures jumping around", found on hardware).
 - Buttons: `joy0fire1` is button 1 (and a one-button stick's), `joy0fire0`
   button 2, as in Gamma Force and Spacewar.
 

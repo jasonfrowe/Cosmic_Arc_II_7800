@@ -49,6 +49,7 @@
   dim sp_aimy = $2384
   dim sp_energy = $2386
   dim sp_state = $238C
+  dim sp_arky = $23FC
   dim sp_flash = $2393
   dim sp_msglen = $239D
   dim sp_msgx = $239E
@@ -63,6 +64,7 @@
   dim pl_col = $271A
   dim pl_arksx = $2770
   dim pl_arkv = $2771
+  dim pl_arky = $2775
   rem zero page
   dim fireheld = a
   dim fire2held = b
@@ -145,7 +147,7 @@ end
   if sp_energy < 25 then P7C1 = $36
 
   restorescreen
-  if sp_state <> 2 then plotsprite ark 1 56 80
+  if sp_state <> 2 && sp_arky then plotsprite ark 1 56 sp_arky
   asm
   jsr sp_draw
 end
@@ -200,7 +202,7 @@ end
   if sp_energy < 25 then P7C1 = $36
   clearscreen
   rem the Ark hangs over its own spot of the planet
-  if pl_arkv then plotsprite ark 1 pl_arksx 32
+  if pl_arkv && pl_arky then plotsprite ark 1 pl_arksx pl_arky
   rem the ground: one row (zone 10). (The map width as a number: a name is
   rem taken for a variable; = PL_MAPW)
   plotmap pl_map 5 pl_fine 10 21 1 pl_col 0 149
@@ -215,6 +217,8 @@ end
   if sp_msglen then plotchars sp_msg 0 sp_msgx 5 sp_msglen
   drawscreen
   if pl_state <> 3 then goto planetloop
+  rem out of energy on the planet: the game's over
+  if sp_energy = 0 then goto planetlost
   asm
   lda #BANK_SPACE
   jsr bank_in
@@ -223,6 +227,14 @@ end
   gosub spacepal
   gosub drawstars
   goto gameloop
+planetlost
+  asm
+  lda #BANK_SPACE
+  jsr bank_in
+end
+  gosub spacepal
+  fireheld = 1
+  goto title
 
   rem ======================================================================
   rem Palettes: deep space's, and a planet's

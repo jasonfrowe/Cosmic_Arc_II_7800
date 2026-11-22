@@ -685,13 +685,23 @@ sh_h_rk
     cmp rock_h-1,y
     ldy sp_t2
     bcs sh_h_rn
-    ; hit
+    ; hit: the saucer's shots do FTR_DMG, the turret's BOLT_DMG
+    lda sh_t,x
+    pha
     lda #0
     sta sh_t,x
     tya
     tax
     stx sp_slot
-    jsr sp_rockhit
+    pla
+    cmp #SH_FIGHTER
+    beq sh_h_fd
+    lda #BOLT_DMG
+    bne sh_h_dmg
+sh_h_fd
+    lda #FTR_DMG
+sh_h_dmg
+    jsr sp_rockdmg
     ldx sh_slot
     rts
 sh_h_rn

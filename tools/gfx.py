@@ -345,18 +345,48 @@ def ring():
 # doublewide characters costs MARIA about 200 cycles a line, and the zone
 # above (where the creatures stand) must keep its time for sprites.
 # a grass, b soil, c stones.
-T_GRASS1, T_GRASS2, T_GRASS3 = range(64, 67)
-TOP = ["aaaaaaaa", "abaabaab"]
+# The surface rises and falls within the row: three levels, its top line 0,
+# 4 or 8 lines down (FLAT0/4/8), and slopes a level up or down across a
+# character (DOWN0: from 0 to 4 ...). tools/planet.py lays them out and
+# writes each column's depth and slope for the game (creatures walk on it).
+SOIL = ["bbbbbbbb", "bbcbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
+        "bbbbbbcb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb", "bbbbbcbb",
+        "bbbbbbbb", "bbcbbbbb"]
+T_FLAT0, T_FLAT4, T_FLAT8, T_DOWN0, T_DOWN4, T_UP4, T_UP8, T_ROCK0 = range(64, 72)
+
+
+def ground_tile(depth_at):
+    """depth_at(x) -> the surface's line at pixel x (0-7)."""
+    rows = []
+    for y in range(16):
+        r = ""
+        for x in range(8):
+            d = depth_at(x)
+            if y < d:
+                r += "."
+            elif y == d:
+                r += "a"
+            elif y == d + 1:
+                r += "a" if (x + y) % 3 else "b"
+            else:
+                r += SOIL[y][x]
+        rows.append(r)
+    return rows
+
+
 TILES = {
-    T_GRASS1: TOP + ["bbbbbbbb", "bbcbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
-                     "bbbbbbcb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "cbbbbbbb", "bbbbbbbb", "bbbbbcbb"],
-    T_GRASS2: ["aaaaaaaa", "aabaaaba"] + ["bbbbbbbb", "bbbbbbcb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb",
-                     "bbbbcbbb", "bbbbbbbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbbb", "bbbbbcbb", "bbbbbbbb",
-                     "bbcbbbbb", "bbbbbbbb"],
-    T_GRASS3: ["aaaaaaaa", "baabaaab"] + ["bbbbbbbb", "bbbbbbbb", "bbbcbbbb", "bbbbbbbb", "bbbbbbbb",
-                     "cbbbbbbb", "bbbbbbbb", "bbbbcbbb", "bbbbbbbb", "bbbbbbbb", "bcbbbbbb", "bbbbbbcb",
-                     "bbbbbbbb", "bbbbbbbb"],
+    T_FLAT0: ground_tile(lambda x: 0),
+    T_FLAT4: ground_tile(lambda x: 4),
+    T_FLAT8: ground_tile(lambda x: 8),
+    T_DOWN0: ground_tile(lambda x: x // 2),         # 0 -> 4 going right
+    T_DOWN4: ground_tile(lambda x: 4 + x // 2),     # 4 -> 8
+    T_UP4: ground_tile(lambda x: 4 - x // 2),       # 4 -> 0
+    T_UP8: ground_tile(lambda x: 8 - x // 2),       # 8 -> 4
 }
+r0 = ground_tile(lambda x: 0)                         # flat, a stone on top
+r0[0] = "..cc...."
+TILES[T_ROCK0] = ["..c....."] + r0[1:]
+TILES[T_ROCK0][0] = "..cc...."
 
 
 def font():

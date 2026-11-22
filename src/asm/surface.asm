@@ -55,8 +55,8 @@ LOST_DMG  = 12      ; ... lost at time up with the shuttle out
 
 PL_DOCKY  = 58      ; the shuttle's centre, docked in the Ark's bay
 PL_YMIN   = 72      ; the highest it flies, away from the Ark
-PL_YMAX   = 152
-GROUND_Y  = 152     ; a creature's top, standing (feet on the surface, 160)
+GROUND_Y  = 152     ; a creature's top on the highest ground (the surface
+                    ;   at line 160; it's 160-168: pl_ground)
 GLIDE_Y   = 112
 ARK_WX    = 512     ; the Ark's centre on the planet
 ARK_DOCKX = 8       ; the shuttle docks within this of it, across
@@ -70,6 +70,10 @@ PL_PLAY   = 0
 PL_CLEAR  = 1
 PL_TIMEUP = 2
 PL_DONE   = 3
+PL_ARRIVE = 4       ; the Ark comes down into orbit (the shuttle aboard)
+PL_DEPART = 5       ; ... and climbs away when it's over
+PL_LOST   = 6       ; the Ark's energy ran out: the game's over
+PL_ARKY   = 32      ; the Ark's line, in orbit
 ; creature states
 CS_GROUND = 0
 CS_AIR    = 1       ; jumping, falling, or a glider flying
@@ -172,10 +176,14 @@ pl_arkv   = $2771
 pl_dead   = $2772   ; frames until a new shuttle
 pl_boomx  = $2773   ; where it went down
 pl_boomy  = $2774
+pl_arky   = $2775   ; the Ark's sprite line (PL_ARKY in orbit; the BASIC)
 pl_t0     = $27B0
 pl_t1     = $27B1
 pl_t2     = $27B2
 pl_i      = $27B3
+pl_gt     = $27B4   ; (pl_ground's)
+pl_gc     = $27B5
+pl_gnd    = $27B6   ; the surface's line under the shuttle, this frame
 
 ; ---------------------------------------------------------------------------
 pl_new
@@ -188,7 +196,11 @@ pl_new_c
     bne pl_new_c
     lda #PL_DOCKED
     sta pl_st
-    lda #PL_DOCKY
+    lda #PL_ARRIVE          ; the Ark comes down into orbit first
+    sta pl_state
+    lda #1
+    sta pl_arky
+    lda #PL_DOCKY-PL_ARKY+1
     sta pl_y
     lda #<ARK_WX            ; the shuttle starts in the Ark
     sta pl_wx
@@ -263,6 +275,24 @@ pl_new_k
     sta ck_y,y
     dey
     bpl pl_new_k
+    ; on the ground: creatures (not gliders) and crates
+    ldx #NCR-1
+pl_new_f
+    lda cr_t,x
+    beq pl_new_fn
+    cmp #CK_GLIDE+1
+    beq pl_new_fn
+    jsr pl_crfloor
+    sta cr_y,x
+pl_new_fn
+    dex
+    bpl pl_new_f
+    ldx #NCK-1
+pl_new_kf
+    jsr pl_ckfloor
+    sta ck_y,x
+    dex
+    bpl pl_new_kf
     ; turrets: a tower every 128 pixels from 64, at different heights
     ldx #NTT-1
 pl_new_t
@@ -299,7 +329,8 @@ pl_new_t
     jsr sp_msgcopy
     lda #120
     sta pl_msgtm
-    rts
+    lda #SFX_ARRIVE
+    jmp sfx
 
 ; quarters of the planet (x 0-1023) for the creatures, lo and hi
 pl_spread  .byte $80, $40, $C0, $00
@@ -316,14 +347,68 @@ pl_frame
     sta sp_msglen
 pl_fr_m
     lda pl_state
-    beq pl_fr_play
-    ; over: let it run a moment, then done
+    bne pl_fr_play_far350
+    jmp pl_fr_play
+pl_fr_play_far350
     cmp #PL_DONE
-    beq pl_fr_r
-    dec pl_endtm
-    bne pl_fr_idle
+    bne pl_fr_r_far352
+    jmp pl_fr_r
+pl_fr_r_far352
+    cmp #PL_ARRIVE
+    bne pl_fr_dep
+    inc pl_arky             ; the Ark comes down into orbit
+    lda pl_arky
+    cmp #PL_ARKY
+    bcc pl_fr_ark
+    lda #PL_PLAY
+    sta pl_state
+    jmp pl_fr_ark
+pl_fr_dep
+    cmp #PL_DEPART
+    bne pl_fr_end
+    dec pl_arky             ; ... and climbs away
+    bne pl_fr_ark
     lda #PL_DONE
     sta pl_state
+pl_fr_ark
+    lda pl_st               ; the shuttle aboard goes with it
+    cmp #PL_DOCKED
+    bne pl_fr_idle
+    clc
+    lda pl_arky
+    adc #PL_DOCKY-PL_ARKY
+    sta pl_y
+    jmp pl_fr_idle
+pl_fr_end
+    ; over (clear, time up, lost): a moment, then the Ark leaves (or, lost,
+    ; it's done)
+    dec pl_endtm
+    bne pl_fr_idle
+    lda pl_state
+    cmp #PL_LOST
+    bne pl_fr_go
+    lda #PL_DONE
+    sta pl_state
+    bne pl_fr_idle
+pl_fr_go
+    lda #PL_DEPART
+    sta pl_state
+    lda #0
+    sta sp_msglen
+    lda #<ARK_WX            ; the camera to the Ark
+    sta pl_wx
+    lda #>ARK_WX
+    sta pl_wxh
+    lda pl_st
+    cmp #PL_DOCKED
+    beq pl_fr_dk
+    lda #PL_DEAD            ; a shuttle still out was lost: none to show
+    sta pl_st               ; (pl_dead 0: no wreck drawn either)
+    lda #0
+    sta pl_dead
+pl_fr_dk
+    lda #SFX_DEPART
+    jsr sfx
 pl_fr_idle
     jsr pl_camera
     jsr pl_creatures
@@ -390,6 +475,76 @@ pl_ck_k
     lda #90
     sta pl_msgtm
 pl_ck_r
+    rts
+
+; ---- the ground (tools/planet.py: pl_hd, pl_hs a column) ----
+; world x (A lo, Y hi) -> A = the surface's line there (160-168). Uses Y.
+pl_ground
+    pha
+    and #7
+    lsr                     ; steps across its column: 0-3
+    sta pl_gt
+    pla
+    lsr
+    lsr
+    lsr
+    sta pl_gc
+    tya
+    and #3
+    asl
+    asl
+    asl
+    asl
+    asl
+    ora pl_gc
+    tay                     ; the column, 0-127
+    lda pl_hs,y
+    beq pl_gr_flat
+    bmi pl_gr_up
+    lda pl_hd,y             ; going down: a line deeper each 2 pixels
+    clc
+    adc pl_gt
+    jmp pl_gr_d
+pl_gr_up
+    lda pl_hd,y
+    sec
+    sbc pl_gt
+    jmp pl_gr_d
+pl_gr_flat
+    lda pl_hd,y
+pl_gr_d
+    clc
+    adc #160
+    rts
+
+; creature X standing: A = its top's line (the ground under its middle - 8)
+pl_crfloor
+    clc
+    lda cr_xl,x
+    adc #4
+    pha
+    lda cr_xh,x
+    adc #0
+    tay
+    pla
+    jsr pl_ground
+    sec
+    sbc #8
+    rts
+
+; crate X resting: A = its top's line
+pl_ckfloor
+    clc
+    lda ck_xl,x
+    adc #4
+    pha
+    lda ck_xh,x
+    adc #0
+    tay
+    pla
+    jsr pl_ground
+    sec
+    sbc #8
     rts
 
 ; ---- the shuttle ----
@@ -524,6 +679,19 @@ pl_sh_mp
     adc pl_wxh
     and #3
     sta pl_wxh
+    ; the ground under it: it can't go lower than 8 above (and rising
+    ; ground lifts it)
+    lda pl_wx
+    ldy pl_wxh
+    jsr pl_ground
+    sta pl_gnd
+    sec
+    sbc #8
+    sta pl_t0
+    cmp pl_y
+    bcs pl_sh_ud
+    sta pl_y
+pl_sh_ud
     ; up and down
     ldx sp_joy
     cpx #8
@@ -532,7 +700,7 @@ pl_sh_mp
     beq pl_sh_r
     bmi pl_sh_up
     lda pl_y                ; down, to just above the ground
-    cmp #PL_YMAX
+    cmp pl_t0
     bcs pl_sh_r
     inc pl_y
     rts
@@ -984,9 +1152,12 @@ pl_cr_fall
     lda cr_y,x
     adc cr_vyh,x
     sta cr_y,x
-    cmp #GROUND_Y
+    jsr pl_crfloor
+    sta pl_t0
+    lda cr_y,x
+    cmp pl_t0
     bcc pl_cr_fl2
-    lda #GROUND_Y           ; landed
+    lda pl_t0               ; landed
     sta cr_y,x
     lda #CS_GROUND
     sta cr_st,x
@@ -1014,23 +1185,35 @@ pl_cr_up
     lda cr_t,x
     cmp #CK_BLINK+1
     bne pl_cr_n
-    ; a blinker comes back up to 64 pixels away
+    ; a blinker comes back up to 64 pixels away, either way. (The step is
+    ; signed: its high byte is $FF going left. Adding it as unsigned, with
+    ; the carry counted twice, threw blinkers 200-500 pixels.)
     lda M_RND
     and #$7F
     sec
-    sbc #$40
+    sbc #$40                ; -64..63
+    sta pl_t0
     clc
     adc cr_xl,x
     sta cr_xl,x
-    lda #0
-    bcc pl_cr_bx
-    lda #1
+    lda pl_t0
+    and #$80
+    beq pl_cr_bx            ; (C still the low byte's carry)
+    lda #$FF
 pl_cr_bx
     adc cr_xh,x
     and #3
     sta cr_xh,x
 pl_cr_n
     ldx pl_i
+    lda cr_t,x              ; on the ground: on the ground's line
+    beq pl_cr_nn
+    lda cr_st,x
+    cmp #CS_GROUND
+    bne pl_cr_nn
+    jsr pl_crfloor
+    sta cr_y,x
+pl_cr_nn
     dex
     bmi pl_cr_r
     jmp pl_cr_l
@@ -1108,10 +1291,12 @@ pl_ck_l
     bne pl_ck_n
     inc ck_y,x              ; falling
     inc ck_y,x
+    jsr pl_ckfloor
+    sta pl_t0
     lda ck_y,x
-    cmp #GROUND_Y
+    cmp pl_t0
     bcc pl_ck_n
-    lda #GROUND_Y
+    lda pl_t0
     sta ck_y,x
     lda #CS_GROUND+1
     sta ck_st,x
@@ -1345,18 +1530,35 @@ pl_shotdown
     lda #SHUTTLE_DMG
     jmp pl_arkdmg
 
-; the Ark takes A (no lower than 1: the planet can't end the game)
+; the Ark takes A; run out, and the game's over (PL_LOST)
 pl_arkdmg
     sta pl_t0
     sec
     lda sp_energy
     sbc pl_t0
-    bcc pl_ad_1
-    bne pl_ad_e
-pl_ad_1
-    lda #1
+    bcs pl_ad_e
+    lda #0
 pl_ad_e
     sta sp_energy
+    bne pl_ad_hit
+    ; out of energy: the game's over (the BASIC sees, when the planet's done)
+    lda pl_state
+    bne pl_ad_hit           ; (already over)
+    lda #PL_LOST
+    sta pl_state
+    lda #150
+    sta pl_endtm
+    lda #0
+    sta pl_beam
+    lda #<tx_lost
+    ldy #>tx_lost
+    ldx #8
+    jsr sp_msgcopy
+    lda #0
+    sta pl_msgtm
+    lda #SFX_LOST
+    jmp sfx
+pl_ad_hit
     lda #SFX_HIT
     jmp sfx
 
@@ -1956,13 +2158,15 @@ pl_dw_tn
     bmi pl_dw_beam
     jmp pl_dw_t
 
-    ; the beam, exactly from the shuttle (pl_y + 4) to the ground (160):
+    ; the beam, exactly from the shuttle (pl_y + 4) to the ground (pl_gnd):
     ; 16-line pieces from the ground up while they fit, and one more at the
     ; top (overlapping: it's the same column)
 pl_dw_beam
     lda pl_beam
     beq pl_dw_nob
-    lda #144
+    sec
+    lda pl_gnd              ; the ground under the shuttle
+    sbc #16
     sta pl_t0
 pl_dw_bs
     lda pl_y

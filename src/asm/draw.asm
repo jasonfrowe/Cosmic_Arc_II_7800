@@ -18,6 +18,8 @@ sp_draw
     lda sp_state
     cmp #ST_OVER
     beq dr_rocks
+    cmp #ST_ARRIVE          ; (not while the Ark comes or goes)
+    bcs dr_rocks
     jsr ft_isout
     bcs dr_rocks
     lda sp_aimx

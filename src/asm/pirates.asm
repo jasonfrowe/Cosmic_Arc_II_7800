@@ -39,15 +39,16 @@ R_RAID    = 62      ; orbit radius (square units)
 R_GUN     = 70      ; parking radius
 PSHOT_DMG = 6       ; a pirate shot hitting the Ark
 PSHOT_FDMG = 16     ; ... hitting the fighter (off its tether)
-MISS_DMG  = 10      ; a missile reaching the Ark
+MISS_DMG  = 12      ; a missile reaching the Ark
 MISS_FDMG = 16
 RAM_FDMG  = 24      ; the fighter flying into a pirate
 POD_PAY   = 16      ; Ark energy in a salvage pod
 POD_LIFE  = 200     ; pairs of frames a pod lasts
 MISS_LIFE = 200     ; pairs of frames a missile lasts
-MISS_MAX  = 2       ; missiles in the air from all gunships
+MISS_MAX  = 3       ; missiles in the air from all gunships
 RAID_GAP  = 70      ; frames between a raider's shots, + up to 63
-GUN_GAP   = 150     ; frames between a gunship's missiles
+GUN_GAP   = 100     ; frames between a gunship's missiles
+GUN_FIRST = 30      ; frames from parking to its first
 PR_XMIN   = 4       ; pirates' centres stay inside this box
 PR_XMAX   = 155
 PR_YMIN   = PF_TOP+4
@@ -100,9 +101,9 @@ av_dvx    = $24FD
 av_dvy    = $24FE
 
 ; per type (raider, gunship, missile)
-pr_spl    .byte $40, $A0, $C0       ; speed, 8.8 square units a frame
-pr_sph    .byte $01, $00, $00
-pr_turn   .byte 4, 2, 3             ; most it turns a frame
+pr_spl    .byte $40, $40, $00       ; speed, 8.8 square units a frame
+pr_sph    .byte $01, $01, $01
+pr_turn   .byte 4, 4, 4             ; most it turns a frame
 pr_hpmax  .byte 2, 5, 1
 pr_hw     .byte 5, 7, 3             ; hit box half sizes (+1 for a shot)
 pr_hh     .byte 5, 7, 3
@@ -212,6 +213,10 @@ pr_place
     lda pr_hpmax-1,y
     sta pr_hp,x
     lda #90
+    cpy #PR_GUN
+    bne pr_pl_tm
+    lda #GUN_FIRST          ; (a gunship's first missile, once it's parked)
+pr_pl_tm
     sta pr_tm,x
     lda M_RND
     cpy #PR_GUN

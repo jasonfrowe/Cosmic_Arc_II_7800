@@ -43,6 +43,7 @@ then link them together.
 - [x] `tools/test_planet.sh`; `AUTOPLANET`; deep-space tests skip planets (`sp_noplanet`)
 - [x] From hardware: turrets destroy the shuttle (8 towers, one always in view); the Ark stays over its own spot; creatures struggle in the beam and react (stun, then beam); the shuttle stops while beaming; the beam always reaches the ground exactly; creatures no longer vanish (MARIA's line time: one ground row)
 - [x] `tools/bankcheck.py` in the build
+- [x] From hardware: blinkers' jumps (a sign bug), rolling ground, out of energy on a planet ends the game, the Ark comes and goes between scenes, gunships a threat, rocks destroy the saucer, the saucer needs twice the shots
 - [ ] A planet music track (the Arc theme for now)
 - [ ] Tune on hardware: shuttle speed, beam reach, turret danger, creature behaviours
 

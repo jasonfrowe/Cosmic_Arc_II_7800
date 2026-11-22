@@ -61,6 +61,9 @@ WV_SPEED0 = $60     ; a large rock's speed (8.8 square units a frame):
 WV_SPEEDSTEP = 8    ;   WV_SPEED0 + WV_SPEEDSTEP * wave
 KID_SPEED = $20     ; a smaller rock goes this much faster a size step
 KID_SPLIT = $30     ; and the second piece of a split this much more again
+ROCK_HP   = 2       ; a rock's hits: the Ark's laser (and turret) does 2, the
+BOLT_DMG  = 2       ;   saucer's blasters 1: the saucer needs twice the shots
+FTR_DMG   = 1
 WV_RAID_FROM = 2    ; raiders from this wave: 1, one more every 2 waves,
 WV_RAIDMAX = 3      ;   at most this many
 WV_GUN_FROM = 4     ; a gunship from this wave
@@ -84,6 +87,9 @@ ST_CLEAR  = 1       ; "WAVE CLEAR", then the next wave
 ST_OVER   = 2       ; "ARC LOST"
 ST_START  = 3       ; "WAVE nn" before the rocks come
 ST_PLANET = 4       ; the wave's over: down to a planet (the BASIC goes)
+ST_ARRIVE = 5       ; the Ark comes down from the top into place
+ST_DEPART = 6       ; ... and climbs off the top when the wave's done
+ARK_STEP  = 2       ; lines a frame it moves, coming and going
 
 ; ---- RAM ($2300-$23FF) ----
 rk_t      = $2300   ; [NR]
@@ -137,6 +143,8 @@ sp_msg    = $23D0   ; 20
 sp_pwin   = $24F0   ; the pirate window: 8-frame steps left
 sp_msgtm  = $24F1   ; frames a timed message has left (0: it stays)
 rk_ln     = $23E4   ; [NR] the rock's lane, 0-7
+rk_hp     = $23F2   ; [NR] hits left: the Ark's bolts do 2, the saucer's 1
+sp_arky   = $23FC   ; the Ark's sprite line (ARK_Y once it's in place)
 sp_noplanet = $23EF ; not 0: waves go straight on, no planets (tests)
 
 ; ---------------------------------------------------------------------------
@@ -156,7 +164,8 @@ sp_new
     jsr pr_new
     lda #MUS_ROCKS
     jsr mu_switch
-    jmp sp_nextwave
+    jsr sp_nextwave
+    jmp sp_arrive
 
 sp_clear
     ldx #NR-1
@@ -185,7 +194,17 @@ sp_rt_s
     dex
     bpl sp_rt_s
     sta sp_msglen
-    jmp sp_nextwave
+    jsr sp_nextwave
+    jmp sp_arrive
+
+; the Ark comes in from the top (the wave's "WAVE nn" up meanwhile)
+sp_arrive
+    lda #ST_ARRIVE
+    sta sp_state
+    lda #0
+    sta sp_arky
+    lda #SFX_ARRIVE
+    jmp sfx
 
 ; the next wave: more rocks, faster, closer together
 sp_nextwave
@@ -531,10 +550,7 @@ sp_h_fy2
     cmp #10
     bcs sp_h_nf
 sp_h_fhit
-    lda ft_flash
-    bne sp_h_nf
-    lda rock_dmg-1,y
-    jsr ft_hurt
+    jsr ft_hu_dead          ; a rock destroys the saucer outright
     ldx sp_slot
     jsr sp_boom
     ldx sp_slot
@@ -571,7 +587,8 @@ sp_h_b
     lda #KILL_PAY
     sta sp_pay
     ldx sp_slot
-    jsr sp_rockhit
+    lda #BOLT_DMG
+    jsr sp_rockdmg
     ldx sp_slot
     jmp sp_h_next
 sp_h_bn
@@ -651,6 +668,20 @@ sp_boom
     sta rk_tm,x
     rts
 
+; rock X (= sp_slot) takes A hits: destroyed when they run out (sp_rockhit)
+sp_rockdmg
+    sta sp_t0
+    sec
+    lda rk_hp,x
+    sbc sp_t0
+    beq sp_rd_kill
+    bcc sp_rd_kill
+    sta rk_hp,x
+    lda #SFX_CHIP           ; chipped, not broken
+    jmp sfx
+sp_rd_kill
+    jmp sp_rockhit
+
 ; a bolt destroys rock X (= sp_slot): points, energy, two smaller rocks
 sp_rockhit
     ldy rk_t,x
@@ -720,6 +751,8 @@ sp_kid_go
     sta rk_y,x
     tya
     sta rk_t,x
+    lda #ROCK_HP
+    sta rk_hp,x
     ; speed: this wave's + KID_SPEED a size step + A
     sec
     sbc #1
@@ -845,6 +878,36 @@ lane_sy   .byte 1, 1, 0, -1, -1, -1, 0, 1
 ; ---- waves: spawning, clear, next ----
 sp_waves
     lda sp_state
+    cmp #ST_ARRIVE
+    bne sp_w_dep
+    clc                     ; coming in
+    lda sp_arky
+    adc #ARK_STEP
+    cmp #ARK_Y
+    bcc sp_w_ay
+    lda #ST_START
+    sta sp_state
+    lda #ARK_Y
+sp_w_ay
+    sta sp_arky
+    rts
+sp_w_dep
+    cmp #ST_DEPART
+    bne sp_w_st
+    sec                     ; going: off the top, then the planet
+    lda sp_arky
+    sbc #ARK_STEP
+    bcc sp_w_gone
+    beq sp_w_gone
+    sta sp_arky
+    rts
+sp_w_gone
+    lda #0
+    sta sp_arky
+    lda #ST_PLANET          ; down to a planet (the BASIC sees, and goes)
+    sta sp_state
+    rts
+sp_w_st
     cmp #ST_START
     bne sp_w_play
     dec sp_timer
@@ -864,9 +927,17 @@ sp_w_play
     beq sp_w_down
     jmp sp_nextwave
 sp_w_down
-    lda #ST_PLANET          ; down to a planet (the BASIC sees, and goes)
+    lda #ST_DEPART          ; the Ark leaves (the fighter aboard)
     sta sp_state
-    rts
+    lda #0
+    sta sp_msglen
+    jsr ft_isout
+    bcc sp_w_dn2
+    lda #FT_DOCK
+    sta ft_st
+sp_w_dn2
+    lda #SFX_DEPART
+    jmp sfx
 sp_w_p2
     ; pirates still to come
     lda sp_praid
@@ -959,6 +1030,8 @@ sp_w_new
     lda #RK_S               ; the pirate window: small rocks only
 sp_w_type
     sta rk_t,x
+    lda #ROCK_HP
+    sta rk_hp,x
     lda #0
     sta rk_xl,x
     sta rk_yl,x
