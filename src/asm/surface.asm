@@ -57,8 +57,10 @@ PL_STUNCD = 150     ; frames between stun pulses
 PL_STUNR  = 36      ; a pulse reaches this far across (and down)
 CR_STUN   = 150     ; frames a creature stays stunned
 TT_FREEZE = 200     ; frames a turret stays frozen
-DF_TOP    = 100     ; the guns' highest line, and lowest (they move as one)
-DF_BOT    = 146
+DF_TOP    = 97      ; the guns' highest line, and lowest (they move as one;
+DF_BOT    = 145     ;   their pulse, 3 lower, covers the band: 100-148)
+DF_AIM    = 128     ; in 256: how often the guns' next height is the shuttle's
+                    ;   (else anywhere): no line is safe to sit on
 ; The pace rises with the level (sp_level), as Cosmic Arc's (RP6502): 4
 ; frames a step, one less a level, to 1; pulses 120 frames apart, 15 less a
 ; level, to 30. Ours: the same steps, pulses from 150 (to 45): our guns'
@@ -83,6 +85,7 @@ GROUND_Y  = 152     ; a creature's top on the highest ground (the surface
 GLIDE_Y   = 124     ; a glider starts here, and bobs between lines 112 and 144
                     ;   (low enough for the beam: BEAM_MINY)
 ARK_WX    = 512     ; the Ark's centre on the planet
+DOCK_H    = 16      ; ... and this near the ceiling (passing, still rising)
 DOCK_ZONE = 8       ; pushing up at the ceiling this near the Ark's middle
                     ;   (either side: a doorway twice the shuttle's width):
                     ;   the shuttle goes in by itself. (Wider, and flying
@@ -219,7 +222,7 @@ pl_arky   = $2775   ; the Ark's sprite line (PL_ARKY in orbit; the BASIC)
 pl_launch = $2776   ; frames down's been held, docked
 pl_auto   = $2777   ; flying itself in or out of the Ark (AUTO_IN / AUTO_OUT)
 df_y      = $27BA   ; the guns' line (all of them)
-df_dir    = $27BB
+df_tgt    = $27BB   ; the line the guns are heading for
 df_cool   = $27BC   ; frames to the next pulse
 df_pulse  = $27BD   ; frames the pulse has left
 df_py     = $27BE   ; its line
@@ -246,6 +249,8 @@ sr_spdh   = $27E2
 cr_react  = $27E4   ; [NCR] the shuttle overhead: 0 not decided, 1 reacts,
                     ;   2 lets it be (decided each time it comes over)
 pl_busy   = $27E8   ; something's rising in the beam already
+pl_nodock = $27EA   ; just out of the Ark: no docking till it's left the
+                    ;   doorway (across, or DOCK_H+4 lines down)
 pl_cool   = $27B7
 pl_aim    = $27B8   ; the way the stick last pointed (0 up, clockwise)
 pl_killed = $27B9   ; creatures shot this planet
@@ -399,9 +404,11 @@ pl_new_t
     ; pulses closer together each wave
     lda #DF_TOP
     sta df_y
+    lda #DF_BOT
+    sta df_tgt
     lda #0
-    sta df_dir
     sta df_pulse
+    sta pl_nodock
     ; this level's pace (as Cosmic Arc's: the level goes up only when every
     ; creature on a planet is caught; it starts at 0)
     lda sp_level
@@ -996,6 +1003,8 @@ pl_sh_alive
     sta pl_st
     lda #AUTO_OUT
     sta pl_auto
+    lda #1
+    sta pl_nodock
     lda #0
     sta pl_vxl
     sta pl_vxh
@@ -1202,6 +1211,18 @@ pl_sh_mp
     and #3
     sta pl_wxh
 pl_sh_ud0
+    ; just out of the Ark: docking again once it's left the doorway
+    lda pl_nodock
+    beq pl_sh_nd
+    lda pl_y
+    cmp #PL_YMIN+DOCK_H+4
+    bcs pl_sh_ndc
+    jsr pl_underark
+    bcs pl_sh_nd
+pl_sh_ndc
+    lda #0
+    sta pl_nodock
+pl_sh_nd
     ; the ground under it: it can't go lower than 8 above (and rising
     ; ground lifts it)
     lda pl_wx
@@ -1232,6 +1253,22 @@ pl_sh_ud
     inc pl_y
     rts
 pl_sh_up
+    ; pushing up (or up and across) in the Ark's doorway, near the ceiling:
+    ; it goes in by itself. (Not straight after coming out: pl_nodock.)
+    lda pl_y
+    cmp #PL_YMIN+DOCK_H+1
+    bcs pl_sh_u0
+    lda pl_nodock
+    bne pl_sh_u0
+    jsr pl_underark
+    bcc pl_sh_u0
+    lda #AUTO_IN
+    sta pl_auto
+    lda #0
+    sta pl_vxl
+    sta pl_vxh
+    rts
+pl_sh_u0
     lda pl_hold             ; a crate's heavy: half speed up
     cmp #HOLD_ORE
     bne pl_sh_u1
@@ -1246,15 +1283,6 @@ pl_sh_u1
     dec pl_y
     rts
 pl_sh_ceil
-    ; at the ceiling, pushing straight up (not up and to a side: that's
-    ; flying away), in the Ark's doorway (DOCK_ZONE either side of its
-    ; middle): it goes in by itself
-    lda sp_joy
-    bne pl_sh_r
-    jsr pl_underark
-    bcc pl_sh_r
-    lda #AUTO_IN
-    sta pl_auto
 pl_sh_r
     rts
 
@@ -1849,26 +1877,45 @@ pl_ck_n
 ; height for DF_PULSE frames. A shuttle the pulse touches is destroyed.
 ; No bullets: you dodge it (by height), and time the beam between pulses.
 pl_defense
-    ; the guns' height: a line every df_step frames
+    ; the guns' height: a line every df_step frames, towards df_tgt; there,
+    ; a new one: half the time the shuttle's line, else anywhere in range
+    ; (never a sweep: a sweep and a steady pulse leave safe lines)
     dec df_tick
     bne pl_df_f
     lda df_step
     sta df_tick
-    lda df_dir
-    bne pl_df_up
-    inc df_y
     lda df_y
-    cmp #DF_BOT
-    bcc pl_df_f
-    inc df_dir
-    bne pl_df_f
-pl_df_up
+    cmp df_tgt
+    beq pl_df_new
+    bcc pl_df_dn
     dec df_y
-    lda df_y
-    cmp #DF_TOP+1
     bcs pl_df_f
-    lda #0
-    sta df_dir
+pl_df_dn
+    inc df_y
+    bne pl_df_f
+pl_df_new
+    lda M_RND
+    cmp #DF_AIM
+    bcs pl_df_any
+    lda pl_y                ; the shuttle's line (its middle, the pulse's - 3)
+    sec
+    sbc #3
+    jmp pl_df_clamp
+pl_df_any
+    lda M_RND               ; anywhere: DF_TOP + 0..63, clamped
+    and #63
+    clc
+    adc #DF_TOP
+pl_df_clamp
+    cmp #DF_TOP
+    bcs pl_df_c1
+    lda #DF_TOP
+pl_df_c1
+    cmp #DF_BOT+1
+    bcc pl_df_c2
+    lda #DF_BOT
+pl_df_c2
+    sta df_tgt
 pl_df_f
     ; the pulse
     lda df_pulse
@@ -1899,7 +1946,22 @@ pl_df_cool
     lda #SFX_MISSILE        ; the warning: the guns light up
     jmp sfx
 pl_df_fire
+    lda df_period           ; the next: 1/2 to 3/2 the period (no rhythm)
+    sta M_A
+    lda M_RND
+    sta M_B
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
     lda df_period
+    lsr
+    clc
+    adc M_P+1
+    cmp #DF_WARN+8
+    bcs pl_df_cl
+    lda #DF_WARN+8
+pl_df_cl
     sta df_cool
     lda #DF_PULSE
     sta df_pulse

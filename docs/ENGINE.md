@@ -164,8 +164,8 @@ tools/test_planet.sh  # Select -> a planet: the autopilot catches, the planet en
 tools/test_feel.sh    # what a player notices: the shuttle's bullets outrun it;
                       # docking from near the Ark by pushing up < 2 s; undocking < 2 s
 tools/test_recall.sh  # the saucer called home through a rock in its way: never dies
-tools/test_defense.sh # the planet's pulse: never hits a docked shuttle, does in the
-                      # band; full speed while it fires
+tools/test_defense.sh # the planet's pulse: never hits a docked shuttle; finds one
+                      # camped at the band's top, middle and foot; full speed
 tools/test_storm.sh   # each way the rock comes: in sight 1.5 s+ unanswered; docked,
                       # the Ark shoots it down unhurt; out, it hits the Ark (16)
 ```
