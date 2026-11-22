@@ -270,7 +270,7 @@ ps_vyl    = $22B0
 ps_vyh    = $22B4
 ps_sx     = $22B8
 ps_vis    = $22BC
-pl_scans  = $2560   ; [18] the scanner's line, its ends included (the BASIC
+pl_scans  = $22E0   ; [18] the scanner's line, its ends included (the BASIC
                     ;   plots it: one object)
 pl_t0     = $27B0
 pl_t1     = $27B1

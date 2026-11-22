@@ -607,9 +607,25 @@ and loads whole.
 |---|---|---|
 | `MUS_TITLE` | the title, the hardware check | the Arc theme, D minor |
 | `MUS_ROCKS` | deep space | A minor, driving eighths in the bass |
-| `MUS_PIRATES` | from "PIRATES!" until the pirates are gone and the window has closed | E Phrygian, faster, stabs, a chugging bass, toms |
+| `MUS_PIRATES` | from "PIRATES!" until the pirates are gone and the window has closed; a planet's storm | E Phrygian, faster, stabs, a chugging bass, toms |
+| `MUS_PLANET` | a planet | D Dorian, a plucked lead |
+| `MUS_MAP` | the sector map and star chart | **generated** (seed 2026, synthwave, A minor, 108 bpm) |
 
-The songs are written in `tools/music.py`, a bar a line (each checked to be 16 sixteenths).
+**Six voices** on the two POKEYs (`sound.asm`): lead and bass 16-bit on
+POKEY 1; on POKEY 2 (the 64 kHz clock) a harmony and a pad, 8-bit each
+(in tune from C3 to about A5), kick/snare/tom on channel 3 and the hats on
+channel 4, so the beat and the hats play together. The music is in **bank
+5**: the NMI's player switches it in to read and puts the caller's bank
+back.
+
+The hand-written songs are in `tools/music.py`, a bar a line (each checked
+to be 16 sixteenths). **Generated songs** (`GENERATED` in `tools/music.py`):
+`tools/musicgen` (vendored from RPMegaChopperII's OPL2 composer, its
+styles and Pocket Operations drum patterns) composes; `song_generated`
+turns each 64-row chunk into a subroutine per voice and each voice's order
+list into calls. A song is its seed, style and mood: change one and rebuild
+to hear another roll. A new style added to `musicgen/compose.py` works here
+as it is.
 
 ### 7.9 Assets carried over
 

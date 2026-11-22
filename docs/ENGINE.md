@@ -129,8 +129,9 @@ bytes of a line; the creatures come straight after it.
 | $2400-$24FF | fighter.asm, pirates.asm, vec.asm, draw.asm: the fighter, shots, pirates, pods |
 | $2700-$27FF | surface.asm: the planet (shuttle, camera, creatures, crates) |
 | $2200-$22FF | surface.asm: the planet's turrets and their shots |
-| $2500-$255F | sound.asm |
-| $2560-$2571 | surface.asm: the planet scanner's line (18 characters, its ends included) |
+| $2500-$256A | sound.asm: the music player (six voices) |
+| $257A-$257F | sound.asm: the TIA effects |
+| $22E0-$22F1 | surface.asm: the planet scanner's line (18 characters, its ends included; the map's text there otherwise) |
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
 | $2590-$259F | sector.asm: the voyage (sector, fuel, stardate, credits, seed; $259F the tests' flag) (the boot check's before a game) |

@@ -1,19 +1,37 @@
 #!/usr/bin/env python3
-"""The soundtrack and the sound effects: writes src/gen/music.asm.
+"""The soundtrack and the sound effects: writes src/gen/music.asm (the music,
+bank 5: the NMI's player switches it in while it plays) and src/gen/sfx.asm
+(the effects, the fixed bank).
 
 From Super Mega Pinball 7800's tools/music.py (the same stream format, see
-src/asm/sound.asm). Lead and bass on POKEY 1 ($0450), arpeggios and drums
-on POKEY 2 ($0440). The songs:
+src/asm/sound.asm). Six voices on the two POKEYs:
+  0 lead      POKEY 1 channels 1+2, 16 bits
+  1 bass      POKEY 1 channels 3+4, 16 bits
+  2 harmony   POKEY 2 channel 1, 8 bits, the 64 kHz clock (an arpeggio)
+  3 pad       POKEY 2 channel 2, 8 bits, the 64 kHz clock
+  4 drums     POKEY 2 channel 3: kick, snare, tom
+  5 hats      POKEY 2 channel 4: closed and open hats
+The 8-bit voices are in tune to a few cents from C3 to about A5; notes
+outside that are folded in by octaves.
+
+Hand-written songs (below), and generated ones: tools/musicgen (vendored
+from RPMegaChopperII's gtools/musicgen, the OPL2 composer) composes, and
+song_generated turns its rows into these voices' streams (each 64-row chunk
+a subroutine). GENERATED lists them: a seed and a style each (see
+musicgen/compose.py STYLE_NAMES); change one and rebuild to hear another.
+The songs:
 
   MUS_TITLE    the Arc theme, D minor: the title and the hardware check
   MUS_ROCKS    deep space, A minor, driving: rocks
   MUS_PIRATES  E Phrygian, faster, a menacing bass: pirates about (and a
                planet's storm coming)
   MUS_PLANET   D Dorian, plucked and curious: exploring a planet
+  MUS_MAP      generated (GENERATED): the sector map
 """
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,17 +70,26 @@ INSTR = [
     ("pluck", [13, 11, 9, 7, 6, 5, 4, 3, 2, 0], None),
     ("pad", [3, 4, 5, 6, 6, 6, 6, 5], None),
     ("stab", [14, 12, 9, 7, 5, 4, 3, 2, 1, 0], None),
+    # the generated songs' (the composer writes its own arpeggios)
+    ("glead", [11, 12, 11, 10, 10, 9, 9, 9, 8, 8, 8, 8, 8, 7], None),
+    ("gbass", [13, 12, 11, 10, 10, 9, 9, 8, 8, 8, 7], None),
+    ("garp", [9, 8, 7, 6, 5, 5, 4, 4, 3], None),
+    ("gpad", [2, 3, 4, 5, 6, 6, 6, 6, 6, 5], None),
 ]
 INS = {n: i for i, (n, _, _) in enumerate(INSTR)}
 
-# Drums on POKEY 2 channel 3 at the 15 kHz clock: (AUDC, AUDF) a frame
+# Drums on POKEY 2 channels 3 (kick, snare, tom) and 4 (hats), at the 64 kHz
+# clock: (AUDC, AUDF) a frame. AUDC: $A_ pure tone, $C_ poly4 (a low buzz),
+# $8_ noise; AUDF: the pitch, 64 kHz / 2 / (AUDF + 1). The kick: a poly4
+# thump, then a tone falling to 125 Hz.
 DRUMS = [
-    ("kick", [(0xAF, 18), (0xAD, 30), (0xAB, 46), (0xA9, 66), (0xA7, 92), (0xA5, 120), (0xA3, 150), (0xA1, 180)]),
-    ("snare", [(0x8C, 5), (0x8B, 6), (0x8A, 7), (0x88, 8), (0x86, 8), (0x84, 9), (0x83, 9), (0x82, 10), (0x81, 10)]),
-    ("hat", [(0x86, 0), (0x83, 0), (0x81, 0)]),
-    ("ohat", [(0x86, 0), (0x85, 0), (0x84, 0), (0x83, 0), (0x82, 0), (0x81, 0)]),
-    ("tom", [(0xAC, 40), (0xAA, 46), (0xA8, 52), (0xA6, 58), (0xA4, 64), (0xA2, 70)]),
+    ("kick", [(0xCF, 50), (0xAE, 150), (0xAC, 185), (0xAA, 215), (0xA8, 240), (0xA6, 255), (0xA4, 255), (0xA2, 255)]),
+    ("snare", [(0x8F, 5), (0x8D, 7), (0x8B, 9), (0x89, 10), (0x87, 11), (0x85, 12), (0x83, 13), (0x82, 14), (0x81, 15)]),
+    ("hat", [(0x85, 0), (0x83, 0), (0x81, 0)]),
+    ("ohat", [(0x85, 0), (0x84, 0), (0x84, 0), (0x83, 0), (0x83, 0), (0x82, 0), (0x82, 0), (0x81, 0)]),
+    ("tom", [(0xAD, 100), (0xAB, 120), (0xA9, 140), (0xA7, 160), (0xA5, 180), (0xA3, 200)]),
 ]
+HATS = {"hat", "ohat"}
 DR = {n: i for i, (n, _) in enumerate(DRUMS)}
 
 # ---------------------------------------------------------------------------
@@ -94,6 +121,9 @@ def drum_parse(text):
     return out
 
 
+SPEED = [7]       # the song being written's frames a sixteenth (Stream.notes)
+
+
 class Stream:
     def __init__(self, label):
         self.label = label
@@ -109,14 +139,18 @@ class Stream:
     def trans(self, t):
         self.lines.append(f"    .byte $85,{t & 255}")
 
-    def notes(self, seq):
+    def notes(self, seq, maxd=None):
+        """notes (n, sixteenths): the stream holds frames (sixteenths * the
+        song's speed, SPEED[0]), at most 255 a byte"""
+        sp = SPEED[0]
+        maxd = 255 // sp
         for n, d in seq:
             while d > 0:
-                dd = min(d, 32)
+                dd = min(d, maxd)
                 if n is None:
-                    self.lines.append(f"    .byte $80,{dd}")
+                    self.lines.append(f"    .byte $80,{dd * sp}")
                 else:
-                    self.lines.append(f"    .byte {n},{dd}")
+                    self.lines.append(f"    .byte {n},{dd * sp}")
                 d -= dd
 
     def call(self, label):
@@ -127,6 +161,9 @@ class Stream:
 
     def end(self):
         self.lines.append("    .byte $86")
+
+    def ret(self):
+        self.lines.append("    .byte $84")
 
 
 
@@ -154,7 +191,7 @@ def bass_low(r):
 def song(pre, form, lead, lead_ins, bass_bar, harm_bar, drums):
     """A looping song: form (chords a bar), the lead (bars), a bass bar and a
     harmony bar for a chord, drum phrase names a bar."""
-    v0, v1, v2, v3 = (Stream(f"{pre}_v{k}") for k in range(4))
+    v0, v1, v2, v3, v4, v5 = (Stream(f"{pre}_v{k}") for k in range(6))
     seq = bars(lead)
     assert sum(d for _, d in seq) == 16 * len(form), pre
     v0.ins(lead_ins)
@@ -175,11 +212,15 @@ def song(pre, form, lead, lead_ins, bass_bar, harm_bar, drums):
             cur = ins
         v2.notes(harm_bar(note(ROOT_OF[ch] + "4")))
     v2.jump("loop")
-    v3.mark("loop")
+    v3.end()                          # (no pad)
+    v4.mark("loop")
+    v5.mark("loop")
     for i in range(len(form)):
-        v3.call(drums(i))
-    v3.jump("loop")
-    return [v0, v1, v2, v3]
+        v4.call(drums(i) + "_k")      # kick, snare, tom
+        v5.call(drums(i) + "_h")      # the hats
+    v4.jump("loop")
+    v5.jump("loop")
+    return [v0, v1, v2, v3, v4, v5]
 
 
 def song_title():
@@ -276,6 +317,133 @@ def song_planet():
 
 
 # ---------------------------------------------------------------------------
+# Generated songs (tools/musicgen). Each: its label prefix, the seed, the
+# style (musicgen/compose.py STYLE_NAMES: 1 kraftwerk, 7 synthwave, 11
+# eurobeat, 12 chiparcade, ...), its mood.
+GENERATED = {
+    "map": dict(pre="mm", seed=2026, style=7,
+                mood=dict(key_root=9, scale="minor", bpm=108, intensity=0.35, target_seconds=70)),
+}
+
+
+def _composer():
+    sys.path.insert(0, str(ROOT / "tools"))
+    from musicgen import compose
+    from musicgen.tracks import MoodPreset
+    from musicgen.furwriter import FurInstrument, FurOp, NOTE_OFF
+    # the composer picks OPL2 patches from a bank; the POKEY has none, so a
+    # stand-in (only the picks' random draws matter, to keep a seed's song)
+    bank = [FurInstrument(name=str(i), alg=0, fb=0, op0=FurOp(mult=1), op1=FurOp(mult=1)) for i in range(256)]
+    return compose, MoodPreset, NOTE_OFF, bank
+
+
+def _fold(n, lo, hi):
+    """our note (0 = C1) into lo..hi by octaves"""
+    while n > hi:
+        n -= 12
+    while n < lo:
+        n += 12
+    return n
+
+
+def song_generated(name):
+    g = GENERATED[name]
+    compose, MoodPreset, NOTE_OFF, bank = _composer()
+    song, _ = compose.generate_track(name, MoodPreset(**g["mood"]), g["seed"], bank, style=g["style"])
+    pre, plen = g["pre"], song.pattern_len
+    SPEED[0] = song.speed
+    maxd = max(1, 255 // song.speed)          # the player's wait: sixteenths * speed < 256
+    ch = compose.ROLE_TO_CHANNEL
+    # Furnace note values: C-4 (MIDI 60) is 108; ours: C1 (MIDI 24) is 0
+    conv = lambda v: v - 72
+    ranges = {"lead": (0, 95), "bass": (0, 95), "arp": (24, 57), "pad": (24, 57)}   # 8-bit: C3-A5
+    subs = []
+
+    def events(cells):
+        """a pattern's cells -> [(note or None, sixteenths)]"""
+        out, cur, start = [], None, 0
+        for row in sorted(cells):
+            c = cells[row]
+            if c.note is None:
+                continue
+            if row > start:
+                out.append((cur, row - start))
+            cur = None if c.note >= NOTE_OFF else c.note
+            start = row
+        out.append((cur, plen - start))
+        merged = []
+        for n, d in out:
+            if merged and n is None and merged[-1][0] is None:
+                merged[-1] = (None, merged[-1][1] + d)
+            elif d > 0:
+                merged.append((n, d))
+        return merged
+
+    def sub_label(voice, key):
+        return f"{pre}_s{voice}_{key}"
+
+    made = set()
+
+    def melodic(voice, role, ins):
+        st = Stream(f"{pre}_v{voice}")
+        st.ins(ins)
+        st.mark("loop")
+        c = ch[role]
+        lo, hi = ranges[role]
+        for pidx in song.orders[c]:
+            lab = sub_label(voice, pidx)
+            if lab not in made:
+                made.add(lab)
+                sub = Stream(lab)
+                sub.lines.append(lab)
+                seq = [(None if n is None else _fold(conv(n), lo, hi), d) for n, d in events(song.patterns[(c, pidx)])]
+                sub.notes(seq, maxd)
+                sub.ret()
+                subs.append(sub)
+            st.call(lab)
+        st.jump("loop")
+        return st
+
+    def drums(voice, roles):
+        st = Stream(f"{pre}_v{voice}")
+        st.mark("loop")
+        for k in range(len(song.orders[ch[roles[0]]])):
+            pids = tuple(song.orders[ch[r]][k] for r in roles)
+            lab = sub_label(voice, "_".join(str(p) for p in pids))
+            if lab not in made:
+                made.add(lab)
+                hits = {}
+                for r, p in zip(roles, pids):
+                    for row, cell in song.patterns[(ch[r], p)].items():
+                        if cell.note is not None and cell.note < NOTE_OFF:
+                            if r == "snare" or row not in hits:
+                                hits[row] = r
+                rows = sorted(hits)
+                seq = []
+                if not rows or rows[0] > 0:
+                    seq.append((None, rows[0] if rows else plen))
+                for i, row in enumerate(rows):
+                    gap = (rows[i + 1] if i + 1 < len(rows) else plen) - row
+                    r = hits[row]
+                    if r == "hat":
+                        r = "ohat" if gap >= 4 else "hat"       # a long gap: let it ring
+                    seq.append((DR[r], gap))
+                sub = Stream(lab)
+                sub.lines.append(lab)
+                sub.notes(seq, maxd)
+                sub.ret()
+                subs.append(sub)
+            st.call(lab)
+        st.jump("loop")
+        return st
+
+    voices = [melodic(0, "lead", "glead"), melodic(1, "bass", "gbass"),
+              melodic(2, "arp", "garp"), melodic(3, "pad", "gpad"),
+              drums(4, ("kick", "snare")), drums(5, ("hat",))]
+    return voices, subs, song.speed
+
+
+# ---------------------------------------------------------------------------
 # TIA effects: (AUDC, AUDF, AUDV) a frame; channel; priority
 def notes_fx(c, fs, each, v):
     out = []
@@ -313,6 +481,13 @@ SFX = [
 ]
 
 
+def f8(n):
+    """the 8-bit voices: POKEY's 64 kHz clock (1.79 MHz / 28)"""
+    f = 440.0 * 2 ** ((n + BASE - 69) / 12)
+    v = round(1789773 / 28 / (2 * f) - 1)
+    return max(0, min(255, v))
+
+
 def f16(n):
     f = 440.0 * 2 ** ((n + BASE - 69) / 12)
     v = round(1789773 / (2 * f) - 7)
@@ -320,32 +495,55 @@ def f16(n):
 
 
 def main():
-    out = ["; Generated by tools/music.py. Do not edit.", ""]
-    out.append("MUS_TITLE = 0")
-    out.append("MUS_ROCKS = 1")
-    out.append("MUS_PIRATES = 2")
-    out.append("MUS_PLANET = 3")
-    songs = [("title", 7, 15), ("rocks", 6, 15), ("pirates", 5, 15), ("planet", 7, 15)]
-    out.append("song_lo .byte " + ",".join(f"<song_{i}" for i in range(len(songs))))
-    out.append("song_hi .byte " + ",".join(f">song_{i}" for i in range(len(songs))))
-    pre = {"title": "mt", "rocks": "mr", "pirates": "mp", "planet": "mn"}
-    for i, (nm, speed, mask) in enumerate(songs):
-        p = pre[nm]
-        out.append(f"song_{i} .byte {speed},{mask}")
-        out.append("    .word " + ",".join(f"{p}_v{k}" for k in range(4)))
-    for s in song_title() + song_rocks() + song_pirates() + song_planet():
-        out.append(s.label)
-        out += s.lines
-    for name, txt in (("drum_main", DRUM_MAIN), ("drum_fill", DRUM_FILL),
-                      ("drum_rock", DRUM_ROCK), ("drum_rockfill", DRUM_ROCKFILL),
-                      ("drum_pir", DRUM_PIR), ("drum_pirfill", DRUM_PIRFILL),
-                      ("drum_plan", DRUM_PLAN), ("drum_planfill", DRUM_PLANFILL)):
+    out = ["; Generated by tools/music.py. Do not edit. The music: bank 5 (the",
+           "; player in sound.asm switches it in to read it).", ""]
+    sfx = ["; Generated by tools/music.py. Do not edit. The effects (the fixed bank).", ""]
+    hand = [("title", 7, "mt", song_title), ("rocks", 6, "mr", song_rocks),
+            ("pirates", 5, "mp", song_pirates), ("planet", 7, "mn", song_planet)]
+    gen = [("map",)]
+    names = [h[0] for h in hand] + [g[0] for g in gen]
+    for i, nm in enumerate(names):
+        sfx.append(f"MUS_{nm.upper()} = {i}")
+    out.append("song_lo .byte " + ",".join(f"<song_{i}" for i in range(len(names))))
+    out.append("song_hi .byte " + ",".join(f">song_{i}" for i in range(len(names))))
+    streams, heads = [], []
+    for i, (nm, speed, p, fn) in enumerate(hand):
+        heads.append((i, speed, p))
+        SPEED[0] = speed
+        streams += fn()
+    for k, (nm,) in enumerate(gen):
+        voices, subs, speed = song_generated(nm)
+        heads.append((len(hand) + k, speed, GENERATED[nm]["pre"]))
+        streams += voices + subs
+    for i, speed, p in heads:
+        out.append(f"song_{i} .byte {speed},$3F")
+        out.append("    .word " + ",".join(f"{p}_v{k}" for k in range(6)))
+    for st in streams:
+        if not (st.lines and st.lines[0] == st.label):
+            out.append(st.label)
+        out += st.lines
+    # the hand-written songs' drum phrases: kick/snare/tom (_k), hats (_h);
+    # each its song's speed (waits are in frames)
+    for name, txt, sp in (("drum_main", DRUM_MAIN, 7), ("drum_fill", DRUM_FILL, 7),
+                          ("drum_rock", DRUM_ROCK, 6), ("drum_rockfill", DRUM_ROCKFILL, 6),
+                          ("drum_pir", DRUM_PIR, 5), ("drum_pirfill", DRUM_PIRFILL, 5),
+                          ("drum_plan", DRUM_PLAN, 7), ("drum_planfill", DRUM_PLANFILL, 7)):
         seq = drum_parse(txt)
         assert sum(d for _, d in seq) == 16, name
-        out.append(name)
-        for n, d in seq:
-            out.append(f"    .byte {'$80' if n is None else n},{d}")
-        out.append("    .byte $84")
+        hats = {DR[h] for h in HATS}
+        for suffix, keep in (("_k", lambda n: n is not None and n not in hats),
+                             ("_h", lambda n: n is not None and n in hats)):
+            part = []
+            for n, d in seq:
+                n = n if keep(n) else None
+                if part and n is None and part[-1][0] is None:
+                    part[-1] = (None, part[-1][1] + d)
+                else:
+                    part.append((n, d))
+            out.append(name + suffix)
+            for n, d in part:
+                out.append(f"    .byte {'$80' if n is None else n},{d * sp}")
+            out.append("    .byte $84")
     # instruments
     for i, (nm, env, arp) in enumerate(INSTR):
         out.append(f"ins_env_{i} .byte " + ",".join(str(v) for v in env) + ",$FF")
@@ -359,7 +557,7 @@ def main():
         out.append(f"drum_{i} .byte " + ",".join(f"${c:02X},{f}" for c, f in mac) + ",0")
     out.append("drum_lo .byte " + ",".join(f"<drum_{i}" for i in range(len(DRUMS))))
     out.append("drum_hi .byte " + ",".join(f">drum_{i}" for i in range(len(DRUMS))))
-    # frequencies
+    # frequencies: 16 bits (1.79 MHz), 8 bits (64 kHz)
     fr = [f16(n) for n in range(96)]
     out.append("f16lo")
     for i in range(0, 96, 16):
@@ -367,21 +565,26 @@ def main():
     out.append("f16hi")
     for i in range(0, 96, 16):
         out.append("    .byte " + ",".join(str(v >> 8) for v in fr[i:i + 16]))
+    out.append("f8tab")
+    for i in range(0, 96, 16):
+        out.append("    .byte " + ",".join(str(f8(n)) for n in range(i, i + 16)))
     # effects (id 0 = none)
     for i, (nm, ch, pri, data) in enumerate(SFX):
-        out.append(f"SFX_{nm} = {i + 1}")
-        out.append(f"sfxd_{i + 1}")
+        sfx.append(f"SFX_{nm} = {i + 1}")
+        sfx.append(f"sfxd_{i + 1}")
         for k in range(0, len(data), 12):
-            out.append("    .byte " + ",".join(f"{c},{f},{v}" for c, f, v in data[k:k + 12]))
-        out.append("    .byte $FF")
+            sfx.append("    .byte " + ",".join(f"{c},{f},{v}" for c, f, v in data[k:k + 12]))
+        sfx.append("    .byte $FF")
     ids = range(len(SFX) + 1)
-    out.append("sfx_chan .byte 0," + ",".join(str(s[1]) for s in SFX))
-    out.append("sfx_pri .byte 0," + ",".join(str(s[2]) for s in SFX))
-    out.append("sfx_dlo .byte 0," + ",".join(f"<sfxd_{i}" for i in ids if i))
-    out.append("sfx_dhi .byte 0," + ",".join(f">sfxd_{i}" for i in ids if i))
+    sfx.append("sfx_chan .byte 0," + ",".join(str(s[1]) for s in SFX))
+    sfx.append("sfx_pri .byte 0," + ",".join(str(s[2]) for s in SFX))
+    sfx.append("sfx_dlo .byte 0," + ",".join(f"<sfxd_{i}" for i in ids if i))
+    sfx.append("sfx_dhi .byte 0," + ",".join(f">sfxd_{i}" for i in ids if i))
     GEN.mkdir(parents=True, exist_ok=True)
     (GEN / "music.asm").write_text("\n".join(out) + "\n")
-    print(f"music: {sum(1 for l in out if '.byte' in l)} data lines")
+    (GEN / "sfx.asm").write_text("\n".join(sfx) + "\n")
+    size = sum(len(l.split(",")) for l in out if ".byte" in l)
+    print(f"music: about {size} bytes (bank 5); {len(names)} songs")
 
 
 if __name__ == "__main__":

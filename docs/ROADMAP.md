@@ -67,6 +67,11 @@ then link them together.
 - [ ] Density / holo scanners, a chart cursor, one-way warps shown
 - [ ] The star's collapse (the stardate deadline)
 
+## Music
+- [x] Six voices (lead, bass, harmony, pad, drums, hats) on the two POKEYs; the music in its own bank (5)
+- [x] Generated songs from RPMegaChopperII's composer (`tools/musicgen`): the map's track
+- [ ] More generated tracks (starport, ending); the hand-written ones redone?
+
 ## M5: Starports
 - [ ] 320A tabbed menus: Commodities, Bio-Bounty, Shipyard
 - [ ] Port classes, stock and restock, prices by tier

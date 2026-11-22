@@ -374,7 +374,7 @@ hw_mask
     ldx #7
     jmp hw_status
 
-hw_masks  .byte $0F, $03, $0C
+hw_masks  .byte $3F, $03, $3C       ; (voices 0-1 POKEY 1, 2-5 POKEY 2)
 hw_maskst .byte ST_BOTH, ST_P1, ST_P2
 
 hw_hexd .byte "0123456789ABCDEF"

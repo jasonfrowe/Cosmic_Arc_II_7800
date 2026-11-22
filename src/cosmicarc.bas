@@ -73,7 +73,7 @@
   dim pl_arksx = $2770
   dim pl_arkv = $2771
   dim pl_arky = $2775
-  dim pl_scans = $2560
+  dim pl_scans = $22E0
   dim pl_tick = $271B
   rem zero page
   dim fireheld = a
@@ -285,7 +285,7 @@ sector
   lda #BANK_MAP
   jsr bank_in
   jsr sv_enter
-  lda #MUS_TITLE
+  lda #MUS_MAP
   jsr mu_switch
 end
   gosub mappal
@@ -497,7 +497,7 @@ end
   inline common.asm
   inline text.asm
   inline sound.asm
-  inline music.asm
+  inline sfx.asm
   inline savekey.asm
   inline hwtest.asm
 
@@ -546,11 +546,16 @@ end
 end
   inline font320.asm
 
+  rem ======================================================================
+  rem  Bank 5: the music (gen/music.asm, tools/music.py): sound.asm's player
+  rem  switches it in while it reads (in the NMI, in vblank)
+  rem ======================================================================
   bank 5
   rem signature, read at $8000 by hwtest.asm
   asm
   .byte "CA",5
 end
+  inline music.asm
 
   bank 6
   rem signature, read at $8000 by hwtest.asm

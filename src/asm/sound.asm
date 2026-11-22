@@ -3,17 +3,23 @@
 ;
 ;   voice 0  lead      POKEY 1 ($0450) channels 1+2 joined, 16 bits, 1.79 MHz
 ;   voice 1  bass      POKEY 1 channels 3+4 joined, 16 bits, 1.79 MHz
-;   voice 2  harmony   POKEY 2 ($0440) channels 1+2 joined (arpeggios)
-;   voice 3  drums     POKEY 2 channel 3 (15 kHz clock: kick, snare, hats)
+;   voice 2  harmony   POKEY 2 ($0440) channel 1, 8 bits, 64 kHz (f8tab)
+;   voice 3  pad       POKEY 2 channel 2, 8 bits, 64 kHz
+;   voice 4  drums     POKEY 2 channel 3: kick, snare, tom (drum macros)
+;   voice 5  hats      POKEY 2 channel 4 (drum macros)
 ;   effects            TIA channels 0 and 1
 ;
+; The music's data is in bank 5 (MUS_BANK: gen/music.asm): the player
+; switches it in while it reads, and puts the caller's back (cur_bank). The
+; NMI runs in vblank, when MARIA isn't reading a bank's graphics.
+;
 ; Music data (gen/music.asm, from tools/music.py), per voice a stream:
-;   $00-$7F n d   note n (plus the voice's transpose) for d sixteenths
-;   $80 d         rest
+;   $00-$7F n d   note n (plus the voice's transpose) for d frames
+;   $80 d         rest (d frames)
 ;   $81 i         instrument i (envelope, arpeggio)
 ;   $82 lo hi     jump      $83 lo hi   call (one level)   $84 return
 ;   $85 t         transpose $86         end of the voice
-; A song: speed (frames a sixteenth), voice mask, four stream addresses.
+; A song: speed (frames a sixteenth), voice mask, six stream addresses.
 ; Runs in the NMI (snd_tick, from 7800basic's userinterrupt), in vblank.
 ;
 ; From Super Mega Pinball 7800 (src/sound.asm). Zero page $B0-$B5 is in
@@ -49,30 +55,32 @@ musq    = $B2   ; 2
 mtmp    = $B4
 mtmp2   = $B5
 
+MUS_BANK  = 5
+
 mus_on    = $2500
 mus_speed = $2501
 mus_mask  = $2502
-m_ptrlo   = $2504 ; [4]
-m_ptrhi   = $2508
-m_wait    = $250C
-m_note    = $2510
-m_trans   = $2514
-m_envlo   = $2518
-m_envhi   = $251C
-m_arplo   = $2520
-m_arphi   = $2524
-m_arpblo  = $2528
-m_arpbhi  = $252C
-m_retlo   = $2530
-m_rethi   = $2534
-m_ins     = $2538
-m_vol     = $253C
-m_off     = $2540 ; arpeggio offset this frame
-m_done    = $2544
-m_guard   = $2548
-sfx_id    = $2550 ; [2] per TIA channel
-sfx_lo    = $2552
-sfx_hi    = $2554
+m_ptrlo   = $2504 ; [6]
+m_ptrhi   = $250A
+m_wait    = $2510
+m_note    = $2516
+m_trans   = $251C
+m_envlo   = $2522
+m_envhi   = $2528
+m_arplo   = $252E
+m_arphi   = $2534
+m_arpblo  = $253A
+m_arpbhi  = $2540
+m_retlo   = $2546
+m_rethi   = $254C
+m_ins     = $2552
+m_vol     = $2558
+m_off     = $255E ; arpeggio offset this frame
+m_done    = $2564
+m_guard   = $256A
+sfx_id    = $257A ; [2] per TIA channel
+sfx_lo    = $257C
+sfx_hi    = $257E
 
 snd_init
     lda #0
@@ -96,8 +104,20 @@ mus_silence_s
     sta PKB_SKCTL
     lda #$78                ; 1+2 and 3+4 joined, both at 1.79 MHz
     sta PKA_AUDCTL
-    lda #$51                ; 1+2 joined at 1.79 MHz, 3/4 on 15 kHz
+    lda #$00                ; four 8-bit channels on the 64 kHz clock
     sta PKB_AUDCTL
+    rts
+
+; the music's bank in at $8000 (for reading it), and the caller's back
+mus_bankin
+    lda #MUS_BANK-2
+    sta $8000
+    rts
+mus_bankout
+    lda cur_bank
+    sec
+    sbc #2
+    sta $8000
     rts
 
 ; mus_play: song A
@@ -105,6 +125,7 @@ mus_play
     tax
     lda #0
     sta mus_on              ; keep the NMI out
+    jsr mus_bankin
     lda song_lo,x
     sta musp
     lda song_hi,x
@@ -134,8 +155,9 @@ mus_play_v
     lda #>env_off
     sta m_envhi,x
     inx
-    cpx #4
+    cpx #6
     bne mus_play_v
+    jsr mus_bankout
     jsr mus_silence
     lda #1
     sta mus_on
@@ -150,7 +172,8 @@ snd_tick
     bne snd_tick_go
     rts
 snd_tick_go
-    ldx #3
+    jsr mus_bankin
+    ldx #5
 snd_tick_voice
     lda m_done,x
     beq *+5
@@ -258,6 +281,8 @@ snd_tick_c6
     ; end
     lda #1
     sta m_done,x
+    lda #0
+    sta m_vol,x
     lda #<env_off
     sta m_envlo,x
     lda #>env_off
@@ -275,7 +300,8 @@ snd_tick_next
     bmi snd_tick_out
     jmp snd_tick_voice
 snd_tick_out
-    jmp mus_output
+    jsr mus_output
+    jmp mus_bankout
 
 snd_tick_adv
     clc
@@ -286,24 +312,16 @@ snd_tick_adv
 snd_tick_a1
     rts
 
-; wait = d * speed frames
+; the wait: the stream holds it in frames (tools/music.py multiplies)
 snd_tick_setwait
-    sta mtmp
-    lda #0
-    ldy mus_speed
-snd_tick_sw
-    clc
-    adc mtmp
-    dey
-    bne snd_tick_sw
     sta m_wait,x
     ldy #1
     rts
 
 ; start the instrument's envelope and arpeggio
 snd_tick_newnote
-    cpx #3
-    beq snd_tick_drum
+    cpx #4                  ; voices 4 and 5: drums
+    bcs snd_tick_drum
     ldy m_ins,x
     lda ins_env_lo,y
     sta m_envlo,x
@@ -328,8 +346,10 @@ snd_tick_drum
 
 ; ---------------------------------------------------------------------------
 mus_output
-    ldx #2
+    ldx #3
 mus_output_v
+    lda m_done,x            ; (a finished voice: silent, nothing to do)
+    bne mus_output_on
     ; volume: the envelope's next value (held at $FF)
     lda m_envlo,x
     sta musq
@@ -408,50 +428,79 @@ mus_output_on
     lda m_vol+1
     ora #$A0
     sta PKA_AUDC4
-    ; voice 2 -> POKEY 2 ch 1+2
+    ; voice 2 -> POKEY 2 ch 1, voice 3 -> ch 2 (8 bits, 64 kHz)
     lda m_note+2
     clc
     adc m_off+2
     tay
-    lda f16lo,y
+    lda f8tab,y
     sta PKB_AUDF1
-    lda f16hi,y
-    sta PKB_AUDF2
-    lda #0
-    sta PKB_AUDC1
     lda m_vol+2
     ora #$A0
+    sta PKB_AUDC1
+    lda m_note+3
+    clc
+    adc m_off+3
+    tay
+    lda f8tab,y
+    sta PKB_AUDF2
+    lda m_vol+3
+    ora #$A0
     sta PKB_AUDC2
-    ; voice 3: drum macro, AUDC/AUDF pairs, AUDC 0 = over
+    ; voices 4 and 5: drum macros (AUDC/AUDF pairs, AUDC 0 = over) on POKEY
+    ; 2 channels 3 and 4 (written out: the NMI's time is tight on a planet)
     lda mus_mask
-    and #8
-    beq mus_output_dq
-    lda m_envlo+3
+    and #16
+    beq mus_od4z
+    lda m_envlo+4
     sta musq
-    lda m_envhi+3
+    lda m_envhi+4
     sta musq+1
     ldy #0
     lda (musq),y
     sta PKB_AUDC3
-    beq mus_output_dd
+    beq mus_od4
     iny
     lda (musq),y
     sta PKB_AUDF3
-    clc
     lda musq
+    clc
     adc #2
-    sta m_envlo+3
-    lda musq+1
-    adc #0
-    sta m_envhi+3
-mus_output_dd
-    rts
-mus_output_dq
-    lda #0
+    sta m_envlo+4
+    bcc mus_od4
+    inc m_envhi+4
+    bcs mus_od4
+mus_od4z
     sta PKB_AUDC3
+mus_od4
+    lda mus_mask
+    and #32
+    beq mus_od5z
+    lda m_envlo+5
+    sta musq
+    lda m_envhi+5
+    sta musq+1
+    ldy #0
+    lda (musq),y
+    sta PKB_AUDC4
+    beq mus_od5
+    iny
+    lda (musq),y
+    sta PKB_AUDF4
+    lda musq
+    clc
+    adc #2
+    sta m_envlo+5
+    bcc mus_od5
+    inc m_envhi+5
+    rts
+mus_od5z
+    sta PKB_AUDC4
+mus_od5
     rts
 
-voicebit .byte 1,2,4,8
+
+voicebit .byte 1,2,4,8,16,32
 
 ; ---------------------------------------------------------------------------
 ; Effects on the TIA: sfx A. Each effect: AUDC, AUDF, AUDV a frame, AUDC $FF ends.
