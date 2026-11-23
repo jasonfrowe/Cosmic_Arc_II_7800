@@ -133,9 +133,11 @@ CK_BLINK  = 5       ; (the skitterer)
 HOLD_NONE = 0
 HOLD_CR   = 1
 HOLD_ORE  = 2
+HOLD_RELIC = 3      ; the relic (crate RELIC_CK, on its planet): heavy
 
 NCR       = 4
 NCK       = 2
+RELIC_CK  = NCK-1   ; (the relic, on its planet: this crate)
 NTT       = 8       ; towers, 128 apart
 NTS       = 6
 
@@ -151,6 +153,7 @@ pl_y      = $2707
 pl_st     = $2709
 pl_hold   = $270A
 pl_holdi  = $270B
+pl_relic  = $27C0   ; the relic's on this planet (crate RELIC_CK)
 pl_beam   = $270C
 pl_stun   = $270D
 pl_pulse  = $270E
@@ -289,6 +292,7 @@ pl_new_c
     sta $2200,x
     inx
     bne pl_new_c
+    sta ac_hit
     lda #PL_DOCKED
     sta pl_st
     lda #4                  ; the blasters aim down at first
@@ -378,6 +382,16 @@ pl_new_k
     sta ck_y,y
     dey
     bpl pl_new_k
+    ; the relic (sector.asm gs_relic): on this planet, as the last crate
+    lda gs_test
+    bne pl_new_nr
+    lda gs_relst
+    bne pl_new_nr
+    lda gs_sec
+    cmp gs_relic
+    bne pl_new_nr
+    inc pl_relic
+pl_new_nr
     ; on the ground: creatures (not gliders) and crates
     ldx #NCR-1
 pl_new_f
@@ -783,7 +797,11 @@ pl_st_sx
     sbc sr_y
     cmp #16
     bcs pl_st_r2
-    ; shot down: the storm's over, the planet's done
+    ; shot down: the storm's over, the planet's done (one more for STORMS)
+    inc gs_storms
+    bne pl_st_sc
+    dec gs_storms
+pl_st_sc
     lda #0
     sta ab_t
     lda #3
@@ -1204,31 +1222,41 @@ pl_sh_s8
     lda #0
     sta pl_vxl
 pl_sh_clamp
-    ; the top speed: PL_VMAX, half with ore aboard (heavy, as going up)
-    ldx #>PL_VMAX
-    lda pl_hold
-    cmp #HOLD_ORE
-    bne pl_sh_cl1
-    ldx #>(PL_VMAX/2)
-pl_sh_cl1
-    stx pl_t2
+    ; the top speed: PL_VMAX, half with ore aboard (heavy, as going up), a
+    ; quarter with the relic (pl_t1 lo, pl_t2 hi)
+    ldx pl_hold
+    lda pl_vlimlo,x
+    sta pl_t1
+    lda pl_vlimhi,x
+    sta pl_t2
     lda pl_vxh
     bmi pl_sh_cn
-    cmp pl_t2
+    lda pl_vxl              ; v >= the limit: the limit
+    cmp pl_t1
+    lda pl_vxh
+    sbc pl_t2
     bcc pl_sh_mv
-    lda #0
+    lda pl_t1
     sta pl_vxl
     lda pl_t2
     sta pl_vxh
     jmp pl_sh_mv
 pl_sh_cn
-    clc                     ; (-limit: 256 - limit)
-    adc pl_t2
-    bcs pl_sh_mv
+    sec                     ; (-limit)
     lda #0
-    sta pl_vxl
-    sec
+    sbc pl_t1
+    sta pl_t1
+    lda #0
     sbc pl_t2
+    sta pl_t2
+    lda pl_vxl              ; v < -limit: -limit
+    cmp pl_t1
+    lda pl_vxh
+    sbc pl_t2
+    bcs pl_sh_mv
+    lda pl_t1
+    sta pl_vxl
+    lda pl_t2
     sta pl_vxh
 pl_sh_mv
     clc
@@ -1308,13 +1336,14 @@ pl_sh_dk
     sta pl_vxh
     rts
 pl_sh_u0
-    lda pl_hold             ; a crate's heavy: half speed up
-    cmp #HOLD_ORE
-    bne pl_sh_u1
+    lda pl_hold             ; a crate's heavy: half speed up (the relic a
+    cmp #HOLD_ORE           ;  quarter)
+    bcc pl_sh_u1
     inc pl_yh
     lda pl_yh
-    and #1
-    beq pl_sh_r
+    ldx pl_hold
+    and pl_upmask-HOLD_ORE,x
+    bne pl_sh_r
 pl_sh_u1
     lda pl_y                ; below the ceiling (PL_YMIN): up
     cmp #PL_YMIN+1
@@ -1350,13 +1379,20 @@ pl_ua_no
     clc
     rts
 
+; by what's held (none, a creature, ore, the relic): top speed across;
+; the frames going up (ore, the relic: 1 in 2, 1 in 4)
+pl_vlimlo  .byte <PL_VMAX, <PL_VMAX, <(PL_VMAX/2), <(PL_VMAX/4)
+pl_vlimhi  .byte >PL_VMAX, >PL_VMAX, >(PL_VMAX/2), >(PL_VMAX/4)
+pl_upmask  .byte 1, 3
 ; per joystick direction (0 up, clockwise): across (-1, 0, 1), up/down (-1 up)
 pl_across  .byte 0, 1, 1, 1, 0, -1, -1, -1
 pl_updown  .byte -1, -1, 0, 1, 1, 1, 0, -1
 
 pl_deliver
     lda pl_hold
-    beq pl_dv_r
+    bne pl_dv_r_far1393
+    jmp pl_dv_r
+pl_dv_r_far1393
     cmp #HOLD_CR
     bne pl_dv_ore
     ldx pl_holdi
@@ -1400,6 +1436,25 @@ pl_dv_ore
     ldx pl_holdi
     lda #0
     sta ck_st,x
+    lda pl_hold             ; the relic: aboard (a port takes it: port.asm)
+    cmp #HOLD_RELIC
+    bne pl_dv_o2
+    lda #0
+    sta pl_relic
+    lda #1
+    sta gs_relst
+    lda #<tx_relic
+    ldy #>tx_relic
+    ldx #12
+    jsr sp_msgcopy
+    lda #120
+    sta pl_msgtm
+    lda #$20                ; 2000 points
+    sta sc_m
+    lda #$00
+    sta sc_l
+    jmp pl_dv_done
+pl_dv_o2
     inc pl_ore
     jsr pt_holdfree         ; into the holds as fuel ore, if there's room
     bcc pl_dv_full
@@ -2052,6 +2107,8 @@ pl_shotdown
 
 ; the Ark takes A; run out, and the game's over (PL_LOST)
 pl_arkdmg
+    ldy #1                  ; (no SWEEP this planet)
+    sty ac_hit
     sta pl_t0
     sec
     lda sp_energy
@@ -2377,8 +2434,14 @@ pl_bw_k
     lda #CS_LIFT+1
     sta ck_st,x
 pl_bw_klift
-    lda pl_tick
-    and #3
+    lda #3                  ; (the relic: half as fast)
+    cpx #RELIC_CK
+    bne pl_bw_kl2
+    ldy pl_relic
+    beq pl_bw_kl2
+    lda #7
+pl_bw_kl2
+    and pl_tick
     bne pl_bw_kn
     dec ck_y,x
     lda ck_y,x
@@ -2390,6 +2453,12 @@ pl_bw_klift
     sta ck_st,x
     stx pl_holdi
     lda #HOLD_ORE
+    cpx #RELIC_CK
+    bne pl_bw_kh
+    ldy pl_relic
+    beq pl_bw_kh
+    lda #HOLD_RELIC
+pl_bw_kh
     sta pl_hold
     lda #SFX_CAPTURE
     jmp sfx
@@ -2474,6 +2543,12 @@ pl_checkall
     bne pl_ca_nb
     lda #EN_MAX             ; the Ark's energy full again (as in the original)
     sta sp_energy
+    lda gs_test             ; ... and nothing lost on the way: SWEEP
+    ora ac_hit
+    bne pl_ca_sw
+    lda #AC_SWEEP
+    jsr ac_set
+pl_ca_sw
     lda #$10                ; 1000 points
     sta sc_m
     lda #0
@@ -2670,7 +2745,7 @@ pl_hd_s
     lda pl_baych,x
     sta hud_bot2+4
     rts
-pl_baych  .byte 0, CH_CAUGHT, CH_ORE
+pl_baych  .byte 0, CH_CAUGHT, CH_ORE, CH_ORE
 
 ; ---------------------------------------------------------------------------
 ; Drawing (the BASIC has drawn the Ark and the ground). Creatures first:
@@ -2739,6 +2814,13 @@ pl_dw_k
     lda ck_y,x
     sta temp5
     lda #0
+    cpx #RELIC_CK           ; the relic: the beam's palette (it shimmers)
+    bne pl_dw_kc
+    ldy pl_relic
+    beq pl_dw_kc
+    PLOT crate, 3
+    jmp pl_dw_kn
+pl_dw_kc
     PLOT crate, 5
 pl_dw_kn
     ldx pl_i

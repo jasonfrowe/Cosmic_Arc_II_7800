@@ -91,6 +91,16 @@ step(30, "P1 Button 1", nil)
 step(10, nil, function() check("the laser upgrade", mem():read_u8(0x2588) == 1 and credits() == 236, string.format("level %d, credits %d", mem():read_u8(0x2588), credits())) end)
 step(30, "P1 Button 1", nil)
 step(10, nil, function() check("too dear (the next laser, 1000)", mem():read_u8(0x2588) == 1 and credits() == 236) end)
+-- BANK (home: safe space): deposit 100, deposit all, withdraw 100
+local function bank() return bcd(mem():read_u8(0x25A6)) * 10000 + bcd(mem():read_u8(0x25A7)) * 100 + bcd(mem():read_u8(0x25A8)) end
+step(20, "P1 Button 2", function() local m = mem(); setcred(1000); m:write_u8(0x25A6, 0); m:write_u8(0x25A7, 0); m:write_u8(0x25A8, 0) end)
+step(20, nil, function() check("the bank's tab (safe space)", mem():read_u8(0x27FB) == 3) end)
+step(30, "P1 Button 1", nil)
+step(10, nil, function() check("deposit 100", credits() == 900 and bank() == 100, credits() .. "/" .. bank()); mem():write_u8(0x22FB, 1); mem():write_u8(0x27F7, 1) end)
+step(30, "P1 Button 1", nil)
+step(10, nil, function() check("deposit all", credits() == 0 and bank() == 1000, credits() .. "/" .. bank()); mem():write_u8(0x22FB, 2); mem():write_u8(0x27F7, 1) end)
+step(30, "P1 Button 1", nil)
+step(10, nil, function() check("withdraw 100", credits() == 100 and bank() == 900, credits() .. "/" .. bank()) end)
 step(10, nil, nil)
 emu.register_frame_done(function()
   f = f + 1
@@ -101,8 +111,9 @@ emu.register_frame_done(function()
     if st[2] and f - t0 >= 2 and f - t0 <= 6 then held[st[2]] = true end
     if f - t0 >= st[1] then si = si + 1; t0 = f end
   else
+    if os.getenv("SNAP_DIR") then manager:machine().screens[":screen"]:snapshot() end
     print("port (tier " .. tier .. ", class " .. class .. "): " .. table.concat(out, "; "))
-    print("result " .. ((#bad == 0 and #out >= 10) and 1 or 0))
+    print("result " .. ((#bad == 0 and #out >= 14) and 1 or 0))
     manager:machine():exit()
   end
   for name, field in pairs(fields) do if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end end

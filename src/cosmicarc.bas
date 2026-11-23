@@ -66,6 +66,13 @@
   dim gs_go = $259B
   dim gs_seed = $2597
   dim twtick2 = $2579
+  rem the escape pod's scene
+  dim esct = $2573
+  dim escx = $2574
+  dim escy = $2578
+  dim escv = $258B
+  dim escbx = $258C
+  dim escby = $258D
   rem surface.asm (the planet)
   dim pl_state = $2714
   dim pl_fine = $2719
@@ -174,7 +181,9 @@ end
   if sp_state = 4 && gs_test then goto planet
   if sp_state = 4 then goto sector
   if sp_state <> 2 then goto gameloop
-  rem the Ark is lost: fire (pressed anew) for the title
+  rem the Ark is lost: the escape pod (tests: fire, pressed anew, for the
+  rem title)
+  if gs_test = 0 then goto escape
   if !joy0fire1 then fireheld = 0 : goto gameloop
   if fireheld then goto gameloop
   fireheld = 1
@@ -264,8 +273,75 @@ planetlost
   jsr bank_in
 end
   gosub spacepal
+  if gs_test = 0 then goto escape
   fireheld = 1
   goto title
+
+  rem ======================================================================
+  rem The Ark lost: it breaks up, and the escape pod (the saucer) drops from
+  rem its bay and races away (a nod to the 2600 game's ending). Then home in
+  rem a new Ark (sector.asm gx_lost: a tenth of the credits; the bank kept)
+escape
+  gosub drawstars
+  esct = 0 : escx = 76 : escy = 104 : escv = 0 : escbx = 70 : escby = 88
+escapeloop
+  if esct < 250 then esct = esct + 1
+  t = esct & 7
+  if t = 0 then gosub escboom
+  P1C1 = $44
+  if esct & 4 then P1C1 = $0F
+  restorescreen
+  if esct < 96 then plotsprite ark 1 56 80
+  t = esct & 7
+  t = t / 3
+  if esct < 104 then plotsprite boom0 4 escbx escby t
+  t = esct / 4
+  t = t & 3
+  if esct >= 20 && escy > 8 then plotsprite saucer0 6 escx escy t
+  if esct >= 24 then plotchars 'ESCAPE POD AWAY' 0 20 9
+  if esct >= 110 then plotchars 'THE ARK IS LOST' 0 20 2
+  if esct >= 200 then plotchars 'PRESS FIRE' 0 40 10
+  drawscreen
+  gosub twinkle
+  if esct >= 20 then gosub escmove
+  if esct < 200 then goto escapeloop
+  if !joy0fire1 then fireheld = 0 : goto escapeloop
+  if fireheld then goto escapeloop
+  fireheld = 1
+  asm
+  lda #BANK_MAP
+  jsr bank_in
+  jsr gx_lost
+end
+  goto sector
+  rem a new blast somewhere on the hull, while it lasts
+escboom
+  if esct >= 96 then return
+  escbx = rand & 31
+  escbx = escbx + 58
+  escby = rand & 15
+  escby = escby + 82
+  asm
+  lda #SFX_BOOM
+  jsr sfx
+end
+  return
+  rem the pod: drops clear of the bay, then faster and faster, away up and
+  rem to the right
+escmove
+  if escy = 0 then return
+  if esct < 44 then escy = escy + 1 : return
+  t = esct & 3
+  if t = 0 && escv < 16 then escv = escv + 1
+  t = escv / 4
+  escx = escx + t
+  t = escv / 8
+  t = t + 10
+  if escy < t then escy = 0 : return
+  t = t - 10
+  escy = escy - t
+  if escx > 156 then escy = 0
+  return
 
   rem ======================================================================
   rem A new game: deep space reset, the galaxy from the seed (the timing of
@@ -311,7 +387,33 @@ end
   drawscreen
   if gs_go = 1 then goto encounter
   if gs_go = 2 then goto landplanet
+  if gs_go = 3 then goto achieve
   goto sectorloop
+  rem the achievements (achieve.asm, bank 6: 320A, its own copy of the font)
+achieve
+  asm
+  lda #BANK_ACH
+  jsr bank_in
+  jsr ac_enter
+end
+achloop
+  t = 8
+  if joy0up then t = 0
+  if joy0down then t = 4
+  if joy0right then t = 2
+  if joy0left then t = 6
+  sp_joy = t
+  sp_fire = 0
+  if joy0fire1 then sp_fire = 1
+  sp_fire2 = 0
+  if joy0fire0 then sp_fire2 = 1
+  clearscreen
+  asm
+  jsr ac_frame
+end
+  drawscreen
+  if gs_go = 3 then goto achloop
+  goto sector
   rem an encounter on the way: deep space, a wave for the tier
 encounter
   asm
@@ -335,6 +437,12 @@ mappal
   P0C1 = $0E : P0C2 = $0E : P0C3 = $0E
   P1C1 = $1C : P1C2 = $1C : P1C3 = $1C
   P2C1 = $9C : P2C2 = $9C : P2C3 = $9C
+  rem (the achievements' icons: P3 not yet earned, P4-P7 earned, by column)
+  P3C1 = $04 : P3C2 = $04 : P3C3 = $04
+  P4C1 = $1C : P4C2 = $1C : P4C3 = $1C
+  P5C1 = $CA : P5C2 = $CA : P5C3 = $CA
+  P6C1 = $4A : P6C2 = $4A : P6C3 = $4A
+  P7C1 = $8C : P7C2 = $8C : P7C3 = $8C
   return
 
   rem ======================================================================
@@ -496,6 +604,7 @@ end
   inline vec.asm
   inline common.asm
   inline text.asm
+  inline text40.asm
   inline sound.asm
   inline sfx.asm
   inline savekey.asm
@@ -544,6 +653,9 @@ end
   endif
   ds $A000 - ., 0
 end
+  asm
+font320
+end
   inline font320.asm
   rem a starport's screens (after the font: $B000 on)
   inline port.asm
@@ -559,11 +671,25 @@ end
 end
   inline music.asm
 
+  rem ======================================================================
+  rem  Bank 6: the achievements' screen (achieve.asm), and its own copy of
+  rem  the 40-column font at $A000 (MARIA reads it from the bank that's in)
+  rem ======================================================================
   bank 6
   rem signature, read at $8000 by hwtest.asm
   asm
   .byte "CA",6
 end
+  inline achieve.asm
+  asm
+  if . > $A000
+  echo "bank 6: the code reaches the font's place ($A000)"
+  err
+  endif
+  ds $A000 - ., 0
+font320b
+end
+  inline font320b.asm
 
   bank 7
   rem signature, read at $8000 by hwtest.asm

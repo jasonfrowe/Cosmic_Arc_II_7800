@@ -205,6 +205,7 @@ sp_rt_s
     dex
     bpl sp_rt_s
     sta sp_msglen
+    sta ac_hit
     jsr sp_nextwave
     jmp sp_arrive
 
@@ -653,6 +654,8 @@ sp_arkdmg
     lda #0
 sp_ad_e
     sta sp_energy
+    lda #1                  ; (no UNTOUCHED this encounter)
+    sta ac_hit
     lda #20
     sta sp_flash
     lda #SFX_HIT
@@ -1077,7 +1080,21 @@ sp_w_fd
     beq sp_w_r_far919
     jmp sp_w_r
 sp_w_r_far919
-    ; wave clear (CLEAR_PAY energy: none for now)
+    ; wave clear (CLEAR_PAY energy: none for now). An encounter from the
+    ; map: not a scratch, UNTOUCHED; wave 10 or more, DEEP RAID
+    lda gs_test
+    bne sp_w_ac
+    lda ac_hit
+    bne sp_w_ac1
+    lda #AC_CLEAN
+    jsr ac_set
+sp_w_ac1
+    lda sp_wave
+    cmp #9
+    bcc sp_w_ac
+    lda #AC_RAID
+    jsr ac_set
+sp_w_ac
     lda #ST_CLEAR
     sta sp_state
     lda #120

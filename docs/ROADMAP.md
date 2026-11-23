@@ -77,9 +77,9 @@ then link them together.
 - [x] Port classes, prices by tier; creatures delivered into stasis, ore into the holds
 - [x] Upgrades: the laser's fire rate (deep space), holds, fuel tanks
 - [x] Stock and restock with the jumps; bounties fall where a port's had many; fuel and repairs by tier; pirates pay; creatures take holds; kept pairs; planets empty and refill (`test_deplete.sh`)
-- [ ] The bank (deposits at ports) and the escape pod: the Ark lost, back to sector 1, ship reset, most credits gone (the saucer escaping, as the 2600 game's ending)
-- [ ] Achievements (16, a 4 x 4 grid of icons filled in as earned) instead of a single win: pairs of every kind; one of each by a stardate; pirates destroyed; every sector; rich; every upgrade; the relic; untouched encounter; clean planet; storm rocks; the far sector; wave 10; on fumes; ...
-- [ ] The relic: on one outer-rim planet, heavy (a quarter speed, no climbing out of the beam band), hinted at ports
+- [x] The bank (deposits at ports) and the escape pod: the Ark lost, back to sector 1, ship reset, most credits gone (the saucer escaping, as the 2600 game's ending)
+- [x] Achievements (16, a 4 x 4 grid of icons filled in as earned) instead of a single win (`achieve.asm`, bank 6; DESIGN.md 6.5b)
+- [x] The relic: on one outer-rim planet, heavy (a quarter speed across and up), hinted at ports, 2000 at a port
 - [ ] More upgrades (beam width, turret, thrusters, scanners)
 
 ## M6: Save / continue

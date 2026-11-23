@@ -11,6 +11,7 @@
 ;                manifest
 ;   SHIPYARD     fuel, energy (dearer out in the rim), upgrades: the laser
 ;                (fire rate), the holds, the fuel tanks (3 levels each)
+;   BANK         (safe space's ports only) savings: kept when the Ark's lost
 ; The stick picks a line, fire acts, button 2 the next tab, left (Bio-Bounty)
 ; keeps one. LEAVE PORT: back to the sector (and an encounter, maybe).
 ; Credits are BCD (gs_cred: 3 bytes, high first).
@@ -27,16 +28,42 @@ pt_tb     = $27FA
 pt_tc     = $25F0   ; (more scratch: after the long-lived block)
 pt_td     = $25F1
 pt_te     = $25F2
+pt_amt    = $25F3   ; [3] an amount to move, BCD (high first)
+pt_ntab   = $25F6   ; tabs here: 3, or 4 with the bank (safe space)
+PT_BANKOFS = gs_bank - gs_cred
 
 pt_enter
+    lda gs_fuel             ; in on an empty tank
+    bne pt_en_f
+    lda #AC_FUMES
+    jsr ac_set
+pt_en_f
     lda #2
     sta sv_view
+    jsr pt_tier             ; the bank: safe space's ports
+    cmp #1
+    lda #3
+    adc #0
+    eor #7                  ; (tier 0: C = 0, 3 -> 4; else 4 -> 3)
+    sta pt_ntab
     lda #0
     sta pt_tab
     sta sv_sel
     sta pt_msg
     lda #1
     sta sv_dirty
+    lda gs_relst            ; the relic aboard: the port takes it, 2000
+    cmp #1
+    bne pt_en_r
+    inc gs_relst
+    lda #$20
+    sta pt_vh
+    lda #0
+    sta pt_vl
+    jsr pt_add
+    lda #15
+    jmp pt_say
+pt_en_r
     lda #SFX_DOCK
     jmp sfx
 
@@ -306,7 +333,7 @@ pt_b_tm
     jsr sv_puts
     ldx sv_t3
     inx
-    cpx #3
+    cpx pt_ntab
     bne pt_b_tabs
     ; the lines
     lda pt_tab
@@ -319,7 +346,12 @@ pt_b_t1
     jsr pt_b_bio
     jmp pt_b_lv
 pt_b_t2
+    cmp #2
+    bne pt_b_t3
     jsr pt_b_yard
+    jmp pt_b_lv
+pt_b_t3
+    jsr pt_b_bank
 pt_b_lv
     ; the last line: LEAVE PORT
     lda pt_n
@@ -329,22 +361,6 @@ pt_b_lv
     lda #<pt_s_leave
     ldy #>pt_s_leave
     ldx #10
-    jsr sv_puts
-    ; row 9: a message
-    ldx pt_msg
-    beq pt_b_nm
-    stx sv_t3
-    ldx #9
-    lda #3
-    jsr sv_at
-    ldx sv_t3
-    lda pt_msglo-1,x
-    pha
-    lda pt_msghi-1,x
-    tay
-    lda pt_msglen-1,x
-    tax
-    pla
     jsr sv_puts
 pt_b_nm
     ; row 10: credits, fuel, holds (39 columns: exactly)
@@ -387,10 +403,21 @@ pt_b_nm
     ldx gs_uhold
     lda up_holds,x
     jsr sv_dec2
-    ; row 11: help
+    ; row 11: a message, or the help
     ldx #11
     lda #1
     jsr sv_at
+    ldx pt_msg
+    beq pt_b_hp
+    lda pt_msglo-1,x
+    pha
+    lda pt_msghi-1,x
+    tay
+    lda pt_msglen-1,x
+    tax
+    pla
+    jmp sv_puts
+pt_b_hp
     lda pt_tab
     cmp #1
     beq pt_b_hk
@@ -403,10 +430,10 @@ pt_b_hk
     ldy #>pt_s_helpk
     ldx #31
     jmp sv_puts
-pt_tabcol .byte 1, 15, 28
-pt_tablo  .byte <pt_s_tab0, <pt_s_tab1, <pt_s_tab2
-pt_tabhi  .byte >pt_s_tab0, >pt_s_tab1, >pt_s_tab2
-pt_tablen .byte 11, 10, 8
+pt_tabcol .byte 0, 13, 25, 35
+pt_tablo  .byte <pt_s_tab0, <pt_s_tab1, <pt_s_tab2, <pt_s_tab3
+pt_tabhi  .byte >pt_s_tab0, >pt_s_tab1, >pt_s_tab2, >pt_s_tab3
+pt_tablen .byte 11, 10, 8, 4
 
 ; sv_dst = line A (row 3 + A), the cursor drawn if it's the selected one;
 ; sv_dst after the cursor
@@ -495,6 +522,32 @@ pt_bc_n
     inx
     cpx #3
     bne pt_bc_l
+    ; row 8: the relic's rumour (near it: the first sector its warps reach)
+    lda gs_relst
+    bne pt_bc_r
+    ldx #8
+    lda #1
+    jsr sv_at
+    lda #<pt_s_rumour
+    ldy #>pt_s_rumour
+    ldx #37
+    jsr sv_puts
+    ldx #0
+pt_bc_rw
+    stx sv_t3
+    lda gs_relic
+    jsr gx_warpto
+    bcc pt_bc_rs
+    ldx sv_t3
+    inx
+    cpx #8
+    bne pt_bc_rw
+    lda gs_relic            ; (no warps out: its own)
+pt_bc_rs
+    clc
+    adc #1
+    jmp sv_dec2
+pt_bc_r
     rts
 pt_cnlo   .byte <pt_s_c0, <pt_s_c1, <pt_s_c2
 pt_cnhi   .byte >pt_s_c0, >pt_s_c1, >pt_s_c2
@@ -647,6 +700,129 @@ pt_b_yard
     ldx #2
     jmp pt_putnext
 
+; BANK: SAVINGS nnnnnn  SAFE IF THE ARK IS LOST; deposit, withdraw
+pt_b_bank
+    lda #5
+    sta pt_n
+    ldx #2
+    lda #1
+    jsr sv_at
+    lda #<pt_s_sav
+    ldy #>pt_s_sav
+    ldx #8
+    jsr sv_puts
+    lda gs_bank
+    jsr sv_bcd
+    lda gs_bank+1
+    jsr sv_bcd
+    lda gs_bank+2
+    jsr sv_bcd
+    lda #2
+    jsr sv_skip
+    lda #<pt_s_safe
+    ldy #>pt_s_safe
+    ldx #23
+    jsr sv_puts
+    ldx #0
+pt_bk_l
+    stx sv_t3
+    txa
+    jsr pt_line
+    ldx sv_t3
+    lda pt_bklo,x
+    ldy pt_bkhi,x
+    ldx #12
+    jsr sv_puts
+    ldx sv_t3
+    inx
+    cpx #4
+    bne pt_bk_l
+    rts
+pt_bklo   .byte <pt_s_bk0, <pt_s_bk1, <pt_s_bk2, <pt_s_bk3
+pt_bkhi   .byte >pt_s_bk0, >pt_s_bk1, >pt_s_bk2, >pt_s_bk3
+
+; BANK: lines 0-1 deposit 100 / all, 2-3 withdraw 100 / all
+pt_bank
+    lda sv_sel
+    lsr
+    lda #0                  ; the amount: 100, or everything ($99s: less
+    sta pt_amt              ;  if there's less)
+    sta pt_amt+2
+    lda #1
+    bcc pt_bn_a
+    lda #$99
+    sta pt_amt
+    sta pt_amt+2
+pt_bn_a
+    sta pt_amt+1
+    ldx #0
+    ldy #PT_BANKOFS
+    lda sv_sel
+    cmp #2
+    bcc pt_bn_m
+    ldx #PT_BANKOFS
+    ldy #0
+pt_bn_m
+    jsr pt_move
+    lda pt_amt
+    ora pt_amt+1
+    ora pt_amt+2
+    bne pt_bn_ok
+    lda #14
+    jmp pt_say
+pt_bn_ok
+    lda sv_sel
+    cmp #2
+    lda #12
+    adc #0
+    jmp pt_say
+
+; move pt_amt (BCD) from account X to account Y (0 the credits, PT_BANKOFS
+; the bank): no more than X has (pt_amt: what moved)
+pt_move
+    lda gs_cred,x
+    cmp pt_amt
+    bcc pt_mv_less
+    bne pt_mv_go
+    lda gs_cred+1,x
+    cmp pt_amt+1
+    bcc pt_mv_less
+    bne pt_mv_go
+    lda gs_cred+2,x
+    cmp pt_amt+2
+    bcs pt_mv_go
+pt_mv_less
+    lda gs_cred,x
+    sta pt_amt
+    lda gs_cred+1,x
+    sta pt_amt+1
+    lda gs_cred+2,x
+    sta pt_amt+2
+pt_mv_go
+    sed
+    sec
+    lda gs_cred+2,x
+    sbc pt_amt+2
+    sta gs_cred+2,x
+    lda gs_cred+1,x
+    sbc pt_amt+1
+    sta gs_cred+1,x
+    lda gs_cred,x
+    sbc pt_amt
+    sta gs_cred,x
+    clc
+    lda gs_cred+2,y
+    adc pt_amt+2
+    sta gs_cred+2,y
+    lda gs_cred+1,y
+    adc pt_amt+1
+    sta gs_cred+1,y
+    lda gs_cred,y
+    adc pt_amt
+    sta gs_cred,y
+    cld
+    rts
+
 ; upgrade X's next price, or MAX
 pt_putnext
     stx sv_t3
@@ -701,7 +877,7 @@ pt_input
     bne pt_i_nt
     ldx pt_tab
     inx
-    cpx #3
+    cpx pt_ntab
     bcc pt_i_t
     ldx #0
 pt_i_t
@@ -765,7 +941,11 @@ pt_i_f1
     bne pt_i_f2
     jmp pt_sell
 pt_i_f2
+    cmp #2
+    bne pt_i_f3
     jmp pt_yard
+pt_i_f3
+    jmp pt_bank
 pt_i_r
     rts
 
@@ -973,10 +1153,10 @@ pt_fuelc  .byte 4, 5, 6, 7
 pt_repc   .byte 4, 5, 6, 8
 
 ; messages
-pt_msglo  .byte <pt_m1, <pt_m2, <pt_m3, <pt_m4, <pt_m5, <pt_m6, <pt_m7, <pt_m8, <pt_m9, <pt_m10, <pt_m11
-pt_msghi  .byte >pt_m1, >pt_m2, >pt_m3, >pt_m4, >pt_m5, >pt_m6, >pt_m7, >pt_m8, >pt_m9, >pt_m10, >pt_m11
-pt_msglen .byte 4, 6, 18, 18, 12, 21, 12, 8, 22, 8, 17
-pt_msgsfx .byte SFX_POD, SFX_POD, SFX_HIT, SFX_HIT, SFX_HIT, SFX_DELIVER, SFX_BEEP, SFX_CLEAR, SFX_BEEP, SFX_HIT, SFX_HIT
+pt_msglo  .byte <pt_m1, <pt_m2, <pt_m3, <pt_m4, <pt_m5, <pt_m6, <pt_m7, <pt_m8, <pt_m9, <pt_m10, <pt_m11, <pt_m12, <pt_m13, <pt_m14, <pt_m15
+pt_msghi  .byte >pt_m1, >pt_m2, >pt_m3, >pt_m4, >pt_m5, >pt_m6, >pt_m7, >pt_m8, >pt_m9, >pt_m10, >pt_m11, >pt_m12, >pt_m13, >pt_m14, >pt_m15
+pt_msglen .byte 4, 6, 18, 18, 12, 21, 12, 8, 22, 8, 17, 9, 9, 15, 37
+pt_msgsfx .byte SFX_POD, SFX_POD, SFX_HIT, SFX_HIT, SFX_HIT, SFX_DELIVER, SFX_BEEP, SFX_CLEAR, SFX_BEEP, SFX_HIT, SFX_HIT, SFX_POD, SFX_POD, SFX_HIT, SFX_CLEAR
 
 ; ---- strings ----
 pt_s_title .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'STARPORT' (8)
@@ -1026,3 +1206,15 @@ pt_m10 .byte ("S"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,0,("O"-32)*2,("U"-32)*2
 pt_m11 .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,("Y"-32)*2,0,("W"-32)*2,("A"-32)*2,("N"-32)*2,("T"-32)*2,0,("N"-32)*2,("O"-32)*2,0,("M"-32)*2,("O"-32)*2,("R"-32)*2,("E"-32)*2   ; 'THEY WANT NO MORE' (17)
 pt_s_left .byte 0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2   ; ' LEFT' (5)
 pt_s_wants .byte ("W"-32)*2,("A"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2,0   ; 'WANTS ' (6)
+pt_s_tab3 .byte ("B"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2   ; 'BANK' (4)
+pt_s_sav .byte ("S"-32)*2,("A"-32)*2,("V"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,("S"-32)*2,0   ; 'SAVINGS ' (8)
+pt_s_safe .byte ("S"-32)*2,("A"-32)*2,("F"-32)*2,("E"-32)*2,0,("I"-32)*2,("F"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("A"-32)*2,("R"-32)*2,("K"-32)*2,0,("I"-32)*2,("S"-32)*2,0,("L"-32)*2,("O"-32)*2,("S"-32)*2,("T"-32)*2   ; 'SAFE IF THE ARK IS LOST' (23)
+pt_s_bk0 .byte ("D"-32)*2,("E"-32)*2,("P"-32)*2,("O"-32)*2,("S"-32)*2,("I"-32)*2,("T"-32)*2,0,("1"-32)*2,("0"-32)*2,("0"-32)*2,0   ; 'DEPOSIT 100 ' (12)
+pt_s_bk1 .byte ("D"-32)*2,("E"-32)*2,("P"-32)*2,("O"-32)*2,("S"-32)*2,("I"-32)*2,("T"-32)*2,0,("A"-32)*2,("L"-32)*2,("L"-32)*2,0   ; 'DEPOSIT ALL ' (12)
+pt_s_bk2 .byte ("W"-32)*2,("I"-32)*2,("T"-32)*2,("H"-32)*2,("D"-32)*2,("R"-32)*2,("A"-32)*2,("W"-32)*2,0,("1"-32)*2,("0"-32)*2,("0"-32)*2   ; 'WITHDRAW 100' (12)
+pt_s_bk3 .byte ("W"-32)*2,("I"-32)*2,("T"-32)*2,("H"-32)*2,("D"-32)*2,("R"-32)*2,("A"-32)*2,("W"-32)*2,0,("A"-32)*2,("L"-32)*2,("L"-32)*2   ; 'WITHDRAW ALL' (12)
+pt_m12 .byte ("D"-32)*2,("E"-32)*2,("P"-32)*2,("O"-32)*2,("S"-32)*2,("I"-32)*2,("T"-32)*2,("E"-32)*2,("D"-32)*2   ; 'DEPOSITED' (9)
+pt_m13 .byte ("W"-32)*2,("I"-32)*2,("T"-32)*2,("H"-32)*2,("D"-32)*2,("R"-32)*2,("A"-32)*2,("W"-32)*2,("N"-32)*2   ; 'WITHDRAWN' (9)
+pt_m14 .byte ("N"-32)*2,("O"-32)*2,("T"-32)*2,("H"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,0,("T"-32)*2,("O"-32)*2,0,("M"-32)*2,("O"-32)*2,("V"-32)*2,("E"-32)*2   ; 'NOTHING TO MOVE' (15)
+pt_m15 .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("R"-32)*2,("E"-32)*2,("L"-32)*2,("I"-32)*2,("C"-32)*2,(":"-32)*2,0,("2"-32)*2,("0"-32)*2,("0"-32)*2,("0"-32)*2,0,("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2,0,("F"-32)*2,("R"-32)*2,("O"-32)*2,("M"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'THE RELIC: 2000 CREDITS FROM THE PORT' (37)
+pt_s_rumour .byte ("R"-32)*2,("U"-32)*2,("M"-32)*2,("O"-32)*2,("U"-32)*2,("R"-32)*2,(":"-32)*2,0,("S"-32)*2,("T"-32)*2,("R"-32)*2,("A"-32)*2,("N"-32)*2,("G"-32)*2,("E"-32)*2,0,("R"-32)*2,("E"-32)*2,("A"-32)*2,("D"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,("S"-32)*2,0,("N"-32)*2,("E"-32)*2,("A"-32)*2,("R"-32)*2,0,("S"-32)*2,("E"-32)*2,("C"-32)*2,("T"-32)*2,("O"-32)*2,("R"-32)*2,0   ; 'RUMOUR: STRANGE READINGS NEAR SECTOR ' (37)

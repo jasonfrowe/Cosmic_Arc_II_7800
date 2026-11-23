@@ -28,7 +28,8 @@ gs_fuel   = $2591
 gs_date   = $2592   ; the stardate (2 bytes, binary)
 gs_cred   = $2594   ; credits (3 bytes BCD, high first)
 gs_seed   = $2597   ; the galaxy's seed (4 bytes)
-gs_go     = $259B   ; for the BASIC: 0 stay, 1 deep space, 2 the planet
+gs_go     = $259B   ; for the BASIC: 0 stay, 1 deep space, 2 the planet,
+                    ;   3 the achievements
 gs_dest   = $259C   ; where the Ark's going (arrives on sv_enter)
 gs_msg    = $259D   ; a message on row 2: 0 none, else MSG_*
 ; what the Ark carries, and its upgrades (port.asm)
@@ -111,6 +112,8 @@ sv_dst    = $BB
 MSG_REFUEL = 1
 MSG_DRIFT = 2
 MSG_BARREN = 3
+MSG_POD   = 4
+MSG_ACH   = 5       ; (ACHIEVEMENT: its name; gs_achi)
 
 ; ---------------------------------------------------------------------------
 ; a random number below A (A > 0): (rnd * A) / 256
@@ -508,6 +511,38 @@ gx_n_st2
     inx
     cpx #64
     bne gx_n_st
+    ; the relic: on a planet in the outer rim (from a random place on; none
+    ; there, any planet)
+    lda #64
+    jsr gx_rand
+    tax
+    lda #$C0                ; (the tier wanted: outer rim, then any)
+    sta sv_t0
+gx_n_rp
+    ldy #64
+gx_n_rl
+    lda gx_info,x
+    and #3
+    cmp #GT_PLANET
+    bne gx_n_rn
+    lda gx_info,x
+    and sv_t0
+    cmp sv_t0
+    beq gx_n_rf
+gx_n_rn
+    inx
+    txa
+    and #63
+    tax
+    dey
+    bne gx_n_rl
+    lda sv_t0
+    beq gx_n_rf             ; (no planets at all: wherever)
+    lda #0
+    sta sv_t0
+    beq gx_n_rp
+gx_n_rf
+    stx gs_relic
     rts
 gx_pfrom  .byte 1, 10, 15, 27, 40, 52
 gx_pspan  .byte 9, 5, 12, 13, 12, 12
@@ -676,6 +711,48 @@ gx_pp_lo
 gx_pp_r
     rts
 
+; The Ark's lost, the escape pod home (the BASIC's escape scene): home
+; again in a new Ark, as at the start (fuel, energy, no upgrades, the holds
+; and the bays empty), with a tenth of the credits. Kept: the bank, the
+; chart, the achievements, the galaxy's ports and planets as they are.
+gx_lost
+    lda #0
+    sta gs_sec
+    sta gs_dest
+    sta gs_ore
+    sta gs_org
+    sta gs_eqp
+    sta gs_ulas
+    sta gs_uhold
+    sta gs_utank
+    ldx #5
+gx_ls_k
+    sta gs_stasis,x
+    sta gs_keep,x
+    dex
+    bpl gx_ls_k
+    lda gs_relst            ; the relic aboard: back on its planet
+    cmp #2
+    beq gx_ls_r
+    lda #0
+    sta gs_relst
+gx_ls_r
+    lda #FUEL_START
+    sta gs_fuel
+    lda #EN_MAX
+    sta sp_energy
+    ldx #4                  ; credits / 10 (a BCD digit)
+gx_ls_c
+    lsr gs_cred
+    ror gs_cred+1
+    ror gs_cred+2
+    dex
+    bne gx_ls_c
+    lda #MSG_POD
+    sta gs_msg
+    lda #AC_POD
+    jmp ac_set
+
 ; the Ark arrives at gs_dest: visited, its neighbours seen
 gx_arrive
     lda gs_dest
@@ -764,40 +841,7 @@ sv_f_nd
     sta sv_pf
     lda sp_fire2
     sta sv_pf2
-    ; the rows: two 20-character objects each (palette 2 the top and bottom)
-    ldx #0
-sv_f_rows
-    stx sv_t4
-    lda sv_rowlo,x
-    sta temp1
-    lda sv_rowhi,x
-    sta temp2
-    lda sv_rowpal,x
-    ora #12                 ; (20 wide: 32 - 20)
-    sta temp3
-    lda #0
-    sta temp4
-    stx temp5
-    jsr plotcharacters
-    ldx sv_t4
-    clc
-    lda sv_rowlo,x
-    adc #20
-    sta temp1
-    lda sv_rowhi,x
-    adc #0
-    sta temp2
-    lda sv_rowpal,x
-    ora #12
-    sta temp3
-    lda #80
-    sta temp4
-    stx temp5
-    jsr plotcharacters
-    ldx sv_t4
-    inx
-    cpx #12
-    bne sv_f_rows
+    jsr sv_rows
     ; the chart's marker on the Ark's sector (blinking)
     lda sv_view
     cmp #1
@@ -819,123 +863,6 @@ sv_f_rows
 sv_f_r
     rts
 ch_mark   .byte 176
-
-sv_rowlo
-    .byte <$2200, <$2228, <$2250, <$2278, <$22A0, <$22C8
-    .byte <$2700, <$2728, <$2750, <$2778, <$27A0, <$27C8
-sv_rowhi
-    .byte >$2200, >$2228, >$2250, >$2278, >$22A0, >$22C8
-    .byte >$2700, >$2728, >$2750, >$2778, >$27A0, >$27C8
-sv_rowpal
-    .byte 2 << 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 << 5
-
-; ---- text helpers: sv_dst points into the rows ----
-; sv_dst = row X, column A
-sv_at
-    clc
-    adc sv_rowlo,x
-    sta sv_dst
-    lda sv_rowhi,x
-    adc #0
-    sta sv_dst+1
-    rts
-; copy the string at (A lo, Y hi), X long, to sv_dst; sv_dst moves on
-sv_puts
-    sta sv_src
-    sty sv_src+1
-    ldy #0
-sv_ps_l
-    lda (sv_src),y
-    sta (sv_dst),y
-    iny
-    dex
-    bne sv_ps_l
-    tya
-sv_skip                     ; (A: move sv_dst on that many)
-    clc
-    adc sv_dst
-    sta sv_dst
-    bcc sv_ps_r
-    inc sv_dst+1
-sv_ps_r
-    rts
-; one character A
-sv_putc
-    ldy #0
-    sta (sv_dst),y
-    lda #1
-    bne sv_skip
-; A as two digits
-sv_dec2
-    ldx #0
-sv_d2_l
-    cmp #10
-    bcc sv_d2_d
-    sbc #10
-    inx
-    bne sv_d2_l
-sv_d2_d
-    pha
-    txa
-    jsr tx_digit
-    jsr sv_putc
-    pla
-    jsr tx_digit
-    jmp sv_putc
-; (sv_t0 lo, sv_t1 hi) as four digits
-sv_dec4
-    ldx #3
-sv_d4_l
-    stx sv_t4
-    ldy #0
-sv_d4_s
-    sec
-    lda sv_t0
-    sbc sv_p10lo,x
-    sta sv_t2
-    lda sv_t1
-    sbc sv_p10hi,x
-    bcc sv_d4_o
-    sta sv_t1
-    lda sv_t2
-    sta sv_t0
-    iny
-    bne sv_d4_s
-sv_d4_o
-    tya
-    jsr tx_digit
-    jsr sv_putc
-    ldx sv_t4
-    dex
-    bpl sv_d4_l
-    rts
-sv_p10lo  .byte <1, <10, <100, <1000
-sv_p10hi  .byte >1, >10, >100, >1000
-; a BCD byte A as two digits
-sv_bcd
-    pha
-    lsr
-    lsr
-    lsr
-    lsr
-    jsr tx_digit
-    jsr sv_putc
-    pla
-    and #15
-    jsr tx_digit
-    jmp sv_putc
-
-; clear the text
-sv_cls
-    ldx #239
-    lda #0
-sv_cl_l
-    sta $2200,x
-    sta $2700,x
-    dex
-    cpx #$FF
-    bne sv_cl_l
-    rts
 
 ; ---------------------------------------------------------------------------
 ; The sector view
@@ -1014,12 +941,43 @@ sv_b_wn
     jsr sv_at
     ldx gs_sec
     jsr sv_what
-    ; row 2: a message
+    ; row 2: a message (or, with none, a new achievement)
+    lda gs_msg
+    bne sv_b_na
+    jsr ac_new
+    bcc sv_b_na
+    lda #MSG_ACH
+    sta gs_msg
+    lda #SFX_CLEAR
+    jsr sfx
+sv_b_na
     lda gs_msg
     beq sv_b_nm
     ldx #2
     lda #1
     jsr sv_at
+    lda gs_msg
+    cmp #MSG_ACH
+    bne sv_b_mm
+    lda #<tx_mach
+    ldy #>tx_mach
+    ldx #13
+    jsr sv_puts
+    lda gs_achi             ; its name: ac_names + 9 x
+    asl
+    asl
+    asl
+    adc gs_achi
+    adc #<ac_names
+    pha
+    lda #>ac_names
+    adc #0
+    tay
+    pla
+    ldx #9
+    jsr sv_puts
+    jmp sv_b_nm
+sv_b_mm
     ldx gs_msg
     lda sv_msglo-1,x
     pha
@@ -1180,7 +1138,9 @@ sv_what
     cmp #GT_PORT
     beq sv_w_port
     cmp #GT_PLANET
-    bne sv_w_r
+    beq sv_w_r_far1141
+    jmp sv_w_r
+sv_w_r_far1141
     lda #2                  ; a planet: its world's name
     jsr sv_skip
     ldx sv_t2
@@ -1213,11 +1173,24 @@ sv_what
     jsr sv_puts
     pla
     jsr tx_digit
-    jmp sv_putc
+    jsr sv_putc
+    jmp sv_w_rel
 sv_w_bar
     lda #<tx_barren
     ldy #>tx_barren
     ldx #6
+    jsr sv_puts
+sv_w_rel
+    ldx sv_t2               ; the relic here: RELIC SIGNAL
+    cpx gs_relic
+    bne sv_w_r
+    lda gs_relst
+    bne sv_w_r
+    lda #2
+    jsr sv_skip
+    lda #<tx_relsig
+    ldy #>tx_relsig
+    ldx #12
     jmp sv_puts
 sv_w_port
     lda #2                  ; a port: its class (B buys, S sells: ore,
@@ -1326,6 +1299,12 @@ sv_i_act
     ldx gs_sec
     jsr gx_pop
     bne sv_i_ld
+    lda #1                  ; (the relic's there: down for it)
+    cpx gs_relic
+    bne sv_i_bar
+    ldy gs_relst
+    beq sv_i_ld
+sv_i_bar
     lda #MSG_BARREN
     sta gs_msg
     inc sv_dirty
@@ -1648,7 +1627,7 @@ ch_b_done
     jsr sv_at
     lda #<tx_chhelp
     ldy #>tx_chhelp
-    ldx #14
+    ldx #35
     jmp sv_puts
 ch_sym    .byte 128+4, 128+8, 128+12, 128+16   ; empty, port, planet, nebula
 
@@ -1681,11 +1660,14 @@ ch_l1
     rts
 
 ch_input
-    ; button 2 or fire (fresh): back to the sector
+    ; button 2 (fresh): the achievements (the BASIC: bank 6); fire: back
     lda sp_fire2
     beq ch_i_f
     lda sv_pf2
-    beq ch_i_back
+    bne ch_i_f
+    lda #3
+    sta gs_go
+    rts
 ch_i_f
     lda sp_fire
     beq ch_i_r
@@ -1712,8 +1694,7 @@ tx_chart   .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-3
 tx_svhelp  .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("G"-32)*2,("O"-32)*2,0,0,0,0,0,0,0,0
            .byte ("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0
            .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-32)*2,("A"-32)*2,("R"-32)*2,("T"-32)*2
-tx_chhelp  .byte ("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0
-           .byte ("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2
+tx_chhelp .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'FIRE: BACK   BUTTON 2: ACHIEVEMENTS' (35)
 ; the legend: a node glyph, then its word
 tx_legend  .byte 128+8,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,0
            .byte 128+12,0,("P"-32)*2,("L"-32)*2,("A"-32)*2,("N"-32)*2,("E"-32)*2,("T"-32)*2,0,0
@@ -1745,9 +1726,12 @@ tx_mrefuel .byte ("R"-32)*2,("E"-32)*2,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)
            .byte ("S"-32)*2,("O"-32)*2,("O"-32)*2,("N"-32)*2
 tx_mdrift  .byte ("O"-32)*2,("U"-32)*2,("T"-32)*2,0,("O"-32)*2,("F"-32)*2,0,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2
            .byte (":"-32)*2,0,("A"-32)*2,("D"-32)*2,("R"-32)*2,("I"-32)*2,("F"-32)*2,("T"-32)*2
-sv_msglo   .byte <tx_mrefuel, <tx_mdrift, <tx_mbarren
-sv_msghi   .byte >tx_mrefuel, >tx_mdrift, >tx_mbarren
-sv_msglen  .byte 22, 19, 32
+sv_msglo   .byte <tx_mrefuel, <tx_mdrift, <tx_mbarren, <tx_mpod
+sv_msghi   .byte >tx_mrefuel, >tx_mdrift, >tx_mbarren, >tx_mpod
+sv_msglen  .byte 22, 19, 32, 37
+tx_mach .byte ("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,(":"-32)*2,0   ; 'ACHIEVEMENT: ' (13)
+tx_mpod .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("P"-32)*2,("O"-32)*2,("D"-32)*2,0,("G"-32)*2,("O"-32)*2,("T"-32)*2,0,("H"-32)*2,("O"-32)*2,("M"-32)*2,("E"-32)*2,(":"-32)*2,0,("A"-32)*2,0,("N"-32)*2,("E"-32)*2,("W"-32)*2,0,("A"-32)*2,("R"-32)*2,("K"-32)*2,(","-32)*2,0,("1"-32)*2,("0"-32)*2,("%"-32)*2,0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2   ; 'THE POD GOT HOME: A NEW ARK, 10% LEFT' (37)
 tx_mbarren .byte ("N"-32)*2,("O"-32)*2,("T"-32)*2,("H"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2,0,("T"-32)*2,("O"-32)*2,0,("C"-32)*2,("A"-32)*2,("T"-32)*2,("C"-32)*2,("H"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("Y"-32)*2,("E"-32)*2,("T"-32)*2   ; 'NOTHING LEFT TO CATCH THERE: YET' (32)
 tx_life .byte ("L"-32)*2,("I"-32)*2,("F"-32)*2,("E"-32)*2,0   ; 'LIFE ' (5)
 tx_barren .byte ("B"-32)*2,("A"-32)*2,("R"-32)*2,("R"-32)*2,("E"-32)*2,("N"-32)*2   ; 'BARREN' (6)
+tx_relsig .byte ("R"-32)*2,("E"-32)*2,("L"-32)*2,("I"-32)*2,("C"-32)*2,0,("S"-32)*2,("I"-32)*2,("G"-32)*2,("N"-32)*2,("A"-32)*2,("L"-32)*2   ; 'RELIC SIGNAL' (12)

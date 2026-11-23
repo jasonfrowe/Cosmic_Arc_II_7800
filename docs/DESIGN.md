@@ -462,7 +462,24 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
   (`gs_miss`, a nibble a sector; a planet has 4 at most); one comes back
   every 3 jumps. The sector view shows LIFE n or BARREN, and a barren
   planet can't be landed on. `tools/test_deplete.sh`.
-- Not yet: the bank, the escape pod, achievements, the relic, saves.
+- **The bank** (a fourth tab at safe space's ports): deposit or withdraw
+  100, or all. Savings are kept when the Ark's lost.
+- **The escape pod**: the Ark's energy gone (in deep space or on a
+  planet), it breaks up and the saucer drops from its bay and races away
+  (a nod to the 2600 game's ending). Fire: home in a new Ark (sector 1;
+  fuel 20, energy full, no upgrades, the holds and the kept specimens
+  lost) with **a tenth of the credits**. Kept: the bank, the chart, the
+  achievements, the galaxy as it is. `tools/test_pod.sh`.
+- **The relic**: on one outer-rim planet (`gs_relic`, chosen with the
+  galaxy). Every port's commodities tab carries a rumour (STRANGE READINGS
+  NEAR SECTOR nn: a sector next to it); the sector view there says RELIC
+  SIGNAL (it can be landed on even when barren). On the planet it's the
+  last crate, shimmering in the beam's colours; it rises half as fast in
+  the beam, and carried it's **a quarter speed across and a quarter going
+  up**. Docked, it's aboard (RELIC ABOARD; lost with the Ark); the next
+  port pays 2000 for it, and RELIC is earned. `tools/test_relic.sh`.
+- Port messages show on row 11 (in place of the help) while they last.
+- Not yet: saves (M6).
 
 ### 6.2 Resources
 
@@ -506,6 +523,39 @@ Black Market sells level 3 and the unique items.
   for each species saved.
 - **Rank** (Cadet → Admiral) from the score: species saved, credits,
   pirates destroyed, stardates to spare. It goes in the high-score table.
+
+### 6.5b As built: achievements instead of a single win (M5)
+
+There's no winning or losing the voyage: the Ark lost, the escape pod gets
+home (6.1c), and play goes on. Instead, **16 achievements**, each its own
+icon on a 4 x 4 screen (bank 6; from the star chart, button 2), grey until
+earned, then in colour; the stick picks one and row 10 says what it takes,
+with progress where it counts. A new one is announced on the map
+(ACHIEVEMENT: name) when there's no other message.
+
+| | Name | Takes |
+|---|---|---|
+| 0 | PAIRS | a pair of every kind kept |
+| 1 | SURVEY | one of every kind kept by stardate 150 |
+| 2 | ACE | 50 pirates destroyed |
+| 3 | CHARTED | every sector visited |
+| 4 | TYCOON | 10,000 credits aboard |
+| 5 | REFIT | every upgrade |
+| 6 | RELIC | the relic brought to a port |
+| 7 | UNTOUCHED | an encounter cleared without a hit on the Ark |
+| 8 | SWEEP | every creature on a planet caught, nothing lost |
+| 9 | STORMS | 5 storm rocks shot down |
+| 10 | FAR SHORE | sector 64 reached |
+| 11 | DEEP RAID | a wave-10 encounter survived |
+| 12 | ON FUMES | docked at a port on an empty tank |
+| 13 | BANKER | 5,000 in the bank |
+| 14 | LOADED | 20 holds full |
+| 15 | LIFEBOAT | home in the escape pod |
+
+Most are worked out from the voyage's state (`ac_check`, text40.asm, bank
+1); UNTOUCHED, DEEP RAID, SWEEP, ON FUMES and LIFEBOAT are set where they
+happen (`ac_set`). Each save slot (M6) will keep its own.
+`tools/test_ach.sh`.
 
 ---
 
