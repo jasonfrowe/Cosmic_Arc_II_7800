@@ -22,6 +22,7 @@ step(5, nil, function() local m = mem()                        -- home: buys ore
   m:write_u8(0x2680, (m:read_u8(0x2680) & 0xE3) | (2 << 2)); m:write_u8(0x27F7, 1) end)
 step(60, "P1 Button 1", function() local m = mem()             -- dock (item 0)
   local i = m:read_u8(0x2680); tier = i >> 6; class = (i >> 2) & 7
+  for k = 0, 2 do m:write_u8(0x25A9 + k, (class & (1 << k)) ~= 0 and 12 or 0) end   -- home's stock (port 0)
   m:write_u8(0x2585, 3); m:write_u8(0x2586, 0); m:write_u8(0x2587, 0); setcred(1000) end)
 -- COMMODITIES: the first one the port buys (sell one), the first it sells (buy one)
 local buyk, sellk
@@ -43,38 +44,53 @@ for _, which in ipairs({"sell", "buy"}) do
     if not s.k then return end
     local k = s.k
     local dc, dg = credits() - s.c0, m:read_u8(0x2585 + k) - s.g0
+    local stock = m:read_u8(0x25A9 + k)
     if which == "sell" then
-      local price = base[k] - 4 + 8 * tier
-      check("sell a commodity the port buys", dc == price and dg == -1, string.format("+%d credits, goods %d", dc, dg))
+      local price = base[k] - 4 + 8 * tier                    -- (it had bought none)
+      check("sell a commodity the port buys", dc == price and dg == -1 and stock == 1, string.format("+%d credits, goods %d, it's bought %d", dc, dg, stock))
     else
-      local price = base[k] + 4 * tier
-      check("buy a commodity the port sells", dc == -price and dg == 1, string.format("%d credits, goods %+d", dc, dg))
+      local p = base[k] + 4 * tier                             -- 12 in stock: + p * 3 / 32
+      local price = p + (p * 3) // 32
+      check("buy a commodity the port sells", dc == -price and dg == 1 and stock == 11, string.format("%d credits (%d), goods %+d, stock %d", dc, price, dg, stock))
     end
     s.k = nil end)
 end
+-- sold out: none bought
+step(20, nil, function() local m = mem()
+  if not sellk then return end
+  m:write_u8(0x25A9 + sellk, 0); m:write_u8(0x22FB, sellk); m:write_u8(0x27F7, 1); s.c0, s.g0 = credits(), m:read_u8(0x2585 + sellk) end)
+step(30, "P1 Button 1", nil)
+step(10, nil, function() local m = mem()
+  if not sellk then return end
+  check("sold out: none bought", credits() == s.c0 and m:read_u8(0x2585 + sellk) == s.g0) end)
 -- BIO-BOUNTY: sell a walker; keep a glider (left)
-step(20, "P1 Button 2", function() local m = mem(); m:write_u8(0x256B, 2); m:write_u8(0x256F, 1); m:write_u8(0x2571, 0) end)
+step(20, "P1 Button 2", function() local m = mem(); m:write_u8(0x256B, 2); m:write_u8(0x256F, 1); m:write_u8(0x25A4, 0); m:write_u8(0x25BE, 0) end)
 step(20, nil, function() s.c0 = credits() end)
 step(30, "P1 Button 1", nil)
 step(10, nil, function() local m = mem()
   local b = (30 * (2 + tier)) // 2
-  check("sell a creature (walker)", credits() - s.c0 == b and m:read_u8(0x256B) == 1, string.format("+%d, bounty %d", credits() - s.c0, b))
+  check("sell a creature (walker)", credits() - s.c0 == b and m:read_u8(0x256B) == 1 and m:read_u8(0x25BE) == 1, string.format("+%d, bounty %d", credits() - s.c0, b))
+  s.c0, s.b = credits(), b end)
+step(30, "P1 Button 1", nil)
+step(10, nil, function() local m = mem()
+  local b = (s.b * 7) // 8                                     -- it's had one: an eighth less
+  check("a second walker: less", credits() - s.c0 == b and m:read_u8(0x256B) == 0, string.format("+%d, expected %d", credits() - s.c0, b))
   m:write_u8(0x22FB, 4); m:write_u8(0x27F7, 1) end)
 step(30, "P1 Left", nil)
 step(10, nil, function() local m = mem()
-  check("keep one for the manifest (glider)", m:read_u8(0x2571) & 16 ~= 0 and m:read_u8(0x256F) == 0) end)
+  check("keep one for the manifest (glider)", m:read_u8(0x25A4) == 1 and m:read_u8(0x256F) == 0) end)
 -- SHIPYARD: refuel, repair, the laser
 step(20, "P1 Button 2", function() local m = mem(); m:write_u8(0x2591, 10); m:write_u8(0x2386, 50); setcred(1000) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("refuel", mem():read_u8(0x2591) == 30 and credits() == 900, string.format("fuel %d, credits %d", mem():read_u8(0x2591), credits()))
+step(10, nil, function() check("refuel (4 a unit at home)", mem():read_u8(0x2591) == 30 and credits() == 920, string.format("fuel %d, credits %d", mem():read_u8(0x2591), credits()))
   mem():write_u8(0x22FB, 1); mem():write_u8(0x27F7, 1) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("repair", mem():read_u8(0x2386) == 96 and credits() == 854, string.format("energy %d, credits %d", mem():read_u8(0x2386), credits()))
+step(10, nil, function() check("repair (4 a point)", mem():read_u8(0x2386) == 96 and credits() == 736, string.format("energy %d, credits %d", mem():read_u8(0x2386), credits()))
   mem():write_u8(0x22FB, 2); mem():write_u8(0x27F7, 1) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("the laser upgrade", mem():read_u8(0x2588) == 1 and credits() == 354, string.format("level %d, credits %d", mem():read_u8(0x2588), credits())) end)
+step(10, nil, function() check("the laser upgrade", mem():read_u8(0x2588) == 1 and credits() == 236, string.format("level %d, credits %d", mem():read_u8(0x2588), credits())) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("too dear (the next laser, 1000)", mem():read_u8(0x2588) == 1 and credits() == 354) end)
+step(10, nil, function() check("too dear (the next laser, 1000)", mem():read_u8(0x2588) == 1 and credits() == 236) end)
 step(10, nil, nil)
 emu.register_frame_done(function()
   f = f + 1
@@ -86,7 +102,7 @@ emu.register_frame_done(function()
     if f - t0 >= st[1] then si = si + 1; t0 = f end
   else
     print("port (tier " .. tier .. ", class " .. class .. "): " .. table.concat(out, "; "))
-    print("result " .. ((#bad == 0 and #out >= 8) and 1 or 0))
+    print("result " .. ((#bad == 0 and #out >= 10) and 1 or 0))
     manager:machine():exit()
   end
   for name, field in pairs(fields) do if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end end

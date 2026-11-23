@@ -109,6 +109,7 @@ pr_hw     .byte 5, 7, 3             ; hit box half sizes (+1 for a shot)
 pr_hh     .byte 5, 7, 3
 pr_scm    .byte $03, $07, $00       ; points, BCD: 300, 750, 50
 pr_scl    .byte $00, $50, $50
+pr_cred   .byte $10, $25            ; credits, BCD: a raider, a gunship
 
 ; ---------------------------------------------------------------------------
 pr_new
@@ -985,6 +986,23 @@ pr_dm_e
     lda pr_t,x
     cmp #PR_MISS
     beq pr_dm_boom
+    tay                     ; a pirate: its bounty in credits (BCD), and
+    sed                     ;  one more for the tally (achievements)
+    clc
+    lda gs_cred+2
+    adc pr_cred-1,y
+    sta gs_cred+2
+    lda gs_cred+1
+    adc #0
+    sta gs_cred+1
+    lda gs_cred
+    adc #0
+    sta gs_cred
+    cld
+    inc gs_kills
+    bne pr_dm_k2
+    inc gs_kills+1
+pr_dm_k2
     jsr pd_drop
 pr_dm_boom
     lda #SFX_BOOM

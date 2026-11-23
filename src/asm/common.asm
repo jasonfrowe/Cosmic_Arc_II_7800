@@ -130,16 +130,25 @@ dr_bf0
 up_holds  .byte 10, 15, 20, 20
 up_tank   .byte 30, 40, 50, 50
 
-; C = 1: room in the holds (ore + organics + equipment < the holds)
+; C = 1: room in the holds (goods + creatures in stasis < the holds)
 pt_holdfree
-    clc
-    lda gs_ore
-    adc gs_org
-    adc gs_eqp
+    jsr pt_holdused
     ldx gs_uhold
     cmp up_holds,x          ; (C = 1: as many as the holds or more)
     lda #0
     rol                     ; A = C
     eor #1
     lsr                     ; C = room
+    rts
+; A = the holds in use: goods and creatures in stasis
+pt_holdused
+    clc
+    lda gs_ore
+    adc gs_org
+    adc gs_eqp
+    ldx #5
+pt_hu_l
+    adc gs_stasis,x
+    dex
+    bpl pt_hu_l
     rts

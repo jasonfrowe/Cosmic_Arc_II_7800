@@ -442,8 +442,27 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
   every 8, 6, 4 frames; 500, 1000), the holds (300, 600), the fuel tanks
   (30, 40, 50; 300, 600).
 - Leaving: an encounter, maybe (the sector's odds). `tools/test_port.sh`.
-- Not yet: port stock and restocking with the stardate; hull; more
-  upgrades; save on docking.
+
+### 6.1c The economy (M5, second slice)
+
+- **Stock** (`pt_stock`, 0-15 a good a port). What a port sells starts at
+  12; each one bought from it puts its price up by P x (15 - stock) / 32
+  (up to half again), and at 0 it's SOLD OUT. What it buys starts at 0
+  bought; each one sold to it takes P x bought / 32 off (down to half), and
+  at 15 it WANTS NO MORE. Every 2 jumps each stock steps back to normal.
+- **Bounties** fall an eighth for each creature the port has bought lately,
+  down to half (`pt_glut`, down one every 2 jumps): sell around.
+- **Fuel and repairs by tier**: fuel 4, 5, 6, 7 a unit, energy 4, 5, 6, 8
+  a point (safe to outer rim). A bad fight (40 points) costs 160-320.
+- **Pirates pay**: a raider 10 credits, a gunship 25 (`gs_kills` counts).
+- **Creatures take holds** while in stasis: the beam won't lift one when
+  the holds are full (HOLDS FULL). **Kept** specimens go to the Ark's own
+  bays (out of the holds): **a pair of each kind** (`gs_keep`, 0-2).
+- **Planets empty**: each creature taken from a planet is one fewer there
+  (`gs_miss`, a nibble a sector; a planet has 4 at most); one comes back
+  every 3 jumps. The sector view shows LIFE n or BARREN, and a barren
+  planet can't be landed on. `tools/test_deplete.sh`.
+- Not yet: the bank, the escape pod, achievements, the relic, saves.
 
 ### 6.2 Resources
 

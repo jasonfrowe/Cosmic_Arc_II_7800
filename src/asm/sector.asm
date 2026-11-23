@@ -39,7 +39,27 @@ gs_ulas   = $2588   ; upgrade levels 0-2: the laser (fire rate), the holds,
 gs_uhold  = $2589   ;   the fuel tanks
 gs_utank  = $258A
 gs_stasis = $256B   ; [6] creatures in stasis, by kind
-gs_kept   = $2571   ; the manifest: a bit a kind kept (one specimen each)
+; the voyage's long-lived state ($25A0-$25EF: saved with the game)
+gs_keep   = $25A0   ; [6] the manifest: specimens kept, by kind (0-2: a pair)
+gs_bank   = $25A6   ; the bank (3 bytes BCD, high first): kept when the Ark's lost
+pt_stock  = $25A9   ; [21] each port's stock (7 ports x 3 goods, 0-15): what
+                    ;   it has to sell, or what it's bought (it wants 15 - that)
+pt_glut   = $25BE   ; [7] creatures each port's bought lately (bounties fall)
+gs_miss   = $25C5   ; [32] creatures taken from each planet lately, a nibble
+                    ;   a sector (sector / 2; odd sectors the high nibble)
+gs_ach    = $25E5   ; [2] achievements earned (a bit each)
+gs_kills  = $25E7   ; [2] pirates destroyed (binary)
+gs_storms = $25E9   ; storm rocks shot down
+gs_relic  = $25EA   ; the relic's sector
+gs_relst  = $25EB   ; the relic: 0 on its planet, 1 aboard, 2 delivered
+gs_tick   = $25EC   ; jumps, for restocking: ports every 2, planets every 3
+gs_tick3  = $25ED
+gs_pop    = $2572   ; the planet being landed on: its creatures (surface.asm)
+GS_LONG   = $25A0   ; (the block: GS_LONGN bytes from here)
+GS_LONGN  = $50
+PT_NORMAL = 12      ; a port's stock of what it sells, restocked
+PT_FULL   = 15
+PL_POP    = 4       ; a planet's creatures, at most (gs_miss takes from it)
 gs_test   = $259F   ; (tests set it: fire on the title goes straight into
                     ;   deep space, waves then planets, as before the map)
 
@@ -90,7 +110,7 @@ sv_dst    = $BB
 
 MSG_REFUEL = 1
 MSG_DRIFT = 2
-MSG_NOFUEL = 3
+MSG_BARREN = 3
 
 ; ---------------------------------------------------------------------------
 ; a random number below A (A > 0): (rnd * A) / 256
@@ -449,13 +469,45 @@ gx_n_inv
     sta gs_stasis,x
     dex
     bpl gx_n_inv
-    sta gs_kept
     sta gs_ore
     sta gs_org
     sta gs_eqp
     sta gs_ulas
     sta gs_uhold
     sta gs_utank
+    ldx #GS_LONGN-1         ; the long-lived block: all clear
+gx_n_lg
+    sta GS_LONG,x
+    dex
+    bpl gx_n_lg
+    ; each port's stock: PT_NORMAL of what it sells, none bought
+    ldx #0                  ; (sector)
+    ldy #0                  ; (stock index)
+gx_n_st
+    lda gx_info,x
+    and #3
+    cmp #GT_PORT
+    bne gx_n_st2
+    lda gx_info,x
+    lsr
+    lsr
+    sta sv_t0               ; (class bits: 1 sells)
+    lda #3
+    sta sv_t1
+gx_n_st3
+    lda #0
+    lsr sv_t0
+    bcc gx_n_st4
+    lda #PT_NORMAL
+gx_n_st4
+    sta pt_stock,y
+    iny
+    dec sv_t1
+    bne gx_n_st3
+gx_n_st2
+    inx
+    cpx #64
+    bne gx_n_st
     rts
 gx_pfrom  .byte 1, 10, 15, 27, 40, 52
 gx_pspan  .byte 9, 5, 12, 13, 12, 12
@@ -515,6 +567,113 @@ gx_wt_no
 gx_wt_y
     tya
     clc
+    rts
+
+; a jump's gone by: every 2, each port's stock a step back to normal (what
+; it sells up to PT_NORMAL, what it's bought down to none) and its glut of
+; creatures down one; every 3, each planet's creatures one back (gs_miss).
+; (Leaves sv_t3 alone: sv_warp's.)
+gx_restock
+    inc gs_tick
+    lda gs_tick
+    lsr
+    bcs gx_rs_pl
+    ldx #0                  ; (sector)
+    ldy #0                  ; (stock index)
+    sty gc_n                ; (port)
+gx_rs_s
+    lda gx_info,x
+    and #3
+    cmp #GT_PORT
+    bne gx_rs_n
+    lda gx_info,x
+    lsr
+    lsr
+    sta gc_ne               ; (class bits: 1 sells)
+    txa
+    pha
+    ldx #3
+gx_rs_k
+    lsr gc_ne
+    lda pt_stock,y
+    bcc gx_rs_b
+    cmp #PT_NORMAL          ; sells: up to normal
+    bcs gx_rs_kn
+    adc #1
+    bne gx_rs_ks
+gx_rs_b
+    cmp #0                  ; buys: down to none
+    beq gx_rs_kn
+    sbc #1                  ; (C = 1 after the cmp)
+gx_rs_ks
+    sta pt_stock,y
+gx_rs_kn
+    iny
+    dex
+    bne gx_rs_k
+    ldx gc_n
+    lda pt_glut,x
+    beq gx_rs_g
+    dec pt_glut,x
+gx_rs_g
+    inc gc_n
+    pla
+    tax
+gx_rs_n
+    inx
+    cpx #64
+    bne gx_rs_s
+gx_rs_pl
+    inc gs_tick3
+    lda gs_tick3
+    cmp #3
+    bcc gx_rs_r
+    lda #0
+    sta gs_tick3
+    ldx #31
+gx_rs_p
+    lda gs_miss,x
+    tay
+    and #$0F
+    beq gx_rs_p1
+    dey
+gx_rs_p1
+    tya
+    and #$F0
+    beq gx_rs_p2
+    tya
+    sec
+    sbc #$10
+    tay
+gx_rs_p2
+    tya
+    sta gs_miss,x
+    dex
+    bpl gx_rs_p
+gx_rs_r
+    rts
+
+; the creatures sector X's planet has now (PL_POP - those taken lately, at
+; least 0): A
+gx_pop
+    txa
+    lsr
+    tay
+    lda gs_miss,y
+    bcc gx_pp_lo
+    lsr
+    lsr
+    lsr
+    lsr
+gx_pp_lo
+    and #$0F
+    sta gc_ne
+    lda #PL_POP
+    sec
+    sbc gc_ne
+    bcs gx_pp_r
+    lda #0
+gx_pp_r
     rts
 
 ; the Ark arrives at gs_dest: visited, its neighbours seen
@@ -1041,6 +1200,24 @@ sv_what
     tay
     ldx #5
     pla
+    jsr sv_puts
+    lda #2                  ; ... and its life: LIFE n, or BARREN (taken)
+    jsr sv_skip
+    ldx sv_t2
+    jsr gx_pop
+    beq sv_w_bar
+    pha
+    lda #<tx_life
+    ldy #>tx_life
+    ldx #5
+    jsr sv_puts
+    pla
+    jsr tx_digit
+    jmp sv_putc
+sv_w_bar
+    lda #<tx_barren
+    ldy #>tx_barren
+    ldx #6
     jmp sv_puts
 sv_w_port
     lda #2                  ; a port: its class (B buys, S sells: ore,
@@ -1144,7 +1321,18 @@ sv_i_fire
 sv_i_act
     and #1
     bne sv_i_dock
-    ; land: the BASIC goes to the planet (its world)
+    ; land: the BASIC goes to the planet (its world, its creatures); none
+    ; left: not yet
+    ldx gs_sec
+    jsr gx_pop
+    bne sv_i_ld
+    lda #MSG_BARREN
+    sta gs_msg
+    inc sv_dirty
+    lda #SFX_HIT
+    jmp sfx
+sv_i_ld
+    sta gs_pop
     ldx gs_sec
     lda gx_info,x
     lsr
@@ -1188,6 +1376,7 @@ sv_wp_go
     bne sv_wp_d
     inc gs_date+1
 sv_wp_d
+    jsr gx_restock
     lda gs_dest
     jsr sv_encroll
     bcc sv_wp_none
@@ -1556,6 +1745,9 @@ tx_mrefuel .byte ("R"-32)*2,("E"-32)*2,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)
            .byte ("S"-32)*2,("O"-32)*2,("O"-32)*2,("N"-32)*2
 tx_mdrift  .byte ("O"-32)*2,("U"-32)*2,("T"-32)*2,0,("O"-32)*2,("F"-32)*2,0,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2
            .byte (":"-32)*2,0,("A"-32)*2,("D"-32)*2,("R"-32)*2,("I"-32)*2,("F"-32)*2,("T"-32)*2
-sv_msglo   .byte <tx_mrefuel, <tx_mdrift
-sv_msghi   .byte >tx_mrefuel, >tx_mdrift
-sv_msglen  .byte 22, 19
+sv_msglo   .byte <tx_mrefuel, <tx_mdrift, <tx_mbarren
+sv_msghi   .byte >tx_mrefuel, >tx_mdrift, >tx_mbarren
+sv_msglen  .byte 22, 19, 32
+tx_mbarren .byte ("N"-32)*2,("O"-32)*2,("T"-32)*2,("H"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2,0,("T"-32)*2,("O"-32)*2,0,("C"-32)*2,("A"-32)*2,("T"-32)*2,("C"-32)*2,("H"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("Y"-32)*2,("E"-32)*2,("T"-32)*2   ; 'NOTHING LEFT TO CATCH THERE: YET' (32)
+tx_life .byte ("L"-32)*2,("I"-32)*2,("F"-32)*2,("E"-32)*2,0   ; 'LIFE ' (5)
+tx_barren .byte ("B"-32)*2,("A"-32)*2,("R"-32)*2,("R"-32)*2,("E"-32)*2,("N"-32)*2   ; 'BARREN' (6)

@@ -316,6 +316,12 @@ pl_new_c
 pl_new_n
     clc
     adc #2
+    ldy gs_test             ; from the map: no more than the planet has left
+    bne pl_new_np
+    cmp gs_pop
+    bcc pl_new_np
+    lda gs_pop
+pl_new_np
     sta pl_total
     tay
     dey
@@ -1361,6 +1367,19 @@ pl_deliver
     adc #1
     sta gs_stasis-1,y
 pl_dv_st
+    lda gs_test             ; the planet has one fewer (gs_miss: back with
+    bne pl_dv_nm            ;  time; not in the tests' old flow)
+    lda gs_sec
+    lsr
+    tay
+    lda #$01
+    bcc pl_dv_lo
+    lda #$10
+pl_dv_lo
+    clc
+    adc gs_miss,y
+    sta gs_miss,y
+pl_dv_nm
     lda #0
     sta cr_t,x
     inc pl_caught
@@ -2259,6 +2278,22 @@ pl_bw_take
     beq pl_bw_tk
     jmp pl_bw_cn
 pl_bw_tk
+    jsr pt_holdfree         ; no room aboard (creatures take holds): it
+    ldx pl_i                ;  won't come up
+    bcs pl_bw_tk2
+    lda pl_msgtm
+    bne pl_bw_tkn
+    lda #<tx_holdsfull
+    ldy #>tx_holdsfull
+    ldx #10
+    jsr sp_msgcopy
+    lda #90
+    sta pl_msgtm
+    lda #SFX_HIT
+    jsr sfx
+pl_bw_tkn
+    jmp pl_bw_cn
+pl_bw_tk2
     inc pl_busy
 pl_bw_t2
     lda #CS_LIFT

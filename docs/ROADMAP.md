@@ -72,15 +72,18 @@ then link them together.
 - [x] Generated songs from RPMegaChopperII's composer (`tools/musicgen`): the map's track; the title's (`skip_intro`: in strong, no build-up)
 - [ ] More generated tracks (starport, ending); the hand-written ones redone?
 
-## M5: Starports (first slice ✅ 2026-11-22)
+## M5: Starports (first slice ✅ 2026-11-22; economy ✅ 2026-11-22)
 - [x] 320A tabbed menus: Commodities, Bio-Bounty, Shipyard (`port.asm`); `test_port.sh`
 - [x] Port classes, prices by tier; creatures delivered into stasis, ore into the holds
 - [x] Upgrades: the laser's fire rate (deep space), holds, fuel tanks
-- [ ] Stock and restock with the stardate; hull and repairs; more upgrades (beam width, turret, thrusters, scanners)
-- [ ] The manifest's goal and the ending; the star's collapse
+- [x] Stock and restock with the jumps; bounties fall where a port's had many; fuel and repairs by tier; pirates pay; creatures take holds; kept pairs; planets empty and refill (`test_deplete.sh`)
+- [ ] The bank (deposits at ports) and the escape pod: the Ark lost, back to sector 1, ship reset, most credits gone (the saucer escaping, as the 2600 game's ending)
+- [ ] Achievements (16, a 4 x 4 grid of icons filled in as earned) instead of a single win: pairs of every kind; one of each by a stardate; pirates destroyed; every sector; rich; every upgrade; the relic; untouched encounter; clean planet; storm rocks; the far sector; wave 10; on fumes; ...
+- [ ] The relic: on one outer-rim planet, heavy (a quarter speed, no climbing out of the beam band), hinted at ports
+- [ ] More upgrades (beam width, turret, thrusters, scanners)
 
 ## M6: Save / continue
-- [ ] SaveKey save slot, saved on docking; Continue on the title
+- [ ] Three save slots on the SaveKey, each its own game and achievements; clear a slot; saved on docking; Continue on the title
 - [ ] HSC fallback: measure the free space; full or reduced save
 
 ## M7: Full game

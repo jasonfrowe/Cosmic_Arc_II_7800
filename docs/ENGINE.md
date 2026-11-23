@@ -135,7 +135,10 @@ bytes of a line; the creatures come straight after it.
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
 | $2585-$258A | sector.asm: aboard: fuel ore, organics, equipment; upgrade levels (laser, holds, tanks) |
-| $256B-$2571 | sector.asm: creatures in stasis by kind (6), the manifest's kept bits |
+| $256B-$2570 | sector.asm: creatures in stasis by kind (6) |
+| $2572 | sector.asm: the planet being landed on: its creatures (`gs_pop`) |
+| $25A0-$25EF | sector.asm: the voyage's long-lived block (saved): kept pairs, the bank, port stock and glut, planets' creatures taken, achievements, pirates destroyed, storm rocks, the relic, the restock ticks |
+| $25F0-$25F2 | port.asm: scratch |
 | $2590-$259F | sector.asm: the voyage (sector, fuel, stardate, credits, seed; $259F the tests' flag) (the boot check's before a game) |
 | $2600-$26FF | sector.asm: the galaxy by sector (warps, cells, info, flags: visited, seen, jumps to safe space) (the boot check's before a game) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |
@@ -197,7 +200,10 @@ tools/test_defense.sh # the planet's pulse: never hits a docked shuttle; finds o
                       # camped at the band's top, middle and foot; full speed
 tools/test_galaxy.sh   # the galaxy generator's rules (and jumps to safe space), 8 seeds
 tools/test_depart.sh   # leaving an outer-rim port: encounters ~60%, waves by jumps to safe
-tools/test_port.sh     # a starport: trading, bounties, the manifest, the shipyard
+tools/test_port.sh     # a starport: trading (stock prices), bounties (glut), the
+                       # manifest, the shipyard (prices by tier)
+tools/test_deplete.sh  # ports restock and planets refill with jumps; a barren
+                       # planet can't be landed on; a planet's creatures
 tools/test_cargo.sh    # ore beamed up halves the speed across; button 2 drops it
 tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane
