@@ -45,7 +45,7 @@ emu.register_frame_done(function()
       docked and "docked, firing" or "shuttle out", forcedir and (" (from " .. ({[0]="the top","the left","the right"})[forcedir] .. ")") or "",
       stormseen and "came" or "never came", seen / 60,
       hit and "hit" or "unhurt", e0 or -1, m:read_u8(0x2386), over and "over" or "NOT over"))
-    print(string.format("result %d %d %d %d", stormseen and 1 or 0, hit and 1 or 0, over and 1 or 0, seen >= 90 and 1 or 0))
+    print(string.format("result %d %d %d %d", stormseen and 1 or 0, hit and 1 or 0, over and 1 or 0, seen >= 60 and 1 or 0))
     manager:machine():exit()
   end
 end)

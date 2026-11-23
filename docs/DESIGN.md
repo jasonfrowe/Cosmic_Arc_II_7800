@@ -502,10 +502,18 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
     first of safe space's others **sells everything (SSS)**.
   - **The Ark's guns** (the fighter out) fire in the 8 directions only.
   - **Leaving a planet early**: docked, hold button 2 (half a second):
-    LEAVING IN 3, 2, 1, and the Ark climbs away. `tools/test_leave.sh`.
-  - **The close-up chart** (bank 6): button 2 from the star chart: 5 x 5
-    cells round the Ark with the sectors' numbers and warps; button 2
-    again, the achievements.
+    LEAVING IN 3, 2, 1, and the Ark climbs away. Fire or the stick stops
+    the count; once the storm's coming there's no leaving (SHOOT THE ROCK
+    FIRST). `tools/test_leave.sh`.
+  - **The storm's rock is faster**: 3/4 px a frame + 3/16 a level (was
+    1/2 + 1/8), at most 2: in sight 1.2-1.7 s at level 1.
+  - **The close-up chart** (bank 6): button 2 from the star chart: 8 x 5
+    cells round the Ark drawn as a circuit with its own tiles (odd codes of
+    the 40-column font, `tools/gfx.py cz_glyphs`): each sector seen a box
+    with its number and its kind's icon (? not yet visited), the visited
+    ones' warps as lines meeting the boxes' edges (across, down, corner to
+    corner, X where two cross); the Ark's box inverted. Button 2 again,
+    the achievements.
 - Not yet: saves (M6).
 
 ### 6.2 Resources

@@ -38,9 +38,9 @@ PL_TIME   = 45      ; seconds until the storm (as Cosmic Arc's: the klaxon,
 STORM_DELAY = 150   ; 4-frame steps from the klaxon to the rock (10 s: back
                     ;   to the Ark from anywhere: the far side is 512 px, 4.3 s)
 ROCK_DMG  = 16      ; the rock hitting the Ark costs this
-ROCK_SPD0 = $0080   ; the rock's speed (8.8 px a frame across; down, half
-ROCK_SPDL = $20     ;   that in lines): 1/2 + 1/8 a level, at most 1. At
-ROCK_SPDMAX = $0100 ;   level 0 it's in sight about 2 s each way.
+ROCK_SPD0 = $00C0   ; the rock's speed (8.8 px a frame across; down, half
+ROCK_SPDL = $30     ;   that in lines): 3/4 + 3/16 a level, at most 2 (it
+ROCK_SPDMAX = $0200 ;   crawled at 1/2 + 1/8). Level 1: in sight 1.2-1.7 s
 AB_LIFE   = 40      ; frames an Ark bolt lasts
 PL_ACC    = $20     ; shuttle acceleration across (8.8 pixels a frame)
 PL_VMAX   = $0200   ; top speed across
@@ -2559,7 +2559,9 @@ pl_ny_p
     rts
 
 ; ---- leaving early: docked, button 2 held PL_LVHOLD frames; then LEAVING
-; IN 3, 2, 1 and the Ark goes (as at time up). C = 1: counting down ----
+; IN 3, 2, 1 and the Ark goes (as at time up). Fire or the stick stops the
+; count; no leaving once the storm's coming (the rock first). C = 1:
+; counting down ----
 pl_leave
     lda pl_lvcd
     bne pl_lv_cd
@@ -2572,6 +2574,20 @@ pl_leave
     lda pl_lvh
     cmp #PL_LVHOLD
     bcc pl_lv_no
+    bne pl_lv_no            ; (once)
+    lda st_state            ; the storm: not now
+    beq pl_lv_ok
+    lda #<tx_rockfirst
+    ldy #>tx_rockfirst
+    ldx #20
+    jsr sp_msgcopy
+    lda #90
+    sta pl_msgtm
+    lda #SFX_HIT
+    jsr sfx
+    clc
+    rts
+pl_lv_ok
     lda #PL_LVTIME
     sta pl_lvcd
     lda #<tx_leaving
@@ -2591,6 +2607,20 @@ pl_lv_no
     clc
     rts
 pl_lv_cd
+    lda st_state            ; the storm, fire, the stick: it's off
+    bne pl_lv_off
+    lda sp_fire
+    bne pl_lv_off
+    lda sp_joy
+    cmp #8
+    beq pl_lv_cd2
+pl_lv_off
+    lda #0
+    sta pl_lvcd
+    sta sp_msglen
+    clc
+    rts
+pl_lv_cd2
     dec pl_lvcd
     beq pl_lv_go
     lda pl_lvcd             ; the count: 1 + (frames - 1) / 60

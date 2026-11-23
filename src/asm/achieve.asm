@@ -402,6 +402,21 @@ ac_s_help .byte ("S"-32)*2,("T"-32)*2,("I"-32)*2,("C"-32)*2,("K"-32)*2,(":"-32)*
 
 ; ---------------------------------------------------------------------------
 ; the close-up chart's text
+CZ_DIG    = 129     ; (tools/gfx.py: + 2 x digit)
+CZ_DIGI   = 149     ; (inverted: the Ark's)
+CZ_LEFT   = 169     ; (+ 2 x kind: empty, port, planet, nebula, 4 unknown)
+CZ_LEFTI  = 179
+CZ_RIGHT  = 189
+CZ_RIGHTI = 191
+CZ_ACROSS = 193
+CZ_DOWNL  = 195
+CZ_DOWNR  = 197
+CZ_DIAGR  = 199     ; (\)
+CZ_DIAGL  = 201     ; (/)
+CZ_X      = 203
+CZ_COLS   = 8
+CZ_ROWS   = 5
+
 cz_build
     jsr sv_cls
     ldx #0                  ; row 0: CLOSE UP   SECTOR nn
@@ -415,11 +430,11 @@ cz_build
     clc
     adc #1
     jsr sv_dec2
-    ldx gs_sec              ; the window: the Ark's cell 2 in from its corner
+    ldx gs_sec              ; the window: the Ark 3 cells in, 2 down
     lda gx_cell,x
     and #15
     sec
-    sbc #2
+    sbc #3
     sta cz_ox
     lda gx_cell,x
     lsr
@@ -429,16 +444,62 @@ cz_build
     sec
     sbc #2
     sta cz_oy
+    ; the links first (the boxes over them)
+    lda #63
+    sta cz_x
+cz_l_s
+    ldx cz_x
+    lda gx_flag,x
+    lsr
+    bcc cz_l_sn             ; (visited only: their warps are known)
+    jsr cz_place
+    lda #7
+    sta cz_d
+cz_l_w
+    ldx cz_x
+    ldy cz_d
+    lda gx_warp,x
+    and ac_bit,y
+    beq cz_l_wn
+    jsr cz_link
+cz_l_wn
+    dec cz_d
+    bpl cz_l_w
+cz_l_sn
+    dec cz_x
+    bpl cz_l_s
+    ; the boxes: the sectors seen, in the window
     lda #63
     sta cz_x
 cz_b_s
     ldx cz_x
     lda gx_flag,x
     and #3
-    bne cz_b_s1
-    jmp cz_b_sn             ; (not seen)
-cz_b_s1
-    lda gx_cell,x           ; its place in the window (out: >= 5, either way)
+    beq cz_b_sn
+    jsr cz_place
+    lda cz_wc
+    cmp #CZ_COLS
+    bcs cz_b_sn
+    lda cz_wr
+    cmp #CZ_ROWS
+    bcs cz_b_sn
+    jsr cz_box
+cz_b_sn
+    dec cz_x
+    bpl cz_b_s
+    ldx #11
+    lda #1
+    jsr sv_at
+    lda #<cz_s_help
+    ldy #>cz_s_help
+    ldx #35
+    jmp sv_puts
+
+; sector cz_x's place in the window: cz_wc, cz_wr (out of it: big, either
+; way)
+cz_place
+    ldx cz_x
+    lda gx_cell,x
     and #15
     sec
     sbc cz_ox
@@ -451,138 +512,163 @@ cz_b_s1
     sec
     sbc cz_oy
     sta cz_wr
-    ; its warps, visited
-    lda gx_flag,x
-    lsr
-    bcs cz_b_node_far457
-    jmp cz_b_node
-cz_b_node_far457
-    lda #7
-    sta cz_d
-cz_b_w
-    ldx cz_x
-    ldy cz_d
-    lda gx_warp,x
-    and ac_bit,y
-    beq cz_b_wn
-    clc                     ; the link's own cell, and which of its links
-    lda cz_wc
-    adc cz_lc,y
-    sta ac_i
-    clc
+    rts
+
+; sector cz_x's box: its end (kind, or unknown), two digits, the end; the
+; Ark's inverted (cz_k: 0, or the inverted codes' offset)
+cz_box
     lda cz_wr
-    adc cz_lr,y
-    cmp #5
-    bcs cz_b_wn
-    asl
-    adc #1
-    sta sv_t0               ; (its node's row)
-    lda ac_i
-    cmp #5
-    bcs cz_b_wn
-    lda cz_lk,y
-    sta cz_k
-    cmp #2
-    bne cz_b_w3
-    ldx sv_t0               ; across: 4 dashes after the node
-    lda ac_i
-    asl
-    asl
-    asl
-    adc #4
-    jsr sv_at
-    lda #("-"-32)*2
-    jsr sv_putc
-    lda #("-"-32)*2
-    jsr sv_putc
-    lda #("-"-32)*2
-    jsr sv_putc
-    lda #("-"-32)*2
-    jsr sv_putc
-    jmp cz_b_wn
-cz_b_w3
-    ldx sv_t0               ; down, the diagonals: the row below
-    inx
-    lda ac_i
-    asl
-    asl
-    asl
-    ldy cz_k
-    clc
-    adc cz_kcol-3,y
-    bmi cz_b_wn             ; (off the left)
-    jsr sv_at
-    ldy cz_k
-    lda cz_kch-3,y
-    jsr sv_putc
-cz_b_wn
-    dec cz_d
-    bmi cz_b_w_far518
-    jmp cz_b_w
-cz_b_w_far518
-cz_b_node
-    ; its node (in the window): the Ark's marked; a symbol or ?; its number
-    lda cz_wc
-    cmp #5
-    bcs cz_b_sn
-    lda cz_wr
-    cmp #5
-    bcs cz_b_sn
     asl
     adc #1
     tax
     lda cz_wc
     asl
     asl
-    asl
+    adc cz_wc               ; x 5
     jsr sv_at
     lda #0
     ldx cz_x
     cpx gs_sec
-    bne cz_b_m
-    lda #178
-cz_b_m
-    jsr sv_putc
-    ldx cz_x
-    lda #("?"-32)*2
-    ldy gx_flag,x
-    tya
+    bne cz_bx_k
+    lda #CZ_LEFTI-CZ_LEFT   ; (10: the same for the digits and the end... )
+cz_bx_k
+    sta cz_k
+    lda gx_flag,x           ; its kind's end (unknown, not yet visited)
     lsr
-    lda #("?"-32)*2
-    bcc cz_b_sy
+    lda #4
+    bcc cz_bx_u
     lda gx_info,x
     and #3
-    tay
-    lda cz_sym,y
-cz_b_sy
+cz_bx_u
+    asl
+    adc #CZ_LEFT
+    adc cz_k
     jsr sv_putc
-    lda cz_x
+    lda cz_x                ; the digits: sector + 1
     clc
     adc #1
-    jsr sv_dec2
-cz_b_sn
-    dec cz_x
-    bmi cz_b_h
-    jmp cz_b_s
-cz_b_h
-    ldx #11
-    lda #1
-    jsr sv_at
-    lda #<cz_s_help
-    ldy #>cz_s_help
-    ldx #35
-    jmp sv_puts
+    ldx #0
+cz_bx_t
+    cmp #10
+    bcc cz_bx_o
+    sbc #10
+    inx
+    bne cz_bx_t
+cz_bx_o
+    pha
+    txa
+    asl
+    adc #CZ_DIG
+    jsr cz_putk
+    pla
+    asl
+    adc #CZ_DIG
+    jsr cz_putk
+    lda cz_k                ; the end (inverted: +2)
+    beq cz_bx_r
+    lda #2
+cz_bx_r
+    clc
+    adc #CZ_RIGHT
+    jmp sv_putc
+; a digit's code, inverted for the Ark's (the inverted digits are 20 on)
+cz_putk
+    ldx cz_k
+    beq cz_pk
+    clc
+    adc #CZ_DIGI-CZ_DIG
+cz_pk
+    jmp sv_putc
 
-; by warp direction (0 up, clockwise): the cell whose link it is (column,
-; row from the sector's), and which link (2 across, 3 down-right, 4 down,
+; sector cz_x's warp cz_d: its line (from the cell whose line it is: cz_lc,
+; cz_lr; which: cz_lk)
+cz_link
+    ldy cz_d
+    clc
+    lda cz_wc
+    adc cz_lc,y
+    sta ac_i                ; (its cell's column)
+    cmp #CZ_COLS
+    bcc cz_lk_r_far592
+    jmp cz_lk_r
+cz_lk_r_far592
+    clc
+    lda cz_wr
+    adc cz_lr,y
+    cmp #CZ_ROWS
+    bcs cz_lk_r
+    asl
+    adc #1
+    sta sv_t0               ; (its box's row)
+    lda ac_i
+    asl
+    asl
+    adc ac_i
+    sta sv_t1               ; (its box's column)
+    lda cz_lk,y
+    cmp #2
+    bne cz_lk_d
+    ldx sv_t0               ; across: the column after the box
+    lda sv_t1
+    clc
+    adc #4
+    jsr sv_at
+    lda #CZ_ACROSS
+    jmp sv_putc
+cz_lk_d
+    cmp #4
+    bne cz_lk_g
+    ldx sv_t0               ; down: the row below, between the digits
+    inx
+    lda sv_t1
+    clc
+    adc #1
+    jsr sv_at
+    lda #CZ_DOWNL
+    jsr sv_putc
+    lda #CZ_DOWNR
+    jmp sv_putc
+cz_lk_g
+    ldx sv_t0               ; a diagonal: the row below, the column after
+    inx                     ;  the box (\) or before it (/); X if the other
+    cmp #3                  ;  one's there
+    bne cz_lk_l
+    lda sv_t1
+    clc
+    adc #4
+    jsr sv_at
+    lda #CZ_DIAGR
+    ldx #CZ_DIAGL
+    bne cz_lk_x
+cz_lk_l
+    lda sv_t1
+    beq cz_lk_r             ; (off the left)
+    sec
+    sbc #1
+    jsr sv_at
+    lda #CZ_DIAGL
+    ldx #CZ_DIAGR
+cz_lk_x
+    stx sv_t2
+    ldy #0
+    pha
+    lda (sv_dst),y
+    cmp sv_t2
+    bne cz_lk_w
+    pla
+    lda #CZ_X
+    pha
+cz_lk_w
+    pla
+    jmp sv_putc
+cz_lk_r
+    rts
+
+; by warp direction (0 up, clockwise): the cell whose line it is (column,
+; row from the sector's), and which line (2 across, 3 down-right, 4 down,
 ; 5 down-left)
 cz_lc     .byte 0, 1, 0, 0, 0, 0, -1, -1
 cz_lr     .byte -1, -1, 0, 0, 0, 0, 0, -1
 cz_lk     .byte 4, 5, 2, 3, 4, 5, 2, 3
-; by link 3, 4, 5: its column from the cell's, its glyph
-cz_kcol   .byte 5, 2, -2
-cz_kch    .byte 246, 244, 248
-; by kind (empty, port, planet, nebula): the chart's node glyphs
-cz_sym    .byte 128+4, 128+8, 128+12, 128+16
 cz_s_title .byte ("C"-32)*2,("L"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,("U"-32)*2,("P"-32)*2,0,0,0,("S"-32)*2,("E"-32)*2,("C"-32)*2,("T"-32)*2,("O"-32)*2,("R"-32)*2,0   ; 'CLOSE UP   SECTOR ' (18)
 cz_s_help .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'FIRE: BACK   BUTTON 2: ACHIEVEMENTS' (35)
