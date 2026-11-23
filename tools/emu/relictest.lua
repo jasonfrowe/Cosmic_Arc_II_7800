@@ -51,6 +51,7 @@ step(30, nil, function() local m = mem()
 emu.register_frame_done(function()
   f = f + 1
   local m = mem()
+  if m:read_u8(0x23EE) == 3 then m:write_u8(0x27BC, 200) end     -- on the planet: no pulses (this tests the relic)
   local v = m:read_u8(0x2703) + 256 * m:read_u8(0x2704)
   if v < 32768 and v > maxv then maxv = v end
   local held = {}
