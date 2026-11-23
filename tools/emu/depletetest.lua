@@ -22,9 +22,9 @@ step(5, nil, function() local m = mem()
   end
   class = (m:read_u8(0x2680) >> 2) & 7
   for k = 0, 2 do m:write_u8(0x25A9 + k, (class & (1 << k)) ~= 0 and 5 or 9) end
-  m:write_u8(0x25BE, 2)                                         -- home's glut
-  m:write_u8(0x25C5, 0x02)                                      -- sector 0's planet: 2 taken
-  m:write_u8(0x25EC, 0); m:write_u8(0x25ED, 0)
+  m:write_u8(0x25CA, 2)                                         -- home's glut
+  m:write_u8(0x25D5, 0x02)                                      -- sector 0's planet: 2 taken
+  m:write_u8(0x25FC, 0); m:write_u8(0x25FD, 0)
   m:write_u8(0x27F7, 1) end)
 for j = 1, 3 do
   step(20, nil, function() local m = mem(); m:write_u8(0x22FB, m:read_u8(0x22FA) - 1); m:write_u8(0x27F7, 1) end)
@@ -36,20 +36,20 @@ step(10, nil, function() local m = mem()
     local want = (class & (1 << k)) ~= 0 and 6 or 8
     if m:read_u8(0x25A9 + k) ~= want then ok = false end
   end
-  check("a port restocks", ok and m:read_u8(0x25BE) == 1, string.format("stock %d %d %d, glut %d", m:read_u8(0x25A9), m:read_u8(0x25AA), m:read_u8(0x25AB), m:read_u8(0x25BE)))
-  check("a planet's creatures come back", m:read_u8(0x25C5) & 15 == 1, string.format("taken %d", m:read_u8(0x25C5) & 15))
+  check("a port restocks", ok and m:read_u8(0x25CA) == 1, string.format("stock %d %d %d, glut %d", m:read_u8(0x25A9), m:read_u8(0x25AA), m:read_u8(0x25AB), m:read_u8(0x25CA)))
+  check("a planet's creatures come back", m:read_u8(0x25D5) & 15 == 1, string.format("taken %d", m:read_u8(0x25D5) & 15))
   check("no encounter on the way", m:read_u8(0x259B) == 0)
   -- this sector becomes a barren planet
   local x = m:read_u8(0x2590)
   m:write_u8(0x2680 + x, 2)
-  local b = 0x25C5 + (x >> 1)
+  local b = 0x25D5 + (x >> 1)
   m:write_u8(b, (x & 1) == 1 and 0x40 or 0x04)
   m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1) end)
 step(40, "P1 Button 1", nil)
 step(10, nil, function() local m = mem()
   check("a barren planet: no landing", m:read_u8(0x259B) == 0 and m:read_u8(0x259D) == 3, string.format("go %d, message %d", m:read_u8(0x259B), m:read_u8(0x259D)))
   local x = m:read_u8(0x2590)
-  m:write_u8(0x25C5 + (x >> 1), (x & 1) == 1 and 0x30 or 0x03)  -- one left
+  m:write_u8(0x25D5 + (x >> 1), (x & 1) == 1 and 0x30 or 0x03)  -- one left
   m:write_u8(0x27F7, 1) end)
 step(40, "P1 Button 1", nil)
 step(200, nil, nil)

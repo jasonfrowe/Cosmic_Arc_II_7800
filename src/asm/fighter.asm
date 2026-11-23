@@ -803,6 +803,9 @@ tu_pn
     lda tg_y
     sta v_t3
     jsr vec_angle
+    clc                     ; the Ark's guns: the 8 directions only (the
+    adc #$10                ;  nearest: up, down, across, the diagonals)
+    and #$E0
     pha
     lda #<TU_SPEED
     sta v_t0

@@ -20,7 +20,7 @@ local function within(t, lo, hi) for _, k in ipairs(t) do if k < lo or k > hi th
 local function land(sec) return function() local m = mem()
   m:write_u8(0x2590, sec); m:write_u8(0x259C, sec)
   m:write_u8(0x2680 + sec, 2)                                   -- a planet, no easy bit, tier 0 (no encounter after)
-  m:write_u8(0x25C5 + (sec >> 1), 0)
+  m:write_u8(0x25D5 + (sec >> 1), 0)
   m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1) end end
 step(300, nil, nil)
 step(100, "P1 Button 1", nil)                                  -- New Game

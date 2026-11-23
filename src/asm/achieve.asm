@@ -1,4 +1,13 @@
 ; ===========================================================================
+; Bank 6: two more 40-column screens after the star chart (button 2 from
+; the chart: gs_go = 3, the BASIC's achloop): the close-up chart (ac_view 0),
+; then the achievements (1); button 2 on to the next, fire back to the map.
+;
+; The close-up chart: 5 x 5 grid cells round the Ark, each 8 columns by 2
+; rows: a sector seen shows its number (its kind's symbol once visited, ?
+; before), the visited ones their warps (- across, | \ / down, through the
+; row between); the Ark's sector marked.
+;
 ; The achievements (bank 6, with its own copy of the 40-column font at
 ; $A000): 16 in a 4 x 4 grid, an icon (two glyphs of the font: grey until
 ; earned, then in colour) over each name; the stick picks one, and row 10
@@ -9,6 +18,14 @@
 
 BANK_ACH  = 6
 ac_i      = $27F8   ; (sv_t4)
+ac_view   = $22F7   ; 0 the close-up chart, 1 the achievements
+cz_x      = $22F0   ; (the close-up's scratch: the sector view's items,
+cz_d      = $22F1   ;  rebuilt when it's back)
+cz_wc     = $22F2
+cz_wr     = $22F3
+cz_ox     = $22F4
+cz_oy     = $22F5
+cz_k      = $22F6
 
 ac_enter
     lda #%01000011          ; 320A, 1-byte characters (the map's)
@@ -19,6 +36,7 @@ ac_enter
     sta gs_go
     lda #0
     sta sv_sel
+    sta ac_view
     lda #8
     sta sv_pjoy
     lda #1
@@ -34,6 +52,11 @@ ac_frame
     beq ac_f_nd
     lda #0
     sta sv_dirty
+    lda ac_view
+    bne ac_f_ab
+    jsr cz_build
+    jmp ac_f_nd
+ac_f_ab
     jsr ac_build
 ac_f_nd
     lda sp_joy
@@ -43,6 +66,10 @@ ac_f_nd
     lda sp_fire2
     sta sv_pf2
     jsr sv_rows
+    lda ac_view
+    bne ac_f_ic
+    rts
+ac_f_ic
     ; the icons: one object each (two glyphs), grey or in colour
     ldx #15
 ac_f_i
@@ -100,11 +127,18 @@ ac_h_r
     rts
 
 ac_input
-    ; button 2 or fire (fresh): back to the map
+    ; button 2 (fresh): the close-up on to the achievements, they back to
+    ; the map; fire: back
     lda sp_fire2
     beq ac_i_f
     lda sv_pf2
-    beq ac_i_back
+    bne ac_i_f
+    lda ac_view
+    bne ac_i_back
+    inc ac_view
+    inc sv_dirty
+    lda #SFX_BEEP
+    jmp sfx
 ac_i_f
     lda sp_fire
     beq ac_i_s
@@ -115,6 +149,10 @@ ac_i_back
     sta gs_go
     rts
 ac_i_s
+    lda ac_view             ; (the close-up: nothing to choose)
+    bne ac_i_s2
+    rts
+ac_i_s2
     ; the stick (fresh): up, down a row (4), left, right one
     ldx sp_joy
     cpx sv_pjoy
@@ -361,3 +399,190 @@ ac_d15 .byte ("G"-32)*2,("E"-32)*2,("T"-32)*2,0,("H"-32)*2,("O"-32)*2,("M"-32)*2
 ac_s_title .byte ("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'ACHIEVEMENTS' (12)
 ac_s_of16 .byte 0,("O"-32)*2,("F"-32)*2,0,("1"-32)*2,("6"-32)*2   ; ' OF 16' (6)
 ac_s_help .byte ("S"-32)*2,("T"-32)*2,("I"-32)*2,("C"-32)*2,("K"-32)*2,(":"-32)*2,0,("C"-32)*2,("H"-32)*2,("O"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2   ; 'STICK: CHOOSE   BUTTON 2: BACK' (30)
+
+; ---------------------------------------------------------------------------
+; the close-up chart's text
+cz_build
+    jsr sv_cls
+    ldx #0                  ; row 0: CLOSE UP   SECTOR nn
+    lda #1
+    jsr sv_at
+    lda #<cz_s_title
+    ldy #>cz_s_title
+    ldx #18
+    jsr sv_puts
+    lda gs_sec
+    clc
+    adc #1
+    jsr sv_dec2
+    ldx gs_sec              ; the window: the Ark's cell 2 in from its corner
+    lda gx_cell,x
+    and #15
+    sec
+    sbc #2
+    sta cz_ox
+    lda gx_cell,x
+    lsr
+    lsr
+    lsr
+    lsr
+    sec
+    sbc #2
+    sta cz_oy
+    lda #63
+    sta cz_x
+cz_b_s
+    ldx cz_x
+    lda gx_flag,x
+    and #3
+    bne cz_b_s1
+    jmp cz_b_sn             ; (not seen)
+cz_b_s1
+    lda gx_cell,x           ; its place in the window (out: >= 5, either way)
+    and #15
+    sec
+    sbc cz_ox
+    sta cz_wc
+    lda gx_cell,x
+    lsr
+    lsr
+    lsr
+    lsr
+    sec
+    sbc cz_oy
+    sta cz_wr
+    ; its warps, visited
+    lda gx_flag,x
+    lsr
+    bcs cz_b_node_far457
+    jmp cz_b_node
+cz_b_node_far457
+    lda #7
+    sta cz_d
+cz_b_w
+    ldx cz_x
+    ldy cz_d
+    lda gx_warp,x
+    and ac_bit,y
+    beq cz_b_wn
+    clc                     ; the link's own cell, and which of its links
+    lda cz_wc
+    adc cz_lc,y
+    sta ac_i
+    clc
+    lda cz_wr
+    adc cz_lr,y
+    cmp #5
+    bcs cz_b_wn
+    asl
+    adc #1
+    sta sv_t0               ; (its node's row)
+    lda ac_i
+    cmp #5
+    bcs cz_b_wn
+    lda cz_lk,y
+    sta cz_k
+    cmp #2
+    bne cz_b_w3
+    ldx sv_t0               ; across: 4 dashes after the node
+    lda ac_i
+    asl
+    asl
+    asl
+    adc #4
+    jsr sv_at
+    lda #("-"-32)*2
+    jsr sv_putc
+    lda #("-"-32)*2
+    jsr sv_putc
+    lda #("-"-32)*2
+    jsr sv_putc
+    lda #("-"-32)*2
+    jsr sv_putc
+    jmp cz_b_wn
+cz_b_w3
+    ldx sv_t0               ; down, the diagonals: the row below
+    inx
+    lda ac_i
+    asl
+    asl
+    asl
+    ldy cz_k
+    clc
+    adc cz_kcol-3,y
+    bmi cz_b_wn             ; (off the left)
+    jsr sv_at
+    ldy cz_k
+    lda cz_kch-3,y
+    jsr sv_putc
+cz_b_wn
+    dec cz_d
+    bmi cz_b_w_far518
+    jmp cz_b_w
+cz_b_w_far518
+cz_b_node
+    ; its node (in the window): the Ark's marked; a symbol or ?; its number
+    lda cz_wc
+    cmp #5
+    bcs cz_b_sn
+    lda cz_wr
+    cmp #5
+    bcs cz_b_sn
+    asl
+    adc #1
+    tax
+    lda cz_wc
+    asl
+    asl
+    asl
+    jsr sv_at
+    lda #0
+    ldx cz_x
+    cpx gs_sec
+    bne cz_b_m
+    lda #178
+cz_b_m
+    jsr sv_putc
+    ldx cz_x
+    lda #("?"-32)*2
+    ldy gx_flag,x
+    tya
+    lsr
+    lda #("?"-32)*2
+    bcc cz_b_sy
+    lda gx_info,x
+    and #3
+    tay
+    lda cz_sym,y
+cz_b_sy
+    jsr sv_putc
+    lda cz_x
+    clc
+    adc #1
+    jsr sv_dec2
+cz_b_sn
+    dec cz_x
+    bmi cz_b_h
+    jmp cz_b_s
+cz_b_h
+    ldx #11
+    lda #1
+    jsr sv_at
+    lda #<cz_s_help
+    ldy #>cz_s_help
+    ldx #35
+    jmp sv_puts
+
+; by warp direction (0 up, clockwise): the cell whose link it is (column,
+; row from the sector's), and which link (2 across, 3 down-right, 4 down,
+; 5 down-left)
+cz_lc     .byte 0, 1, 0, 0, 0, 0, -1, -1
+cz_lr     .byte -1, -1, 0, 0, 0, 0, 0, -1
+cz_lk     .byte 4, 5, 2, 3, 4, 5, 2, 3
+; by link 3, 4, 5: its column from the cell's, its glyph
+cz_kcol   .byte 5, 2, -2
+cz_kch    .byte 246, 244, 248
+; by kind (empty, port, planet, nebula): the chart's node glyphs
+cz_sym    .byte 128+4, 128+8, 128+12, 128+16
+cz_s_title .byte ("C"-32)*2,("L"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,("U"-32)*2,("P"-32)*2,0,0,0,("S"-32)*2,("E"-32)*2,("C"-32)*2,("T"-32)*2,("O"-32)*2,("R"-32)*2,0   ; 'CLOSE UP   SECTOR ' (18)
+cz_s_help .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'FIRE: BACK   BUTTON 2: ACHIEVEMENTS' (35)

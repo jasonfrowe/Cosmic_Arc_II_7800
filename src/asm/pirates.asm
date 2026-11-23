@@ -978,9 +978,9 @@ pr_dm_kill
     clc
     lda sp_energy
     adc sp_pay
-    cmp #EN_MAX
+    cmp sp_enmax
     bcc pr_dm_e
-    lda #EN_MAX
+    lda sp_enmax
 pr_dm_e
     sta sp_energy
     lda pr_t,x
@@ -1003,6 +1003,9 @@ pr_dm_e
     bne pr_dm_k2
     inc gs_kills+1
 pr_dm_k2
+    lda M_RND               ; an energy pod: 1 in 4
+    and #3
+    bne pr_dm_boom
     jsr pd_drop
 pr_dm_boom
     lda #SFX_BOOM
@@ -1227,9 +1230,9 @@ pd_fr_dy
     clc
     lda sp_energy
     adc #POD_PAY
-    cmp #EN_MAX
+    cmp sp_enmax
     bcc pd_fr_e
-    lda #EN_MAX
+    lda sp_enmax
 pd_fr_e
     sta sp_energy
     lda #$02                ; 250 points

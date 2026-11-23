@@ -36,29 +36,31 @@ gs_msg    = $259D   ; a message on row 2: 0 none, else MSG_*
 gs_ore    = $2585   ; fuel ore, organics, equipment (in the holds)
 gs_org    = $2586
 gs_eqp    = $2587
-gs_ulas   = $2588   ; upgrade levels 0-2: the laser (fire rate), the holds,
+gs_ulas   = $2588   ; upgrades: the hull (0-20: +5 energy each), the holds (0-2),
 gs_uhold  = $2589   ;   the fuel tanks
 gs_utank  = $258A
 gs_stasis = $256B   ; [6] creatures in stasis, by kind
 ; the voyage's long-lived state ($25A0-$25EF: saved with the game)
 gs_keep   = $25A0   ; [6] the manifest: specimens kept, by kind (0-2: a pair)
 gs_bank   = $25A6   ; the bank (3 bytes BCD, high first): kept when the Ark's lost
-pt_stock  = $25A9   ; [21] each port's stock (7 ports x 3 goods, 0-15): what
+pt_stock  = $25A9   ; [33] each port's stock (11 ports x 3 goods, 0-15): what
                     ;   it has to sell, or what it's bought (it wants 15 - that)
-pt_glut   = $25BE   ; [7] creatures each port's bought lately (bounties fall)
-gs_miss   = $25C5   ; [32] creatures taken from each planet lately, a nibble
+pt_glut   = $25CA   ; [11] creatures each port's bought lately (bounties fall)
+gs_miss   = $25D5   ; [32] creatures taken from each planet lately, a nibble
                     ;   a sector (sector / 2; odd sectors the high nibble)
-gs_ach    = $25E5   ; [2] achievements earned (a bit each)
-gs_kills  = $25E7   ; [2] pirates destroyed (binary)
-gs_storms = $25E9   ; storm rocks shot down
-gs_relic  = $25EA   ; the relic's sector
-gs_relst  = $25EB   ; the relic: 0 on its planet, 1 aboard, 2 delivered
-gs_tick   = $25EC   ; jumps, for restocking: ports every 2, planets every 3
-gs_tick3  = $25ED
+gs_ach    = $25F5   ; [2] achievements earned (a bit each)
+gs_kills  = $25F7   ; [2] pirates destroyed (binary)
+gs_storms = $25F9   ; storm rocks shot down
+gs_relic  = $25FA   ; the relic's sector
+gs_relst  = $25FB   ; the relic: 0 on its planet, 1 aboard, 2 delivered
+gs_tick   = $25FC   ; jumps, for restocking: ports every 2, planets every 3
+gs_tick3  = $25FD
+                    ; ($25FE-$25FF: gs_achn, text40.asm)
 gs_pop    = $2572   ; the planet being landed on: its creatures (surface.asm)
 gs_plevel = $258E   ; ... and its level (1-5: gx_plevel)
 GS_LONG   = $25A0   ; (the block: GS_LONGN bytes from here)
-GS_LONGN  = $50
+GS_LONGN  = $60
+PT_NPORTS = 11
 PT_NORMAL = 12      ; a port's stock of what it sells, restocked
 PT_FULL   = 15
 PL_POP    = 4       ; a planet's creatures, at most (gs_miss takes from it)
@@ -443,10 +445,15 @@ gx_n_ddn
     bcs gx_n_dk
     lda gc_ne
     bne gx_n_dpass
-    ; ports: home, one more in safe space, one in the core, two mid-rim,
-    ; two in the outer rim (TradeWars classes: buys/sells a bit each)
+    ; ports: home, two more in safe space, two in the core, three mid-rim,
+    ; three in the outer rim (TradeWars classes: buys/sells a bit each),
+    ; never two in one sector. Home buys everything (BBB), the first of
+    ; safe space's others sells everything (SSS): a trade to start on.
     lda #0
     jsr gx_port
+    lda gx_info
+    and #$E3
+    sta gx_info
     ldy #0
 gx_n_pt
     lda gx_pfrom,y
@@ -455,9 +462,21 @@ gx_n_pt
     jsr gx_rand
     clc
     adc sv_t3
+    tax
+    lda gx_info,x
+    and #3
+    cmp #GT_PORT
+    beq gx_n_pt             ; (one there already: again)
+    txa
     jsr gx_port
+    cpy #0
+    bne gx_n_pt2
+    lda gx_info,x
+    ora #$1C
+    sta gx_info,x
+gx_n_pt2
     iny
-    cpy #6
+    cpy #PT_NPORTS-1
     bne gx_n_pt
     ; the voyage
     lda #0
@@ -485,6 +504,8 @@ gx_n_inv
     sta gs_ulas
     sta gs_uhold
     sta gs_utank
+    jsr en_setmax           ; (the hull as new: sp_energy's sp_new's)
+    lda #0
     ldx #GS_LONGN-1         ; the long-lived block: all clear
 gx_n_lg
     sta GS_LONG,x
@@ -551,8 +572,8 @@ gx_n_rn
 gx_n_rf
     stx gs_relic
     rts
-gx_pfrom  .byte 1, 10, 15, 27, 40, 52
-gx_pspan  .byte 9, 5, 12, 13, 12, 12
+gx_pfrom  .byte 1, 1, 10, 10, 15, 23, 31, 40, 48, 56
+gx_pspan  .byte 9, 9, 5, 5, 8, 8, 9, 8, 8, 8
 
 ; sector A becomes a port (keeps its tier), a random class
 gx_port
@@ -746,7 +767,8 @@ gx_ls_k
 gx_ls_r
     lda #FUEL_START
     sta gs_fuel
-    lda #EN_MAX
+    jsr en_setmax
+    lda sp_enmax
     sta sp_energy
     ldx #4                  ; credits / 10 (a BCD digit)
 gx_ls_c
@@ -1123,7 +1145,7 @@ sv_b_itd
     ldx #7
     jsr sv_puts
     lda sp_energy
-    jsr sv_dec2
+    jsr sv_dec3
     ; row 11
     ldx #11
     lda #1
@@ -1672,7 +1694,7 @@ ch_b_done
     jsr sv_at
     lda #<tx_chhelp
     ldy #>tx_chhelp
-    ldx #35
+    ldx #31
     jmp sv_puts
 ch_sym    .byte 128+4, 128+8, 128+12, 128+16   ; empty, port, planet, nebula
 
@@ -1705,7 +1727,7 @@ ch_l1
     rts
 
 ch_input
-    ; button 2 (fresh): the achievements (the BASIC: bank 6); fire: back
+    ; button 2 (fresh): the close-up chart (the BASIC: bank 6); fire: back
     lda sp_fire2
     beq ch_i_f
     lda sv_pf2
@@ -1739,7 +1761,7 @@ tx_chart   .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-3
 tx_svhelp  .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("G"-32)*2,("O"-32)*2,0,0,0,0,0,0,0,0
            .byte ("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0
            .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-32)*2,("A"-32)*2,("R"-32)*2,("T"-32)*2
-tx_chhelp .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'FIRE: BACK   BUTTON 2: ACHIEVEMENTS' (35)
+tx_chhelp .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("C"-32)*2,("L"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,("U"-32)*2,("P"-32)*2   ; 'FIRE: BACK   BUTTON 2: CLOSE UP' (31)
 ; the legend: a node glyph, then its word
 tx_legend  .byte 128+8,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,0
            .byte 128+12,0,("P"-32)*2,("L"-32)*2,("A"-32)*2,("N"-32)*2,("E"-32)*2,("T"-32)*2,0,0

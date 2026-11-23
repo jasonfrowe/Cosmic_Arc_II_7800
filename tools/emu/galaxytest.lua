@@ -75,6 +75,11 @@ emu.register_frame_done(function()
     if tierports[0] < 2 then table.insert(bad, "fewer than 2 ports in safe space") end
     for t = 1, 3 do if tierports[t] < 1 then table.insert(bad, "no port in tier " .. t) end end
     if nebsafe > 0 then table.insert(bad, "a nebula in safe space") end
+    if ports ~= 11 then table.insert(bad, ports .. " ports, not 11") end
+    if (info[0] >> 2) & 7 ~= 0 then table.insert(bad, "home isn't BBB") end
+    local sss = false
+    for k = 1, 9 do if info[k] & 3 == 1 and (info[k] >> 2) & 7 == 7 then sss = true end end
+    if not sss then table.insert(bad, "no SSS port in safe space") end
     print(string.format("seed %d: %d warps (%d one-way), ports %d/%d/%d/%d, farthest %d hops, %d from safe space: %s",
       seed, links, oneway, tierports[0], tierports[1], tierports[2], tierports[3], dist[63] or -1, maxd,
       #bad == 0 and "ok" or table.concat(bad, "; ")))

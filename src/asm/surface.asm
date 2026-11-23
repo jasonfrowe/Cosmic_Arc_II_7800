@@ -154,6 +154,10 @@ pl_st     = $2709
 pl_hold   = $270A
 pl_holdi  = $270B
 pl_relic  = $27C0   ; the relic's on this planet (crate RELIC_CK)
+pl_lvcd   = $27C1   ; leaving early: frames to go (0: not leaving)
+pl_lvh    = $27C2   ; ... button 2 held this long, docked
+PL_LVHOLD = 30      ; frames of button 2 (docked) to leave early
+PL_LVTIME = 180     ; then 3, 2, 1
 pl_beam   = $270C
 pl_stun   = $270D
 pl_pulse  = $270E
@@ -631,7 +635,10 @@ pl_fr_r
 pl_fr_play
     jsr pl_clock
     jsr pl_storm
+    jsr pl_leave            ; (leaving early: the shuttle stays docked)
+    bcs pl_fr_nosh
     jsr pl_shuttle
+pl_fr_nosh
     jsr pl_camera
     jsr pl_creatures
     jsr pl_crates
@@ -1446,9 +1453,9 @@ pl_dv_nm
     clc
     lda sp_energy
     adc #CR_PAY
-    cmp #EN_MAX
+    cmp sp_enmax
     bcc pl_dv_e
-    lda #EN_MAX
+    lda sp_enmax
 pl_dv_e
     sta sp_energy
     lda #$05                ; 500 points
@@ -2551,6 +2558,79 @@ pl_ny_p
     cmp #PL_STUNR
     rts
 
+; ---- leaving early: docked, button 2 held PL_LVHOLD frames; then LEAVING
+; IN 3, 2, 1 and the Ark goes (as at time up). C = 1: counting down ----
+pl_leave
+    lda pl_lvcd
+    bne pl_lv_cd
+    lda pl_st
+    cmp #PL_DOCKED
+    bne pl_lv_rs
+    lda sp_fire2
+    beq pl_lv_rs
+    inc pl_lvh
+    lda pl_lvh
+    cmp #PL_LVHOLD
+    bcc pl_lv_no
+    lda #PL_LVTIME
+    sta pl_lvcd
+    lda #<tx_leaving
+    ldy #>tx_leaving
+    ldx #12
+    jsr sp_msgcopy
+    lda #0
+    sta pl_msgtm
+    lda #SFX_BEEP
+    jsr sfx
+    sec
+    rts
+pl_lv_rs
+    lda #0
+    sta pl_lvh
+pl_lv_no
+    clc
+    rts
+pl_lv_cd
+    dec pl_lvcd
+    beq pl_lv_go
+    lda pl_lvcd             ; the count: 1 + (frames - 1) / 60
+    ldx #0
+pl_lv_d
+    cmp #61
+    bcc pl_lv_dd
+    sbc #60
+    inx
+    bne pl_lv_d
+pl_lv_dd
+    inx
+    txa
+    jsr tx_digit
+    cmp sp_msg+11
+    beq pl_lv_s
+    pha                     ; (the message again: the storm's may be up)
+    lda #<tx_leaving
+    ldy #>tx_leaving
+    ldx #12
+    jsr sp_msgcopy
+    pla
+    sta sp_msg+11
+    lda #0
+    sta pl_msgtm
+    lda #SFX_BEEP
+    jsr sfx
+pl_lv_s
+    sec
+    rts
+pl_lv_go
+    lda #PL_TIMEUP          ; away (pl_fr_end, next frame: the Ark climbs)
+    sta pl_state
+    lda #1
+    sta pl_endtm
+    lda #0
+    sta sp_msglen
+    sec
+    rts
+
 ; ---- every creature delivered: the planet's clear ----
 pl_checkall
     clc
@@ -2565,9 +2645,8 @@ pl_checkall
     inc sp_level            ; every one caught: the next level (pace)
     lda pl_killed           ; every one caught (none shot): the bonus
     bne pl_ca_nb
-    lda #EN_MAX             ; the Ark's energy full again (as in the original)
-    sta sp_energy
-    lda gs_test             ; ... and nothing lost on the way: SWEEP
+    lda gs_test             ; nothing lost on the way: SWEEP (no repair:
+                            ;  the original's full energy was too strong)
     ora ac_hit
     bne pl_ca_sw
     lda #AC_SWEEP
@@ -2689,25 +2768,7 @@ pl_hud
 pl_hud_r
     rts
 pl_hud_go
-    ldy #0
-    ldx #0
-pl_hd_sc
-    lda sp_score,x
-    lsr
-    lsr
-    lsr
-    lsr
-    jsr tx_digit
-    sta hud_top,y
-    iny
-    lda sp_score,x
-    and #$0F
-    jsr tx_digit
-    sta hud_top,y
-    iny
-    inx
-    cpx #3
-    bne pl_hd_sc
+    jsr hud_cred            ; the credits (no score: it meant nothing here)
     ; (the world's name, 7-11: written once, pl_hudname)
     ldy #12
     lda #0
@@ -2745,8 +2806,8 @@ pl_hud_bot
     sta hwp
     lda #>hud_bot
     sta hwp+1
+    jsr en_bar
     lda #CH_ENERGY
-    ldx sp_energy
     jsr hud_bar
     ldy #9
     lda #0

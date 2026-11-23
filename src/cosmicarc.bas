@@ -48,6 +48,7 @@
   dim sp_aimx = $2383
   dim sp_aimy = $2384
   dim sp_energy = $2386
+  dim sp_enbar = $2574
   dim sp_state = $238C
   dim sp_arky = $23FC
   dim sp_flash = $2393
@@ -163,8 +164,8 @@ end
   P1C1 = $44
   if sp_flash & 2 then P1C1 = $0F
   P7C1 = $C8
-  if sp_energy < 49 then P7C1 = $1C
-  if sp_energy < 25 then P7C1 = $36
+  if sp_enbar < 49 then P7C1 = $1C
+  if sp_enbar < 25 then P7C1 = $36
 
   restorescreen
   if sp_state <> 2 && sp_arky then plotsprite ark 1 56 sp_arky
@@ -224,8 +225,8 @@ planetloop
   jsr pl_frame
 end
   P7C1 = $C8
-  if sp_energy < 49 then P7C1 = $1C
-  if sp_energy < 25 then P7C1 = $36
+  if sp_enbar < 49 then P7C1 = $1C
+  if sp_enbar < 25 then P7C1 = $36
   clearscreen
   rem the Ark hangs over its own spot of the planet
   if pl_arkv && pl_arky then plotsprite ark 1 pl_arksx pl_arky

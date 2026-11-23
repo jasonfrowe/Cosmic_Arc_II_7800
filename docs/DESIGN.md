@@ -488,6 +488,24 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
   gliders, blinkers), so the rarer, better-paid kinds are out in the rim;
   its defences' pace and the storm rock's speed are those of the old
   global level 0, 2, 4, 6, 8. `tools/test_level.sh`.
+- **After playtesting (2026-11-23)**:
+  - **The hull** replaces the laser's upgrade (too strong: the fire rate's
+    fixed at a bolt every 8 frames). The Ark's most energy is its hull:
+    100, +5 an upgrade (`gs_ulas`, 20 of them) to 200, at 100 + 20 a level
+    (100, 120 ... 480); bought, the 5 come filled. The energy bar scales
+    to it (`en_bar`).
+  - **No full repair** for clearing a planet (the original's: too strong).
+  - **Pirates drop an energy pod 1 time in 4.**
+  - **The HUD shows credits** (`$1234`) where the score was.
+  - **11 ports** (home, 2 more in safe space, 2 core, 3 mid-rim, 3 outer
+    rim; never two in a sector). **Home buys everything (BBB)**, and the
+    first of safe space's others **sells everything (SSS)**.
+  - **The Ark's guns** (the fighter out) fire in the 8 directions only.
+  - **Leaving a planet early**: docked, hold button 2 (half a second):
+    LEAVING IN 3, 2, 1, and the Ark climbs away. `tools/test_leave.sh`.
+  - **The close-up chart** (bank 6): button 2 from the star chart: 5 x 5
+    cells round the Ark with the sectors' numbers and warps; button 2
+    again, the achievements.
 - Not yet: saves (M6).
 
 ### 6.2 Resources
@@ -549,7 +567,7 @@ with progress where it counts. A new one is announced on the map
 | 2 | ACE | 50 pirates destroyed |
 | 3 | CHARTED | every sector visited |
 | 4 | TYCOON | 10,000 credits aboard |
-| 5 | REFIT | every upgrade |
+| 5 | REFIT | every upgrade (the hull to 200, holds, tanks) |
 | 6 | RELIC | the relic brought to a port |
 | 7 | UNTOUCHED | an encounter cleared without a hit on the Ark |
 | 8 | SWEEP | every creature on a planet caught, nothing lost |

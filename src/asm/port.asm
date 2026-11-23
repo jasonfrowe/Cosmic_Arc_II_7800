@@ -9,8 +9,8 @@
 ;                one for a bounty (more out in the rim; less where it's had
 ;                many lately: pt_glut), or keep a pair of each for the
 ;                manifest
-;   SHIPYARD     fuel, energy (dearer out in the rim), upgrades: the laser
-;                (fire rate), the holds, the fuel tanks (3 levels each)
+;   SHIPYARD     fuel, energy (dearer out in the rim), upgrades: the hull
+;                (+5 energy, to 200), the holds, the fuel tanks
 ;   BANK         (safe space's ports only) savings: kept when the Ark's lost
 ; The stick picks a line, fire acts, button 2 the next tab, left (Bio-Bounty)
 ; keeps one. LEAVE PORT: back to the sector (and an encounter, maybe).
@@ -25,11 +25,11 @@ pt_vh     = $27FF
 
 pt_ta     = $27F9   ; (the generator's scratch: free once it's done)
 pt_tb     = $27FA
-pt_tc     = $25F0   ; (more scratch: after the long-lived block)
-pt_td     = $25F1
-pt_te     = $25F2
-pt_amt    = $25F3   ; [3] an amount to move, BCD (high first)
-pt_ntab   = $25F6   ; tabs here: 3, or 4 with the bank (safe space)
+pt_tc     = $2573   ; (more scratch: the escape scene's, free here)
+pt_td     = $2574
+pt_te     = $2578
+pt_amt    = $258B   ; [3] an amount to move, BCD (high first)
+pt_ntab   = $259E   ; tabs here: 3, or 4 with the bank (safe space)
 PT_BANKOFS = gs_bank - gs_cred
 
 pt_enter
@@ -648,11 +648,11 @@ pt_b_yard
     ldx #16
     jsr sv_puts
     lda sp_energy
-    jsr sv_dec2
+    jsr sv_dec3
     lda #("/"-32)*2
     jsr sv_putc
-    lda #EN_MAX
-    jsr sv_dec2
+    lda sp_enmax
+    jsr sv_dec3
     lda #3
     jsr sv_skip
     jsr pt_tier
@@ -664,17 +664,14 @@ pt_b_yard
     ldy #>pt_s_each1
     ldx #8
     jsr sv_puts
-    lda #2                  ; LASER    LEVEL n   NEXT nnnn
+    lda #2                  ; HULL     nnn  NEXT nnnn (+5 energy each)
     jsr pt_line
     lda #<pt_s_y2
     ldy #>pt_s_y2
-    ldx #15
+    ldx #9
     jsr sv_puts
-    lda gs_ulas
-    clc
-    adc #1
-    jsr tx_digit
-    jsr sv_putc
+    lda sp_enmax
+    jsr sv_dec3
     ldx #0
     jsr pt_putnext
     lda #3                  ; HOLDS    nn   NEXT nnnn
@@ -830,7 +827,7 @@ pt_putnext
     jsr sv_skip
     ldx sv_t3
     lda gs_ulas,x
-    cmp #2
+    cmp pt_upmax,x
     bcc pt_pn_n
     lda #<pt_s_max
     ldy #>pt_s_max
@@ -847,9 +844,36 @@ pt_pn_n
     lda pt_vl
     jmp sv_bcd
 
-; upgrade sv_t3's next price (BCD: pt_vh hundreds+thousands, pt_vl)
+; upgrade sv_t3's next price (BCD: pt_vh hundreds+thousands, pt_vl). The
+; hull: 100 + 20 a level (as tens, to BCD, x 10)
 pt_upprice
     ldx sv_t3
+    bne pt_up_t
+    lda gs_ulas
+    asl
+    adc #10
+    jsr pt_bcd
+    lda pt_vl
+    lsr
+    lsr
+    lsr
+    lsr
+    sta pt_tb
+    lda pt_vh
+    asl
+    asl
+    asl
+    asl
+    ora pt_tb
+    sta pt_vh
+    lda pt_vl
+    asl
+    asl
+    asl
+    asl
+    sta pt_vl
+    rts
+pt_up_t
     lda gs_ulas,x           ; (level 0 or 1)
     asl
     clc
@@ -863,8 +887,10 @@ pt_upprice
     lda pt_uptab+1,x
     sta pt_vl
     rts
-; by upgrade (laser, holds, tanks): level 1, level 2 (BCD, high byte first)
-pt_uptab  .byte $05, $00, $10, $00
+; by upgrade (the hull: pt_upprice's own), holds, tanks: level 1, level 2
+; (BCD, high byte first); the levels there are
+pt_upmax  .byte EN_UPS, 2, 2
+pt_uptab  .byte $00, $00, $00, $00
           .byte $03, $00, $06, $00
           .byte $03, $00, $06, $00
 
@@ -1088,7 +1114,7 @@ pt_y1
     sta sv_t4
 pt_y1_l
     lda sp_energy
-    cmp #EN_MAX
+    cmp sp_enmax
     bcs pt_y1_d
     jsr pt_tier
     tax
@@ -1118,7 +1144,7 @@ pt_y_none
     jmp pt_say
 pt_y_n1
     lda sp_energy
-    cmp #EN_MAX
+    cmp sp_enmax
     bcs pt_y_full
     lda #3
     jmp pt_say
@@ -1126,13 +1152,13 @@ pt_y_full
     lda #7
     jmp pt_say
 pt_y2
-    ; an upgrade (laser, holds, tanks)
+    ; an upgrade (the hull, holds, tanks)
     sec
     sbc #2
     sta sv_t3
     tax
     lda gs_ulas,x
-    cmp #2
+    cmp pt_upmax,x
     bcc pt_y2_n
     lda #7
     jmp pt_say
@@ -1145,6 +1171,14 @@ pt_y2_n
 pt_y2_ok
     ldx sv_t3
     inc gs_ulas,x
+    txa
+    bne pt_y2_m
+    jsr en_setmax           ; the hull: 5 more, and those 5 filled
+    lda sp_energy
+    clc
+    adc #EN_STEP
+    sta sp_energy
+pt_y2_m
     lda #8
     jmp pt_say
 
@@ -1180,7 +1214,7 @@ pt_s_bounty .byte ("B"-32)*2,("O"-32)*2,("U"-32)*2,("N"-32)*2,("T"-32)*2,("Y"-32
 pt_s_kept .byte ("K"-32)*2,("E"-32)*2,("P"-32)*2,("T"-32)*2,0   ; 'KEPT ' (5)
 pt_s_y0 .byte ("R"-32)*2,("E"-32)*2,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0,0,0,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'REFUEL   FUEL ' (14)
 pt_s_y1 .byte ("R"-32)*2,("E"-32)*2,("P"-32)*2,("A"-32)*2,("I"-32)*2,("R"-32)*2,0,0,0,("E"-32)*2,("N"-32)*2,("E"-32)*2,("R"-32)*2,("G"-32)*2,("Y"-32)*2,0   ; 'REPAIR   ENERGY ' (16)
-pt_s_y2 .byte ("L"-32)*2,("A"-32)*2,("S"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0,0,("L"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'LASER    LEVEL ' (15)
+pt_s_y2 .byte ("H"-32)*2,("U"-32)*2,("L"-32)*2,("L"-32)*2,0,0,0,0,0   ; 'HULL     ' (9)
 pt_s_y3 .byte ("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2,0,0,0,0   ; 'HOLDS    ' (9)
 pt_s_y4 .byte ("T"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2,("S"-32)*2,0,0,0,0   ; 'TANKS    ' (9)
 pt_s_next .byte ("N"-32)*2,("E"-32)*2,("X"-32)*2,("T"-32)*2,0   ; 'NEXT ' (5)

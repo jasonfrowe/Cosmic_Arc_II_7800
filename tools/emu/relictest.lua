@@ -22,7 +22,7 @@ step(300, nil, nil)
 step(100, "P1 Button 1", nil)                                  -- New Game
 step(5, nil, function() local m = mem()
   m:write_u8(0x2680, 2)                                         -- home: a planet (safe), barren
-  m:write_u8(0x25EA, 0); m:write_u8(0x25EB, 0); m:write_u8(0x25C5, 0x04)
+  m:write_u8(0x25FA, 0); m:write_u8(0x25FB, 0); m:write_u8(0x25D5, 0x04)
   m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1) end)
 step(20, nil, function() check("RELIC SIGNAL on the sector view", txt(1):find("RELIC SIGNAL") ~= nil, txt(1)) end)
 step(40, "P1 Button 1", nil)                                   -- land
@@ -36,18 +36,18 @@ step(2, nil, function() check("a quarter speed across", maxv > 0 and maxv <= 128
 step(2, nil, function() local m = mem(); m:write_u8(0x2700, 0); m:write_u8(0x2701, 2); m:write_u8(0x2703, 0); m:write_u8(0x2704, 0) end)
 step(900, "P1 Up", nil, function() return mem():read_u8(0x2709) == 0 end)   -- up into the Ark
 step(10, nil, function() local m = mem()
-  check("docked: the relic aboard", m:read_u8(0x25EB) == 1, "state " .. m:read_u8(0x25EB))
+  check("docked: the relic aboard", m:read_u8(0x25FB) == 1, "state " .. m:read_u8(0x25FB))
   m:write_u8(0x2714, 3) end)                                    -- the planet's done
 step(120, nil, function() local m = mem()
   m:write_u8(0x2680, 1 | (2 << 2)); m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1); c0 = credits() end)  -- home: a port again
 step(40, "P1 Button 1", nil)                                   -- dock
 step(10, nil, function() local m = mem()
-  check("the port pays 2000", credits() - c0 == 2000 and m:read_u8(0x25EB) == 2, string.format("+%d, state %d", credits() - c0, m:read_u8(0x25EB)))
+  check("the port pays 2000", credits() - c0 == 2000 and m:read_u8(0x25FB) == 2, string.format("+%d, state %d", credits() - c0, m:read_u8(0x25FB)))
   if snap then manager:machine().screens[":screen"]:snapshot() end
   m:write_u8(0x22FB, 3); m:write_u8(0x27F7, 1) end)             -- LEAVE PORT (commodities: line 3)
 step(40, "P1 Button 1", nil)
 step(30, nil, function() local m = mem()
-  check("RELIC earned", m:read_u8(0x25E5) & 64 ~= 0, string.format("%02x", m:read_u8(0x25E5))) end)
+  check("RELIC earned", m:read_u8(0x25F5) & 64 ~= 0, string.format("%02x", m:read_u8(0x25F5))) end)
 emu.register_frame_done(function()
   f = f + 1
   local m = mem()

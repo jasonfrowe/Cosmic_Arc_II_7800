@@ -41,7 +41,7 @@ ARK_HY1   = 103
 PF_TOP    = 16
 PF_BOT    = 176
 
-EN_MAX    = 96      ; energy: 12 bar cells of 8
+; (energy: up to sp_enmax, the hull: common.asm)
 
 ; ---- balance knobs (docs/DESIGN.md 4.2) ----
 ; Energy is net-neutral for perfect play: a kill pays back exactly the shot
@@ -51,7 +51,7 @@ EN_MAX    = 96      ; energy: 12 bar cells of 8
 SHOT_COST = 1       ; energy a bolt costs
 KILL_PAY  = 1       ; energy a kill pays (= SHOT_COST: perfect play breaks even)
 CLEAR_PAY = 0       ; energy for clearing a wave (0: none, by the rule above)
-FIRE_GAP  = 8       ; frames between bolts (the laser's upgrades: fire_gaps)
+FIRE_GAP  = 8       ; frames between bolts
 WV_COUNT0 = 3       ; large rocks in a wave: WV_COUNT0 + wave, at most WV_COUNTMAX
 WV_COUNTMAX = 12
 WV_GAP0   = 110     ; frames between rocks: WV_GAP0 - WV_GAPSTEP * wave,
@@ -159,7 +159,10 @@ sp_noplanet = $23EF ; not 0: waves go straight on, no planets (tests)
 
 ; ---------------------------------------------------------------------------
 sp_new
-    lda #EN_MAX
+    lda #0                  ; (the map's new game sets the hull again)
+    sta gs_ulas
+    jsr en_setmax
+    lda sp_enmax
     sta sp_energy
     lda #0
     sta sp_score
@@ -417,10 +420,7 @@ sp_in_fire
     sta bl_dy,y
     txa
     sta bl_d,y
-    lda gs_ulas             ; the laser's upgrade: faster fire
-    and #3
-    tax
-    lda fire_gaps,x
+    lda #FIRE_GAP
     sta sp_cool
     sec
     lda sp_energy
@@ -723,9 +723,9 @@ sp_rockhit
     clc                     ; a kill pays back its shot (sp_pay: by who)
     lda sp_energy
     adc sp_pay
-    cmp #EN_MAX
+    cmp sp_enmax
     bcc sp_rh_e
-    lda #EN_MAX
+    lda sp_enmax
 sp_rh_e
     sta sp_energy
     lda #SFX_BOOM
@@ -922,7 +922,6 @@ sp_negx
 
 ; per lane (0 up, clockwise): 0 vertical, 1 across, 2 diagonal; and the
 ; signs of a rock's velocity (inwards: towards the Ark)
-fire_gaps .byte FIRE_GAP, 6, 4, 4   ; by the laser's upgrade level
 lane_kind .byte 0, 2, 1, 2, 0, 2, 1, 2
 ; a lane kind's speed scale (128 = 1): a large rock travels about 55 square
 ; units to the hull up or down, 75 on a diagonal, 100 across (the Ark's wide
@@ -1102,9 +1101,9 @@ sp_w_ac
     clc
     lda sp_energy
     adc #CLEAR_PAY
-    cmp #EN_MAX
+    cmp sp_enmax
     bcc sp_w_e
-    lda #EN_MAX
+    lda sp_enmax
 sp_w_e
     sta sp_energy
     lda #SFX_CLEAR
@@ -1178,25 +1177,8 @@ lane_y  .byte 16, 17, 87, 159, 160, 159, 87, 17
 ;   top:    "000000        WAVE 01"
 ;   bottom: "ENERGY [[[[[[[[[[[[ "
 sp_hud
-    ldy #0
-    ldx #0
-sp_hud_sc
-    lda sp_score,x
-    lsr
-    lsr
-    lsr
-    lsr
-    jsr tx_digit
-    sta hud_top,y
-    iny
-    lda sp_score,x
-    and #$0F
-    jsr tx_digit
-    sta hud_top,y
-    iny
-    inx
-    cpx #3
-    bne sp_hud_sc
+    jsr hud_cred            ; the credits (no score: it meant nothing here)
+    ldy #6
     lda #0
 sp_hud_sp
     sta hud_top,y
@@ -1229,8 +1211,8 @@ sp_hud_w
     sta hwp
     lda #>hud_bot
     sta hwp+1
+    jsr en_bar
     lda #("A"-32)*2
-    ldx sp_energy
     jsr hud_bar
     lda #<hud_bot2
     sta hwp

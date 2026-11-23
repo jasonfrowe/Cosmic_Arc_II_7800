@@ -48,7 +48,7 @@ mapper is `a78_p450_ta` in the emulator):
 | 3 | $8000, switched | the planet: surface.asm and its map (MARIA reads the map as it draws) |
 | 4 | $8000, switched | the map: sector.asm; the 40-column font at $A000; port.asm |
 | 5 | $8000, switched | the music (gen/music.asm) |
-| 6 | $8000, switched | the achievements' screen (achieve.asm); a copy of the 40-column font at $A000 (`font320b.asm`) |
+| 6 | $8000, switched | the close-up chart and the achievements (achieve.asm); a copy of the 40-column font at $A000 (`font320b.asm`) |
 | 7-16 | $8000, switched | to come |
 | 17 | $C000, fixed | graphics (MARIA reads them at any time), 7800basic's runtime |
 
@@ -140,10 +140,11 @@ bytes of a line; the creatures come straight after it.
 | $2585-$258A | sector.asm: aboard: fuel ore, organics, equipment; upgrade levels (laser, holds, tanks) |
 | $256B-$2570 | sector.asm: creatures in stasis by kind (6) |
 | $2572, $258E | sector.asm: the planet being landed on: its creatures (`gs_pop`), its level (`gs_plevel`) |
-| $25A0-$25EF | sector.asm: the voyage's long-lived block (saved): kept pairs, the bank, port stock and glut, planets' creatures taken, achievements, pirates destroyed, storm rocks, the relic, the restock ticks |
-| $25F0-$25F6 | port.asm: scratch, an amount to move (bank), the tabs here |
+| $25A0-$25FF | sector.asm: the voyage's long-lived block (saved; 11 ports' stock): kept pairs, the bank, port stock and glut, planets' creatures taken, achievements, pirates destroyed, storm rocks, the relic, the restock ticks |
 | $2573, $2574, $2578, $258B-$258D | the BASIC's escape scene |
-| $25F7-$25F9 | text40.asm: achievements (hit this encounter/planet, the one announced, scratch) |
+| $2573, $2574, $2578, $258B-$258D, $259E | port.asm's scratch (the escape scene's bytes); $2574 also the energy bar's value |
+| $258F, $23FF | common.asm: the hull (most energy), the bar's scale |
+| $23FE, $2584, $2571 | text40.asm: achievements (hit this encounter/planet, the one announced, scratch) |
 | $2590-$259F | sector.asm: the voyage (sector, fuel, stardate, credits, seed; $259F the tests' flag) (the boot check's before a game) |
 | $2600-$26FF | sector.asm: the galaxy by sector (warps, cells, info, flags: visited, seen, jumps to safe space) (the boot check's before a game) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |
@@ -214,6 +215,7 @@ tools/test_pod.sh      # the Ark lost: the escape scene, home in a new Ark, a
 tools/test_ach.sh      # achievements earned and announced; their screen (bank 6)
 tools/test_relic.sh    # the relic: signal, landing, heavy, aboard, paid for, RELIC
 tools/test_level.sh    # planet levels: L5 far out (rare kinds), L1 at home (common)
+tools/test_leave.sh    # leaving a planet early: button 2 held docked, a countdown
 tools/test_cargo.sh    # ore beamed up halves the speed across; button 2 drops it
 tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane

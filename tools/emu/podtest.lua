@@ -34,7 +34,7 @@ step(10, nil, function() local m = mem()
   check("a tenth of the credits", rd3(0x2594) == 123, rd3(0x2594) .. "")
   check("the bank kept", rd3(0x25A6) == 500, rd3(0x25A6) .. "")
   check("a new Ark", m:read_u8(0x2588) == 0 and m:read_u8(0x2585) == 0 and m:read_u8(0x256B) == 0 and m:read_u8(0x25A0) == 0
-    and m:read_u8(0x2591) == 20 and m:read_u8(0x2386) == 96)
+    and m:read_u8(0x2591) == 20 and m:read_u8(0x2386) == 100)
   check("the message", m:read_u8(0x259D) == 4) end)
 emu.register_frame_done(function()
   f = f + 1

@@ -132,6 +132,22 @@ sv_d4_o
     rts
 sv_p10lo  .byte <1, <10, <100, <1000
 sv_p10hi  .byte >1, >10, >100, >1000
+; A as three digits
+sv_dec3
+    ldx #0
+sv_d3_l
+    cmp #100
+    bcc sv_d3_d
+    sbc #100
+    inx
+    bne sv_d3_l
+sv_d3_d
+    pha
+    txa
+    jsr tx_digit
+    jsr sv_putc
+    pla
+    jmp sv_dec2
 ; a BCD byte A as two digits
 sv_bcd
     pha
@@ -184,10 +200,10 @@ AC_DATE   = 150
 AC_KILLS  = 50
 AC_ROCKS  = 5
 
-gs_achn   = $25EE   ; [2] achievements announced (on the map)
-ac_hit    = $25F7   ; this encounter or planet: the Ark (or shuttle) hit
-gs_achi   = $25F8   ; the one being announced
-ac_t      = $25F9
+gs_achn   = $25FE   ; [2] achievements announced (on the map)
+ac_hit    = $23FE   ; this encounter or planet: the Ark (or shuttle) hit
+gs_achi   = $2584   ; the one being announced
+ac_t      = $2571
 
 ; achievement A earned
 ac_set
@@ -257,11 +273,12 @@ ac_c_4
     lda #AC_RICH
     jsr ac_set
 ac_c_5
-    clc
-    lda gs_ulas
-    adc gs_uhold
-    adc gs_utank
-    cmp #6
+    lda gs_ulas             ; (the hull to the top, holds and tanks too)
+    cmp #EN_UPS
+    bcc ac_c_6
+    lda gs_uhold
+    and gs_utank
+    cmp #2
     bcc ac_c_6
     lda #AC_REFIT
     jsr ac_set

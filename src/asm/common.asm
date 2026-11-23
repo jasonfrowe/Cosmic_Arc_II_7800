@@ -152,3 +152,101 @@ pt_hu_l
     dex
     bpl pt_hu_l
     rts
+
+; ---- the Ark's hull: its most energy (sp_enmax: EN_BASE + EN_STEP an
+; upgrade, gs_ulas, to EN_TOP), and the energy bar scaled to it ----
+EN_BASE   = 100
+EN_STEP   = 5
+EN_TOP    = 200
+EN_UPS    = 20      ; hull upgrades, at most
+sp_enmax  = $258F
+sp_enk    = $23FF   ; 96 x 256 / sp_enmax (the bar's scale)
+sp_enbar  = $2574   ; the energy on the bar's scale, 0-96 (the BASIC's
+                    ;   colours; the escape scene's otherwise)
+en_setmax
+    lda gs_ulas
+    asl
+    asl
+    adc gs_ulas
+    clc
+    adc #EN_BASE
+    cmp #EN_TOP+1
+    bcc en_sm_m
+    lda #EN_TOP
+en_sm_m
+    sta sp_enmax
+    ldx #0                  ; k = 24576 / max: subtract till it's gone
+    ldy #$60
+    lda #0
+en_sm_l
+    cpy #0
+    bne en_sm_s
+    cmp sp_enmax
+    bcc en_sm_d
+en_sm_s
+    sec
+    sbc sp_enmax
+    bcs en_sm_n
+    dey
+en_sm_n
+    inx
+    bne en_sm_l
+en_sm_d
+    stx sp_enk
+    rts
+; X = sp_enbar = the energy on the bar's scale (0-96)
+en_bar
+    ldx #96
+    lda sp_energy
+    cmp sp_enmax
+    bcs en_b_r
+    sta M_A
+    lda sp_enk
+    sta M_B
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    ldx M_P+1
+en_b_r
+    stx sp_enbar
+    rts
+
+; the HUD's top line, 0-5: the credits ($ and the digits, no leading zeros)
+hud_cred
+    ldy #0
+    ldx #0
+hc_l
+    lda gs_cred,x
+    lsr
+    lsr
+    lsr
+    lsr
+    jsr tx_digit
+    sta hud_top,y
+    iny
+    lda gs_cred,x
+    and #$0F
+    jsr tx_digit
+    sta hud_top,y
+    iny
+    inx
+    cpx #3
+    bne hc_l
+    ldy #0
+hc_z
+    lda hud_top,y
+    cmp #(16 << 1)          ; ("0")
+    bne hc_d
+    lda #0
+    sta hud_top,y
+    iny
+    cpy #5
+    bne hc_z
+hc_d
+    dey
+    bmi hc_r
+    lda #("$"-32)*2
+    sta hud_top,y
+hc_r
+    rts
