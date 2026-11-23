@@ -138,6 +138,7 @@ HOLD_RELIC = 3      ; the relic (crate RELIC_CK, on its planet): heavy
 NCR       = 4
 NCK       = 2
 RELIC_CK  = NCK-1   ; (the relic, on its planet: this crate)
+PL_CRATE  = 5       ; a crate: this much fuel ore in the holds
 NTT       = 8       ; towers, 128 apart
 NTS       = 6
 
@@ -1487,9 +1488,14 @@ pl_dv_ore
     jmp pl_dv_done
 pl_dv_o2
     inc pl_ore
-    jsr pt_holdfree         ; into the holds as fuel ore, if there's room
+    lda #PL_CRATE           ; into the holds: PL_CRATE of fuel ore, as many
+    sta pl_t0               ;  as there's room for
+pl_dv_o3
+    jsr pt_holdfree
     bcc pl_dv_full
     inc gs_ore
+    dec pl_t0
+    bne pl_dv_o3
 pl_dv_full
     lda #$02                ; 200 points
     sta sc_m

@@ -1,5 +1,5 @@
 -- Depletion test: New Game; 3 jumps (safe space: no encounters) restock a
--- port (a step back to normal, its glut down one) and give a planet one
+-- port (3 steps back to normal, its glut down to none) and give a planet one
 -- creature back; a barren planet won't be landed on; a planet with one left
 -- has one. tools/test_deplete.sh
 local fields = {}
@@ -33,10 +33,10 @@ end
 step(10, nil, function() local m = mem()
   local ok = true
   for k = 0, 2 do
-    local want = (class & (1 << k)) ~= 0 and 6 or 8
+    local want = (class & (1 << k)) ~= 0 and 8 or 6             -- a step a jump: 3
     if m:read_u8(0x25A9 + k) ~= want then ok = false end
   end
-  check("a port restocks", ok and m:read_u8(0x25CA) == 1, string.format("stock %d %d %d, glut %d", m:read_u8(0x25A9), m:read_u8(0x25AA), m:read_u8(0x25AB), m:read_u8(0x25CA)))
+  check("a port restocks", ok and m:read_u8(0x25CA) == 0, string.format("stock %d %d %d, glut %d", m:read_u8(0x25A9), m:read_u8(0x25AA), m:read_u8(0x25AB), m:read_u8(0x25CA)))
   check("a planet's creatures come back", m:read_u8(0x25D5) & 15 == 1, string.format("taken %d", m:read_u8(0x25D5) & 15))
   check("no encounter on the way", m:read_u8(0x259B) == 0)
   -- this sector becomes a barren planet

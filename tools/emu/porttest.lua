@@ -46,11 +46,10 @@ for _, which in ipairs({"sell", "buy"}) do
     local dc, dg = credits() - s.c0, m:read_u8(0x2585 + k) - s.g0
     local stock = m:read_u8(0x25A9 + k)
     if which == "sell" then
-      local price = base[k] - 4 + 8 * tier                    -- (it had bought none)
+      local price = (base[k] * ({75, 84, 94, 103})[tier + 1] + 30) // 60   -- (it had bought none)
       check("sell a commodity the port buys", dc == price and dg == -1 and stock == 1, string.format("+%d credits, goods %d, it's bought %d", dc, dg, stock))
     else
-      local p = base[k] + 4 * tier                             -- 12 in stock: + p * 3 / 32
-      local price = p + (p * 3) // 32
+      local price = (base[k] * 48 + 30) // 60                  -- 12 in stock: base x 48 / 60
       check("buy a commodity the port sells", dc == -price and dg == 1 and stock == 11, string.format("%d credits (%d), goods %+d, stock %d", dc, price, dg, stock))
     end
     s.k = nil end)
@@ -79,18 +78,18 @@ step(10, nil, function() local m = mem()
 step(30, "P1 Left", nil)
 step(10, nil, function() local m = mem()
   check("keep one for the manifest (glider)", m:read_u8(0x25A4) == 1 and m:read_u8(0x256F) == 0) end)
--- SHIPYARD: refuel, repair, the hull
-step(20, "P1 Button 2", function() local m = mem(); m:write_u8(0x2591, 10); m:write_u8(0x2386, 50); setcred(1000) end)
+-- SHIPYARD: repair, the hull, the holds
+step(20, "P1 Button 2", function() local m = mem(); m:write_u8(0x2386, 50); setcred(1500) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("refuel (4 a unit at home)", mem():read_u8(0x2591) == 30 and credits() == 920, string.format("fuel %d, credits %d", mem():read_u8(0x2591), credits()))
+step(10, nil, function() check("repair (4 a point, to 100)", mem():read_u8(0x2386) == 100 and credits() == 1300, string.format("energy %d, credits %d", mem():read_u8(0x2386), credits()))
   mem():write_u8(0x22FB, 1); mem():write_u8(0x27F7, 1) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("repair (4 a point, to 100)", mem():read_u8(0x2386) == 100 and credits() == 720, string.format("energy %d, credits %d", mem():read_u8(0x2386), credits()))
-  mem():write_u8(0x22FB, 2); mem():write_u8(0x27F7, 1) end)
+step(10, nil, function() check("the hull upgrade (1000: +5)", mem():read_u8(0x2588) == 1 and credits() == 300 and mem():read_u8(0x258F) == 105 and mem():read_u8(0x2386) == 105, string.format("level %d, credits %d, max %d, energy %d", mem():read_u8(0x2588), credits(), mem():read_u8(0x258F), mem():read_u8(0x2386))) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("the hull upgrade (100: +5)", mem():read_u8(0x2588) == 1 and credits() == 620 and mem():read_u8(0x258F) == 105 and mem():read_u8(0x2386) == 105, string.format("level %d, credits %d, max %d, energy %d", mem():read_u8(0x2588), credits(), mem():read_u8(0x258F), mem():read_u8(0x2386))); setcred(100) end)
+step(10, nil, function() check("too dear (the next hull, 1200)", mem():read_u8(0x2588) == 1 and credits() == 300)
+  setcred(3500); mem():write_u8(0x22FB, 2); mem():write_u8(0x27F7, 1) end)
 step(30, "P1 Button 1", nil)
-step(10, nil, function() check("too dear (the next hull, 120)", mem():read_u8(0x2588) == 1 and credits() == 100) end)
+step(10, nil, function() check("the holds upgrade (3000)", mem():read_u8(0x2589) == 1 and credits() == 500, string.format("level %d, credits %d", mem():read_u8(0x2589), credits())) end)
 -- BANK (home: safe space): deposit 100, deposit all, withdraw 100
 local function bank() return bcd(mem():read_u8(0x25A6)) * 10000 + bcd(mem():read_u8(0x25A7)) * 100 + bcd(mem():read_u8(0x25A8)) end
 step(20, "P1 Button 2", function() local m = mem(); setcred(1000); m:write_u8(0x25A6, 0); m:write_u8(0x25A7, 0); m:write_u8(0x25A8, 0) end)

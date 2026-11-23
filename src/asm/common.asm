@@ -126,9 +126,8 @@ dr_bf0
 
 ; ---------------------------------------------------------------------------
 ; The Ark's capacities by upgrade level (port.asm's shipyard; the planet asks
-; pt_holdfree before taking ore aboard): the holds, the fuel tanks
+; pt_holdfree before taking ore aboard): the holds
 up_holds  .byte 10, 15, 20, 20
-up_tank   .byte 30, 40, 50, 50
 
 ; C = 1: room in the holds (goods + creatures in stasis < the holds)
 pt_holdfree

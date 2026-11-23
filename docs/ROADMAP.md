@@ -82,6 +82,8 @@ then link them together.
 - [x] The relic: on one outer-rim planet, heavy (a quarter speed across and up), hinted at ports, 2000 at a port
 - [ ] More upgrades (beam width, turret, thrusters, scanners)
 
+- [x] Trade rebalanced (makers sell cheap, takers pay; the rim more); no fuel; crates 5 ore; upgrades x10
+
 ## M6: Save / continue
 - [ ] Three save slots on the SaveKey, each its own game and achievements; clear a slot; saved on docking; Continue on the title
 - [ ] HSC fallback: measure the free space; full or reduced save

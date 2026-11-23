@@ -192,13 +192,14 @@ AC_SWEEP  = 8       ; every creature on a planet, the shuttle never lost
 AC_STORMS = 9       ; AC_ROCKS storm rocks shot down
 AC_FAR    = 10      ; the far sector (64) reached
 AC_RAID   = 11      ; a wave-10 encounter survived
-AC_FUMES  = 12      ; docked at a port on an empty tank
+AC_TRADE  = 12      ; AC_SOLD goods sold at ports
 AC_BANKER = 13      ; 5,000 in the bank
 AC_LOADED = 14      ; 20 holds full
 AC_POD    = 15      ; home in the escape pod
 AC_DATE   = 150
 AC_KILLS  = 50
 AC_ROCKS  = 5
+AC_SOLD   = 50
 
 gs_achn   = $25FE   ; [2] achievements announced (on the map)
 ac_hit    = $23FE   ; this encounter or planet: the Ark (or shuttle) hit
@@ -273,11 +274,10 @@ ac_c_4
     lda #AC_RICH
     jsr ac_set
 ac_c_5
-    lda gs_ulas             ; (the hull to the top, holds and tanks too)
+    lda gs_ulas             ; (the hull to the top, the holds too)
     cmp #EN_UPS
     bcc ac_c_6
     lda gs_uhold
-    and gs_utank
     cmp #2
     bcc ac_c_6
     lda #AC_REFIT
@@ -297,8 +297,14 @@ ac_c_9
 ac_c_10
     lda gx_flag+63
     lsr
-    bcc ac_c_13
+    bcc ac_c_12
     lda #AC_FAR
+    jsr ac_set
+ac_c_12
+    lda gs_sold
+    cmp #AC_SOLD
+    bcc ac_c_13
+    lda #AC_TRADE
     jsr ac_set
 ac_c_13
     lda gs_bank
@@ -372,7 +378,7 @@ ac_names
     .byte ("S"-32)*2,("T"-32)*2,("O"-32)*2,("R"-32)*2,("M"-32)*2,("S"-32)*2,0,0,0   ; 'STORMS   ' (9)
     .byte ("F"-32)*2,("A"-32)*2,("R"-32)*2,0,("S"-32)*2,("H"-32)*2,("O"-32)*2,("R"-32)*2,("E"-32)*2   ; 'FAR SHORE' (9)
     .byte ("D"-32)*2,("E"-32)*2,("E"-32)*2,("P"-32)*2,0,("R"-32)*2,("A"-32)*2,("I"-32)*2,("D"-32)*2   ; 'DEEP RAID' (9)
-    .byte ("O"-32)*2,("N"-32)*2,0,("F"-32)*2,("U"-32)*2,("M"-32)*2,("E"-32)*2,("S"-32)*2,0   ; 'ON FUMES ' (9)
+    .byte ("M"-32)*2,("E"-32)*2,("R"-32)*2,("C"-32)*2,("H"-32)*2,("A"-32)*2,("N"-32)*2,("T"-32)*2,0   ; 'MERCHANT ' (9)
     .byte ("B"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2,("E"-32)*2,("R"-32)*2,0,0,0   ; 'BANKER   ' (9)
     .byte ("L"-32)*2,("O"-32)*2,("A"-32)*2,("D"-32)*2,("E"-32)*2,("D"-32)*2,0,0,0   ; 'LOADED   ' (9)
     .byte ("L"-32)*2,("I"-32)*2,("F"-32)*2,("E"-32)*2,("B"-32)*2,("O"-32)*2,("A"-32)*2,("T"-32)*2,0   ; 'LIFEBOAT ' (9)

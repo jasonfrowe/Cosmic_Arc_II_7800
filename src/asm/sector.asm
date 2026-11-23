@@ -24,7 +24,7 @@ BANK_MAP  = 4
 
 ; ---- game state (the hardware check's RAM: free once a game's begun) ----
 gs_sec    = $2590   ; the Ark's sector (0-63, shown 1-64)
-gs_fuel   = $2591
+                    ; ($2591: free: no fuel any more)
 gs_date   = $2592   ; the stardate (2 bytes, binary)
 gs_cred   = $2594   ; credits (3 bytes BCD, high first)
 gs_seed   = $2597   ; the galaxy's seed (4 bytes)
@@ -38,7 +38,7 @@ gs_org    = $2586
 gs_eqp    = $2587
 gs_ulas   = $2588   ; upgrades: the hull (0-20: +5 energy each), the holds (0-2),
 gs_uhold  = $2589   ;   the fuel tanks
-gs_utank  = $258A
+gs_sold   = $258A   ; goods sold at ports (MERCHANT; at most 255)
 gs_stasis = $256B   ; [6] creatures in stasis, by kind
 ; the voyage's long-lived state ($25A0-$25EF: saved with the game)
 gs_keep   = $25A0   ; [6] the manifest: specimens kept, by kind (0-2: a pair)
@@ -79,8 +79,7 @@ GT_PORT   = 1
 GT_PLANET = 2
 GT_NEBULA = 3
 
-FUEL_START = 20
-; (fuel tanks and holds by upgrade level: up_tank, up_holds in port.asm)
+; (holds by upgrade level: up_holds in common.asm)
 
 ; ---- the screens' scratch (the planet's RAM: free on the map) ----
 ; text rows 0-5 at $2200, 6-11 at $2700 (40 each)
@@ -490,8 +489,6 @@ gx_n_pt2
     sta gs_cred+1
     lda #0
     sta gs_cred+2
-    lda #FUEL_START
-    sta gs_fuel
     lda #0                  ; nothing aboard, no upgrades
     ldx #5
 gx_n_inv
@@ -503,7 +500,7 @@ gx_n_inv
     sta gs_eqp
     sta gs_ulas
     sta gs_uhold
-    sta gs_utank
+    sta gs_sold
     jsr en_setmax           ; (the hull as new: sp_energy's sp_new's)
     lda #0
     ldx #GS_LONGN-1         ; the long-lived block: all clear
@@ -632,15 +629,12 @@ gx_wt_y
     clc
     rts
 
-; a jump's gone by: every 2, each port's stock a step back to normal (what
-; it sells up to PT_NORMAL, what it's bought down to none) and its glut of
-; creatures down one; every 3, each planet's creatures one back (gs_miss).
-; (Leaves sv_t3 alone: sv_warp's.)
+; a jump's gone by: each port's stock a step back to normal (what it sells
+; up to PT_NORMAL, what it's bought down to none) and its glut of creatures
+; down one; every 3, each planet's creatures one back (gs_miss). (Leaves
+; sv_t3 alone: sv_warp's.)
 gx_restock
     inc gs_tick
-    lda gs_tick
-    lsr
-    bcs gx_rs_pl
     ldx #0                  ; (sector)
     ldy #0                  ; (stock index)
     sty gc_n                ; (port)
@@ -752,7 +746,6 @@ gx_lost
     sta gs_eqp
     sta gs_ulas
     sta gs_uhold
-    sta gs_utank
     ldx #5
 gx_ls_k
     sta gs_stasis,x
@@ -765,8 +758,6 @@ gx_ls_k
     lda #0
     sta gs_relst
 gx_ls_r
-    lda #FUEL_START
-    sta gs_fuel
     jsr en_setmax
     lda sp_enmax
     sta sp_energy
@@ -1116,18 +1107,10 @@ sv_b_itn
     jmp sv_b_it
 sv_b_it_far855
 sv_b_itd
-    ; row 10: fuel, credits, energy
+    ; row 10: credits, energy
     ldx #10
     lda #1
     jsr sv_at
-    lda #<tx_fuel
-    ldy #>tx_fuel
-    ldx #5
-    jsr sv_puts
-    lda gs_fuel
-    jsr sv_dec2
-    lda #3
-    jsr sv_skip
     lda #<tx_credits
     ldy #>tx_credits
     ldx #8
@@ -1395,26 +1378,10 @@ sv_i_dock
     ; a port: its screen (port.asm)
     jmp pt_enter
 
-; warp to sector A: fuel, a stardate; maybe an encounter on the way
+; warp to sector A: a stardate; maybe an encounter on the way (no fuel:
+; warps are free, as in TradeWars)
 sv_warp
     sta gs_dest
-    lda gs_fuel
-    bne sv_wp_f
-    ; out of fuel: adrift to a random neighbour, and an encounter for sure
-    lda #MSG_DRIFT
-    sta gs_msg
-    lda sv_nitems
-    jsr gx_rand
-    tax
-    lda sv_items,x
-    bmi sv_wp_d0
-    sta gs_dest
-sv_wp_d0
-    lda #100
-    sta sv_t3               ; (a sure encounter)
-    bne sv_wp_go
-sv_wp_f
-    dec gs_fuel
     lda #0
     sta sv_t3
 sv_wp_go
@@ -1754,7 +1721,6 @@ tx_date    .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,("D"-32)*2,("A"-32)
 tx_warp    .byte ("W"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2,0
 tx_land    .byte ("L"-32)*2,("A"-32)*2,("N"-32)*2,("D"-32)*2,0,("O"-32)*2,("N"-32)*2,0,("P"-32)*2,("L"-32)*2,("A"-32)*2,("N"-32)*2,("E"-32)*2,("T"-32)*2
 tx_dock    .byte ("D"-32)*2,("O"-32)*2,("C"-32)*2,("K"-32)*2,0,("A"-32)*2,("T"-32)*2,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,0
-tx_fuel    .byte ("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0
 tx_credits .byte ("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2,0
 tx_class   .byte ("C"-32)*2,("L"-32)*2,("A"-32)*2,("S"-32)*2,("S"-32)*2,0
 tx_chart   .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-32)*2,("A"-32)*2,("R"-32)*2,("T"-32)*2

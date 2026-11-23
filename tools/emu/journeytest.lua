@@ -1,5 +1,5 @@
--- Journey test: the map's loop. New Game; out of fuel, a warp drifts into a
--- sure encounter (deep space, the autopilot clears it) and the Ark arrives
+-- Journey test: the map's loop. New Game; every sector an outer-rim nebula,
+-- warps till one's an encounter (deep space, the autopilot clears it) and the Ark arrives
 -- on the map at its destination (320A again); a planet here: land, the
 -- planet ends, back on the map. tools/test_journey.sh
 local fields = {}
@@ -20,7 +20,7 @@ emu.register_frame_done(function()
     if f >= 300 and f <= 305 then held["P1 Button 1"] = true end
     if f == 400 then
       r.map = (ctrl == 0x43); r.from = m:read_u8(0x2590)
-      m:write_u8(0x2591, 0)                                   -- no fuel
+      for x = 0, 63 do m:write_u8(0x2680 + x, 0xC3) end       -- every sector an outer-rim nebula (85%)
       m:write_u8(0x27F7, 1)
       phase = "warp"; t0 = f
     end
@@ -30,7 +30,10 @@ emu.register_frame_done(function()
     if go == 1 or ss ~= 0 and m:read_u8(0x23EE) == 2 and ctrl == 0x50 then
       r.enc = true; r.dest = m:read_u8(0x259C); phase = "space"; t0 = f
     end
-    if f - t0 > 300 then phase = "done" end
+    if f - t0 > 150 then                                      -- no encounter: warp again
+      r.tries = (r.tries or 0) + 1; t0 = f; m:write_u8(0x27F7, 1)
+      if r.tries > 8 then phase = "done" end
+    end
   elseif phase == "space" then
     m:write_u8(0x2386, 96)
     -- the laser autopilot: the nearest rock or pirate
@@ -50,7 +53,7 @@ emu.register_frame_done(function()
       r.back = true; r.arrived = (m:read_u8(0x2590) == r.dest); r.spacetime = (f - t0) / 60
       -- make this sector a planet (VERDA), and land
       local s = m:read_u8(0x2590)
-      m:write_u8(0x2680 + s, (m:read_u8(0x2680 + s) & 0xC0) | 2)
+      m:write_u8(0x2680 + s, 2)                               -- a planet, safe (no encounter leaving)
       m:write_u8(0x27F7, 1); m:write_u8(0x22FB, 0)
       phase = "land"; t0 = f
     end
@@ -68,7 +71,7 @@ emu.register_frame_done(function()
   end
   for name, field in pairs(fields) do if name:match("^P1 ") then field:set_value(held[name] and 1 or 0) end end
   if phase == "done" then
-    print(string.format("map after New Game: %s; out of fuel, a warp: %s; back on the map: %s (%s, after %.0f s); landed: %s; back from the planet: %s",
+    print(string.format("map after New Game: %s; a warp: %s; back on the map: %s (%s, after %.0f s); landed: %s; back from the planet: %s",
       r.map and "yes" or "NO", r.enc and "an encounter" or "NO ENCOUNTER", r.back and "yes" or "NO",
       r.arrived and "at its destination" or "NOT AT ITS DESTINATION", r.spacetime or -1,
       r.landed and "yes" or "NO", r.home and "yes" or "NO"))

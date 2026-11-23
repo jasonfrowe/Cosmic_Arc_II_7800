@@ -21,7 +21,6 @@ step(5, nil, function() local m = mem()
   m:write_u8(0x2594, 0x00); m:write_u8(0x2595, 0x12); m:write_u8(0x2596, 0x34)   -- 1234 credits
   m:write_u8(0x25A6, 0x00); m:write_u8(0x25A7, 0x05); m:write_u8(0x25A8, 0x00)   -- 500 in the bank
   m:write_u8(0x2588, 2); m:write_u8(0x2585, 3); m:write_u8(0x256B, 2); m:write_u8(0x25A0, 1)
-  m:write_u8(0x2591, 7)
   m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1) end)
 step(40, "P1 Button 1", nil)                                   -- land
 step(200, nil, function() end)
@@ -33,8 +32,7 @@ step(10, nil, function() local m = mem()
   check("home again", m:read_u8(0x2590) == 0, "sector " .. m:read_u8(0x2590))
   check("a tenth of the credits", rd3(0x2594) == 123, rd3(0x2594) .. "")
   check("the bank kept", rd3(0x25A6) == 500, rd3(0x25A6) .. "")
-  check("a new Ark", m:read_u8(0x2588) == 0 and m:read_u8(0x2585) == 0 and m:read_u8(0x256B) == 0 and m:read_u8(0x25A0) == 0
-    and m:read_u8(0x2591) == 20 and m:read_u8(0x2386) == 100)
+  check("a new Ark", m:read_u8(0x2588) == 0 and m:read_u8(0x2585) == 0 and m:read_u8(0x256B) == 0 and m:read_u8(0x25A0) == 0 and m:read_u8(0x2386) == 100)
   check("the message", m:read_u8(0x259D) == 4) end)
 emu.register_frame_done(function()
   f = f + 1

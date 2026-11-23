@@ -514,6 +514,20 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
     ones' warps as lines meeting the boxes' edges (across, down, corner to
     corner, X where two cross); the Ark's box inverted. Button 2 again,
     the achievements.
+- **The trade, rebalanced (2026-11-23)**: the port's class sets the price,
+  its tier a premium. Price = base x K / 60: a port that **makes** a good
+  (sells it) asks K = 60 - stock (3/4 of base when stocked, a sixtieth more
+  for each one gone); one that **needs** it (buys it) pays K = 75, 84, 94,
+  103 by tier (5/4 of base, an eighth more a tier) less what it's bought
+  lately. Stock steps back to normal **every jump**. A 10-hold run from a
+  safe-space maker to a safe-space taker: about +8 a unit (organics) or +14
+  (equipment); to the outer rim, +20 or +38. (Before, every port sold above
+  base and bought below it: a loss within a tier.)
+- **No fuel** (as TradeWars: warps are free). No refuelling, no fuel tanks,
+  no drift. Fuel ore is a trade good; **a planet's crate is 5 holds of it**
+  (as many as there's room for).
+- **Upgrades ten times dearer**: the hull 1000 + 200 a level (58,000 for
+  all 20), the holds 3000 then 6000.
 - Not yet: saves (M6).
 
 ### 6.2 Resources
@@ -575,14 +589,14 @@ with progress where it counts. A new one is announced on the map
 | 2 | ACE | 50 pirates destroyed |
 | 3 | CHARTED | every sector visited |
 | 4 | TYCOON | 10,000 credits aboard |
-| 5 | REFIT | every upgrade (the hull to 200, holds, tanks) |
+| 5 | REFIT | every upgrade (the hull to 200, the holds) |
 | 6 | RELIC | the relic brought to a port |
 | 7 | UNTOUCHED | an encounter cleared without a hit on the Ark |
 | 8 | SWEEP | every creature on a planet caught, nothing lost |
 | 9 | STORMS | 5 storm rocks shot down |
 | 10 | FAR SHORE | sector 64 reached |
 | 11 | DEEP RAID | a wave-10 encounter survived |
-| 12 | ON FUMES | docked at a port on an empty tank |
+| 12 | MERCHANT | 50 goods sold at ports |
 | 13 | BANKER | 5,000 in the bank |
 | 14 | LOADED | 20 holds full |
 | 15 | LIFEBOAT | home in the escape pod |

@@ -9,8 +9,8 @@
 ;                one for a bounty (more out in the rim; less where it's had
 ;                many lately: pt_glut), or keep a pair of each for the
 ;                manifest
-;   SHIPYARD     fuel, energy (dearer out in the rim), upgrades: the hull
-;                (+5 energy, to 200), the holds, the fuel tanks
+;   SHIPYARD     energy (dearer out in the rim), upgrades: the hull (+5
+;                energy, to 200), the holds
 ;   BANK         (safe space's ports only) savings: kept when the Ark's lost
 ; The stick picks a line, fire acts, button 2 the next tab, left (Bio-Bounty)
 ; keeps one. LEAVE PORT: back to the sector (and an encounter, maybe).
@@ -33,11 +33,6 @@ pt_ntab   = $259E   ; tabs here: 3, or 4 with the bank (safe space)
 PT_BANKOFS = gs_bank - gs_cred
 
 pt_enter
-    lda gs_fuel             ; in on an empty tank
-    bne pt_en_f
-    lda #AC_FUMES
-    jsr ac_set
-pt_en_f
     lda #2
     sta sv_view
     jsr pt_tier             ; the bank: safe space's ports
@@ -197,52 +192,76 @@ pt_sub
 pt_sb_r
     rts
 
-; commodity X's price here (BCD in pt_vl/pt_vh). The port sells at
-; P = base + 4 * tier, + P * (15 - stock) / 32 (up to half again as it runs
-; out); buys at P = base - 4 + 8 * tier, - P * bought / 32 (down to half as
-; it fills). C = 1: the port sells it. (pt_te: the same, as non-zero.)
+; commodity X's price here (BCD in pt_vl/pt_vh): base x K / 60. A port
+; that makes it (sells it) asks K = 60 - stock (3/4 of base when full, up a
+; sixtieth for each one gone); one that needs it (buys it) pays K = 75, 84,
+; 94, 103 by tier (5/4 of base, an eighth more a tier) - what it's bought
+; lately. Bought where it's made, sold where it's needed: a profit, more out
+; in the rim. C = 1: the port sells it. (pt_te: the same, as non-zero.)
 pt_cprice
     stx pt_ta               ; (its own scratch: callers loop on sv_t3)
-    jsr pt_tier
-    sta pt_tb
     jsr pt_class
     ldx pt_ta
     and gx_bit,x
     sta pt_te
-    lda pt_tb
-    asl
-    asl                     ; 4 * tier
-    ldy pt_te
-    bne pt_cp_s
-    asl                     ; buys: 8 * tier - 4
-    sec
-    sbc #4
-pt_cp_s
-    clc
-    adc pt_cbase,x
-    sta pt_tb               ; (P)
+    lda pt_cbase,x
+    sta pt_tb               ; (base)
     jsr pt_sidx
     lda pt_stock,x
     ldy pt_te
     beq pt_cp_b
-    eor #PT_FULL            ; sells: + P * (15 - stock) / 32
-    ldy #5
-    jsr pt_mulsh
-    clc
-    adc pt_tb
-    jsr pt_bcd
+    eor #$FF                ; sells: 60 - stock
+    sec
+    adc #60
+    jsr pt_k60
     sec
     rts
 pt_cp_b
-    ldy #5                  ; buys: - P * bought / 32
-    jsr pt_mulsh
-    eor #$FF
+    sta pt_tc               ; buys: K by tier - bought
+    jsr pt_tier
+    tax
+    lda pt_ktier,x
     sec
-    adc pt_tb
-    jsr pt_bcd
+    sbc pt_tc
+    jsr pt_k60
     clc
     rts
 pt_cbase  .byte 20, 30, 50
+pt_ktier  .byte 75, 84, 94, 103
+; base (pt_tb) x A / 60, rounded, to BCD (pt_vl, pt_vh)
+pt_k60
+    sta M_B
+    lda pt_tb
+    sta M_A
+    lda #0
+    sta M_A+1
+    sta M_B+1
+    sta M_CTRL
+    clc
+    lda M_P
+    adc #30
+    sta pt_tc
+    lda M_P+1
+    adc #0
+    tay
+    lda pt_tc
+    ldx #0                  ; / 60: count the sixties
+pt_k6_l
+    cpy #0
+    bne pt_k6_s
+    cmp #60
+    bcc pt_k6_d
+pt_k6_s
+    sec
+    sbc #60
+    bcs pt_k6_n
+    dey
+pt_k6_n
+    inx
+    bne pt_k6_l
+pt_k6_d
+    txa
+    jmp pt_bcd
 ; X = commodity: its stock here (A)
 pt_stk
     jsr pt_sidx
@@ -377,20 +396,7 @@ pt_b_nm
     jsr sv_bcd
     lda gs_cred+2
     jsr sv_bcd
-    lda #2
-    jsr sv_skip
-    lda #<pt_s_fuel
-    ldy #>pt_s_fuel
-    ldx #5
-    jsr sv_puts
-    lda gs_fuel
-    jsr sv_dec2
-    lda #("/"-32)*2
-    jsr sv_putc
-    ldx gs_utank
-    lda up_tank,x
-    jsr sv_dec2
-    lda #2
+    lda #3
     jsr sv_skip
     lda #<pt_s_holds
     ldy #>pt_s_holds
@@ -615,33 +621,9 @@ pt_knhi   .byte >pt_s_k0, >pt_s_k1, >pt_s_k2, >pt_s_k3, >pt_s_k4, >pt_s_k5
 
 ; SHIPYARD
 pt_b_yard
-    lda #6
+    lda #4
     sta pt_n
-    lda #0                  ; REFUEL   FUEL nn/nn   5 A UNIT
-    jsr pt_line
-    lda #<pt_s_y0
-    ldy #>pt_s_y0
-    ldx #14
-    jsr sv_puts
-    lda gs_fuel
-    jsr sv_dec2
-    lda #("/"-32)*2
-    jsr sv_putc
-    ldx gs_utank
-    lda up_tank,x
-    jsr sv_dec2
-    lda #3
-    jsr sv_skip
-    jsr pt_tier
-    tax
-    lda pt_fuelc,x
-    jsr tx_digit
-    jsr sv_putc
-    lda #<pt_s_each5
-    ldy #>pt_s_each5
-    ldx #7
-    jsr sv_puts
-    lda #1                  ; REPAIR   ENERGY nn/96   1 A POINT
+    lda #0                  ; REPAIR   ENERGY nnn/nnn   n A POINT
     jsr pt_line
     lda #<pt_s_y1
     ldy #>pt_s_y1
@@ -664,7 +646,7 @@ pt_b_yard
     ldy #>pt_s_each1
     ldx #8
     jsr sv_puts
-    lda #2                  ; HULL     nnn  NEXT nnnn (+5 energy each)
+    lda #1                  ; HULL     nnn  NEXT nnnn (+5 energy each)
     jsr pt_line
     lda #<pt_s_y2
     ldy #>pt_s_y2
@@ -674,7 +656,7 @@ pt_b_yard
     jsr sv_dec3
     ldx #0
     jsr pt_putnext
-    lda #3                  ; HOLDS    nn   NEXT nnnn
+    lda #2                  ; HOLDS    nn   NEXT nnnn
     jsr pt_line
     lda #<pt_s_y3
     ldy #>pt_s_y3
@@ -684,17 +666,6 @@ pt_b_yard
     lda up_holds,x
     jsr sv_dec2
     ldx #1
-    jsr pt_putnext
-    lda #4                  ; TANKS    nn   NEXT nnnn
-    jsr pt_line
-    lda #<pt_s_y4
-    ldy #>pt_s_y4
-    ldx #9
-    jsr sv_puts
-    ldx gs_utank
-    lda up_tank,x
-    jsr sv_dec2
-    ldx #2
     jmp pt_putnext
 
 ; BANK: SAVINGS nnnnnn  SAFE IF THE ARK IS LOST; deposit, withdraw
@@ -845,7 +816,7 @@ pt_pn_n
     jmp sv_bcd
 
 ; upgrade sv_t3's next price (BCD: pt_vh hundreds+thousands, pt_vl). The
-; hull: 100 + 20 a level (as tens, to BCD, x 10)
+; hull: 1000 + 200 a level (in hundreds, to BCD)
 pt_upprice
     ldx sv_t3
     bne pt_up_t
@@ -854,23 +825,8 @@ pt_upprice
     adc #10
     jsr pt_bcd
     lda pt_vl
-    lsr
-    lsr
-    lsr
-    lsr
-    sta pt_tb
-    lda pt_vh
-    asl
-    asl
-    asl
-    asl
-    ora pt_tb
     sta pt_vh
-    lda pt_vl
-    asl
-    asl
-    asl
-    asl
+    lda #0
     sta pt_vl
     rts
 pt_up_t
@@ -891,8 +847,8 @@ pt_up_t
 ; (BCD, high byte first); the levels there are
 pt_upmax  .byte EN_UPS, 2, 2
 pt_uptab  .byte $00, $00, $00, $00
-          .byte $03, $00, $06, $00
-          .byte $03, $00, $06, $00
+          .byte $30, $00, $60, $00
+          .byte $30, $00, $60, $00
 
 ; ---- input ----
 pt_input
@@ -1008,6 +964,10 @@ pt_tr_s
     jmp pt_say
 pt_tr_s2
     inc pt_stock,x
+    inc gs_sold             ; (MERCHANT: goods sold)
+    bne pt_tr_s3
+    dec gs_sold
+pt_tr_s3
     ldx sv_sel
     dec gs_ore,x
     jsr pt_add
@@ -1084,30 +1044,6 @@ pt_kp_r
 ; SHIPYARD
 pt_yard
     lda sv_sel
-    bne pt_y1
-    ; fuel to the full, while the credits last
-    lda #0
-    sta sv_t4
-pt_y0_l
-    ldx gs_utank
-    lda gs_fuel
-    cmp up_tank,x
-    bcs pt_y0_d
-    jsr pt_tier
-    tax
-    lda pt_fuelc,x
-    sta pt_vl
-    lda #0
-    sta pt_vh
-    jsr pt_sub
-    bcc pt_y0_d
-    inc gs_fuel
-    inc sv_t4
-    bne pt_y0_l
-pt_y0_d
-    jmp pt_y_said
-pt_y1
-    cmp #1
     bne pt_y2
     ; energy to the full, while the credits last
     lda #0
@@ -1134,15 +1070,6 @@ pt_y_said
     lda #2
     jmp pt_say
 pt_y_none
-    lda sv_sel
-    bne pt_y_n1
-    ldx gs_utank
-    lda gs_fuel
-    cmp up_tank,x
-    bcs pt_y_full
-    lda #3
-    jmp pt_say
-pt_y_n1
     lda sp_energy
     cmp sp_enmax
     bcs pt_y_full
@@ -1152,9 +1079,9 @@ pt_y_full
     lda #7
     jmp pt_say
 pt_y2
-    ; an upgrade (the hull, holds, tanks)
+    ; an upgrade (the hull, holds)
     sec
-    sbc #2
+    sbc #1
     sta sv_t3
     tax
     lda gs_ulas,x
@@ -1182,8 +1109,7 @@ pt_y2_m
     lda #8
     jmp pt_say
 
-; fuel a unit, energy a point, by tier (BCD, < 10)
-pt_fuelc  .byte 4, 5, 6, 7
+; energy a point, by tier (BCD, < 10)
 pt_repc   .byte 4, 5, 6, 8
 
 ; messages
@@ -1212,18 +1138,14 @@ pt_s_k5 .byte ("B"-32)*2,("L"-32)*2,("I"-32)*2,("N"-32)*2,("K"-32)*2,("E"-32)*2,
 pt_s_stasis .byte 0,("S"-32)*2,("T"-32)*2,("A"-32)*2,("S"-32)*2,("I"-32)*2,("S"-32)*2   ; ' STASIS' (7)
 pt_s_bounty .byte ("B"-32)*2,("O"-32)*2,("U"-32)*2,("N"-32)*2,("T"-32)*2,("Y"-32)*2,0   ; 'BOUNTY ' (7)
 pt_s_kept .byte ("K"-32)*2,("E"-32)*2,("P"-32)*2,("T"-32)*2,0   ; 'KEPT ' (5)
-pt_s_y0 .byte ("R"-32)*2,("E"-32)*2,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0,0,0,("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'REFUEL   FUEL ' (14)
 pt_s_y1 .byte ("R"-32)*2,("E"-32)*2,("P"-32)*2,("A"-32)*2,("I"-32)*2,("R"-32)*2,0,0,0,("E"-32)*2,("N"-32)*2,("E"-32)*2,("R"-32)*2,("G"-32)*2,("Y"-32)*2,0   ; 'REPAIR   ENERGY ' (16)
 pt_s_y2 .byte ("H"-32)*2,("U"-32)*2,("L"-32)*2,("L"-32)*2,0,0,0,0,0   ; 'HULL     ' (9)
 pt_s_y3 .byte ("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2,0,0,0,0   ; 'HOLDS    ' (9)
-pt_s_y4 .byte ("T"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2,("S"-32)*2,0,0,0,0   ; 'TANKS    ' (9)
 pt_s_next .byte ("N"-32)*2,("E"-32)*2,("X"-32)*2,("T"-32)*2,0   ; 'NEXT ' (5)
 pt_s_max .byte ("M"-32)*2,("A"-32)*2,("X"-32)*2   ; 'MAX' (3)
-pt_s_each5 .byte 0,("A"-32)*2,0,("U"-32)*2,("N"-32)*2,("I"-32)*2,("T"-32)*2   ; ' A UNIT' (7)
 pt_s_each1 .byte 0,("A"-32)*2,0,("P"-32)*2,("O"-32)*2,("I"-32)*2,("N"-32)*2,("T"-32)*2   ; ' A POINT' (8)
 pt_s_leave .byte ("L"-32)*2,("E"-32)*2,("A"-32)*2,("V"-32)*2,("E"-32)*2,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'LEAVE PORT' (10)
 pt_s_cred .byte ("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2,0   ; 'CREDITS ' (8)
-pt_s_fuel .byte ("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0   ; 'FUEL ' (5)
 pt_s_holds .byte ("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2,0   ; 'HOLDS ' (6)
 pt_s_help .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("T"-32)*2,("R"-32)*2,("A"-32)*2,("D"-32)*2,("E"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("N"-32)*2,("E"-32)*2,("X"-32)*2,("T"-32)*2,0,("T"-32)*2,("A"-32)*2,("B"-32)*2   ; 'FIRE: TRADE   BUTTON 2: NEXT TAB' (32)
 pt_s_helpk .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("S"-32)*2,("E"-32)*2,("L"-32)*2,("L"-32)*2,0,("O"-32)*2,("N"-32)*2,("E"-32)*2,0,0,0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2,(":"-32)*2,0,("K"-32)*2,("E"-32)*2,("E"-32)*2,("P"-32)*2,0,("O"-32)*2,("N"-32)*2,("E"-32)*2   ; 'FIRE: SELL ONE   LEFT: KEEP ONE' (31)
