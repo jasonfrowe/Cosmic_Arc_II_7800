@@ -56,6 +56,7 @@ gs_relst  = $25EB   ; the relic: 0 on its planet, 1 aboard, 2 delivered
 gs_tick   = $25EC   ; jumps, for restocking: ports every 2, planets every 3
 gs_tick3  = $25ED
 gs_pop    = $2572   ; the planet being landed on: its creatures (surface.asm)
+gs_plevel = $258E   ; ... and its level (1-5: gx_plevel)
 GS_LONG   = $25A0   ; (the block: GS_LONGN bytes from here)
 GS_LONGN  = $50
 PT_NORMAL = 12      ; a port's stock of what it sells, restocked
@@ -369,6 +370,12 @@ gx_n_t
     asl
     asl
     ora #GT_PLANET
+    tay
+    lda #2                  ; half of them a level easier (bit 5: gx_plevel)
+    jsr gx_rand
+    beq gx_n_ty
+    tya
+    ora #$20
     tay
     bne gx_n_ty
 gx_n_nb
@@ -753,6 +760,31 @@ gx_ls_c
     lda #AC_POD
     jmp ac_set
 
+; sector X's planet's level (A, 1-5): by its number (near home low, the
+; rim high: harder, rarer creatures), one less if it's an easy one (bit 5 of
+; gx_info; never below 1). Safe space's are all level 1.
+gx_plevel
+    txa
+    ldy #0
+gx_pl_l
+    cmp gx_plth,y
+    bcc gx_pl_d
+    iny
+    cpy #4
+    bne gx_pl_l
+gx_pl_d
+    iny
+    lda gx_info,x
+    and #$20
+    beq gx_pl_r
+    cpy #2
+    bcc gx_pl_r
+    dey
+gx_pl_r
+    tya
+    rts
+gx_plth   .byte 10, 16, 28, 44
+
 ; the Ark arrives at gs_dest: visited, its neighbours seen
 gx_arrive
     lda gs_dest
@@ -1136,7 +1168,9 @@ sv_what
     lda gx_info,x
     and #3
     cmp #GT_PORT
-    beq sv_w_port
+    bne sv_w_port_far1171
+    jmp sv_w_port
+sv_w_port_far1171
     cmp #GT_PLANET
     beq sv_w_r_far1141
     jmp sv_w_r
@@ -1161,6 +1195,14 @@ sv_w_r_far1141
     ldx #5
     pla
     jsr sv_puts
+    lda #1                  ; its level: Ln
+    jsr sv_skip
+    lda #("L"-32)*2
+    jsr sv_putc
+    ldx sv_t2
+    jsr gx_plevel
+    jsr tx_digit
+    jsr sv_putc
     lda #2                  ; ... and its life: LIFE n, or BARREN (taken)
     jsr sv_skip
     ldx sv_t2
@@ -1312,6 +1354,9 @@ sv_i_bar
     jmp sfx
 sv_i_ld
     sta gs_pop
+    ldx gs_sec
+    jsr gx_plevel
+    sta gs_plevel
     ldx gs_sec
     lda gx_info,x
     lsr

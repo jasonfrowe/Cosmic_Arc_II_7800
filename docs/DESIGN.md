@@ -479,6 +479,15 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
   up**. Docked, it's aboard (RELIC ABOARD; lost with the Ark); the next
   port pays 2000 for it, and RELIC is earned. `tools/test_relic.sh`.
 - Port messages show on row 11 (in place of the help) while they last.
+- **Planet levels 1-5** (`gx_plevel`): by the sector's number (its
+  distance from home): safe space 1; sectors 11-16 level 2, 17-28 level
+  3, 29-44 level 4, the rest 5, and half the planets (bit 5 of `gx_info`,
+  set with the galaxy) one level easier (never below 1). The sector view
+  shows it (VERDA L3). A planet's creatures come from a band of three
+  kinds from level - 1 (level 1: walkers, hoppers, runners; level 5:
+  gliders, blinkers), so the rarer, better-paid kinds are out in the rim;
+  its defences' pace and the storm rock's speed are those of the old
+  global level 0, 2, 4, 6, 8. `tools/test_level.sh`.
 - Not yet: saves (M6).
 
 ### 6.2 Resources

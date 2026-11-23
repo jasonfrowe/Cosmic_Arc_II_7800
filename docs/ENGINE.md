@@ -139,7 +139,7 @@ bytes of a line; the creatures come straight after it.
 | $2580-$2584 | savekey.asm |
 | $2585-$258A | sector.asm: aboard: fuel ore, organics, equipment; upgrade levels (laser, holds, tanks) |
 | $256B-$2570 | sector.asm: creatures in stasis by kind (6) |
-| $2572 | sector.asm: the planet being landed on: its creatures (`gs_pop`) |
+| $2572, $258E | sector.asm: the planet being landed on: its creatures (`gs_pop`), its level (`gs_plevel`) |
 | $25A0-$25EF | sector.asm: the voyage's long-lived block (saved): kept pairs, the bank, port stock and glut, planets' creatures taken, achievements, pirates destroyed, storm rocks, the relic, the restock ticks |
 | $25F0-$25F6 | port.asm: scratch, an amount to move (bank), the tabs here |
 | $2573, $2574, $2578, $258B-$258D | the BASIC's escape scene |
@@ -213,6 +213,7 @@ tools/test_pod.sh      # the Ark lost: the escape scene, home in a new Ark, a
                        # tenth of the credits, the bank kept
 tools/test_ach.sh      # achievements earned and announced; their screen (bank 6)
 tools/test_relic.sh    # the relic: signal, landing, heavy, aboard, paid for, RELIC
+tools/test_level.sh    # planet levels: L5 far out (rare kinds), L1 at home (common)
 tools/test_cargo.sh    # ore beamed up halves the speed across; button 2 drops it
 tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane

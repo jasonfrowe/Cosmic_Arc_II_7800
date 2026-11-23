@@ -330,10 +330,27 @@ pl_new_np
     tay
     dey
 pl_new_cr
+    lda gs_test             ; from the map: by the planet's level, a band of
+    bne pl_new_ck           ;  three kinds from level - 1 (walkers common,
+pl_new_cl                   ;  blinkers rare: level 4-5 only)
+    lda M_RND
+    and #3
+    cmp #3
+    bcs pl_new_cl
+    clc
+    adc gs_plevel
+    sec
+    sbc #1
+    cmp #6
+    bcc pl_new_k1
+    lda #5
+    bne pl_new_k1
+pl_new_ck
     lda M_RND
     and #7
     cmp #6
     bcs pl_new_cr           ; a kind 0-5
+pl_new_k1
     clc
     adc #1
     sta cr_t,y
@@ -435,7 +452,14 @@ pl_new_t
     sta pl_nodock
     ; this level's pace (as Cosmic Arc's: the level goes up only when every
     ; creature on a planet is caught; it starts at 0)
-    lda sp_level
+    lda sp_level            ; (from the map: the planet's level, 1-5 as
+    ldx gs_test             ;  0, 2, 4, 6, 8: its defences' pace)
+    bne pl_new_lv
+    lda gs_plevel
+    sec
+    sbc #1
+    asl
+pl_new_lv
     sta pl_t0
     ; the rock's speed: ROCK_SPD0 + ROCK_SPDL a level, at most 2 px a frame
     sta M_A
