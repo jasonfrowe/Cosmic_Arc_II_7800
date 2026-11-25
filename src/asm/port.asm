@@ -304,21 +304,29 @@ pt_bo_g
     jmp pt_bcd
 
 ; ---- the screen ----
+;   0  the tab bar (TRADE, BOUNTY, SHIPYARD, and BANK in safe space)
+;   1  SECTOR 12  CORE  STARPORT BSB
+;   2  (a tab's column heads)
+;   3-9 its lines (the selected one a gold bar), LEAVE PORT the last
+;   10 CREDITS 000500   HOLDS 04/10
+;   11 a message (gold), or the help
 pt_build
     jsr sv_cls
-    ldx #0                  ; row 0: STARPORT  SECTOR nn  (its tier)
+    lda pt_tab              ; the frame
+    ldx #4
+    ldy pt_ntab
+    jsr sv_tabbar
+    ldx #1                  ; row 1: the sector, its tier, the port's class
     lda #1
     jsr sv_at
-    lda #<pt_s_title
-    ldy #>pt_s_title
-    ldx #8
-    jsr sv_puts
-    lda #2
-    jsr sv_skip
+    lda #P_CYAN
+    jsr sv_pen
     lda #<tx_sector
     ldy #>tx_sector
     ldx #7
     jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
     lda gs_sec
     clc
     adc #1
@@ -327,33 +335,26 @@ pt_build
     jsr sv_skip
     ldx gs_sec
     jsr sv_tier
-    ; row 1: the tabs, the current one marked
-    ldx #0
-pt_b_tabs
-    stx sv_t3
-    lda pt_tabcol,x
-    ldx #1
-    jsr sv_at
-    ldx sv_t3
-    lda #0
-    cpx pt_tab
-    bne pt_b_tm
-    lda #178
-pt_b_tm
-    jsr sv_putc
-    ldx sv_t3
-    lda pt_tablo,x
-    pha
-    lda pt_tabhi,x
-    tay
-    lda pt_tablen,x
-    tax
-    pla
+    lda #2
+    jsr sv_skip
+    lda #P_CYAN
+    jsr sv_pen
+    lda #<pt_s_title
+    ldy #>pt_s_title
+    ldx #9
     jsr sv_puts
-    ldx sv_t3
-    inx
-    cpx pt_ntab
-    bne pt_b_tabs
+    lda #P_WHITE
+    jsr sv_pen
+    ldx gs_sec
+    jsr sv_class
+    ldx #2                  ; row 2 (the heads): grey
+    lda #0
+    ldy #P_GREY
+    jsr sv_ink
+    ldx #3                  ; the lines: white
+    lda #0
+    ldy #P_WHITE
+    jsr sv_ink
     ; the lines
     lda pt_tab
     bne pt_b_t1
@@ -381,15 +382,35 @@ pt_b_lv
     ldy #>pt_s_leave
     ldx #10
     jsr sv_puts
+    ; the selected line: a gold bar across the screen, all one colour
+    lda sv_sel
+    clc
+    adc #3
+    tax
+    lda #0
+    sta sv_bn,x
+    ldy #P_GOLD
+    jsr sv_ink
+    lda sv_sel
+    clc
+    adc #3
+    tax
+    lda #0
+    ldy #40
+    jsr sv_inv
 pt_b_nm
-    ; row 10: credits, fuel, holds (39 columns: exactly)
+    ; row 10: credits, holds
     ldx #10
     lda #1
     jsr sv_at
+    lda #P_CYAN
+    jsr sv_pen
     lda #<pt_s_cred
     ldy #>pt_s_cred
     ldx #8
     jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
     lda gs_cred
     jsr sv_bcd
     lda gs_cred+1
@@ -398,10 +419,14 @@ pt_b_nm
     jsr sv_bcd
     lda #3
     jsr sv_skip
+    lda #P_CYAN
+    jsr sv_pen
     lda #<pt_s_holds
     ldy #>pt_s_holds
     ldx #6
     jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
     jsr pt_holdused
     jsr sv_dec2
     lda #("/"-32)*2
@@ -409,12 +434,15 @@ pt_b_nm
     ldx gs_uhold
     lda up_holds,x
     jsr sv_dec2
-    ; row 11: a message, or the help
+    ; row 11: a message (gold), or the help (grey)
     ldx #11
     lda #1
     jsr sv_at
     ldx pt_msg
     beq pt_b_hp
+    lda #P_GOLD
+    jsr sv_pen
+    ldx pt_msg
     lda pt_msglo-1,x
     pha
     lda pt_msghi-1,x
@@ -424,6 +452,8 @@ pt_b_nm
     pla
     jmp sv_puts
 pt_b_hp
+    lda #P_GREY
+    jsr sv_pen
     lda pt_tab
     cmp #1
     beq pt_b_hk
@@ -436,29 +466,14 @@ pt_b_hk
     ldy #>pt_s_helpk
     ldx #31
     jmp sv_puts
-pt_tabcol .byte 0, 13, 25, 35
-pt_tablo  .byte <pt_s_tab0, <pt_s_tab1, <pt_s_tab2, <pt_s_tab3
-pt_tabhi  .byte >pt_s_tab0, >pt_s_tab1, >pt_s_tab2, >pt_s_tab3
-pt_tablen .byte 11, 10, 8, 4
 
-; sv_dst = line A (row 3 + A), the cursor drawn if it's the selected one;
-; sv_dst after the cursor
+; sv_dst = line A (row 3 + A), column 2 (pt_build marks the selected one)
 pt_line
-    sta sv_t2
     clc
     adc #3
     tax
-    lda #1
-    jsr sv_at
-    lda #0
-    ldx sv_t2
-    cpx sv_sel
-    bne pt_l_c
-    lda #178
-pt_l_c
-    jsr sv_putc
-    lda #1
-    jmp sv_skip
+    lda #2
+    jmp sv_at
 
 ; COMMODITIES: (row 2: HELD over the numbers)
 ;   NAME  nn   SELLS nnn  nn LEFT / BUYS  nnn  WANTS nn
@@ -534,6 +549,8 @@ pt_bc_n
     ldx #8
     lda #1
     jsr sv_at
+    lda #P_GOLD
+    jsr sv_pen
     lda #<pt_s_rumour
     ldy #>pt_s_rumour
     ldx #37
@@ -672,6 +689,10 @@ pt_b_yard
 pt_b_bank
     lda #5
     sta pt_n
+    ldx #2                  ; (the savings: white, not a heading)
+    lda #0
+    ldy #P_WHITE
+    jsr sv_ink
     ldx #2
     lda #1
     jsr sv_at
@@ -1119,10 +1140,7 @@ pt_msglen .byte 4, 6, 18, 18, 12, 21, 12, 8, 22, 8, 17, 9, 9, 15, 37
 pt_msgsfx .byte SFX_POD, SFX_POD, SFX_HIT, SFX_HIT, SFX_HIT, SFX_DELIVER, SFX_BEEP, SFX_CLEAR, SFX_BEEP, SFX_HIT, SFX_HIT, SFX_POD, SFX_POD, SFX_HIT, SFX_CLEAR
 
 ; ---- strings ----
-pt_s_title .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'STARPORT' (8)
-pt_s_tab0 .byte ("C"-32)*2,("O"-32)*2,("M"-32)*2,("M"-32)*2,("O"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("I"-32)*2,("E"-32)*2,("S"-32)*2   ; 'COMMODITIES' (11)
-pt_s_tab1 .byte ("B"-32)*2,("I"-32)*2,("O"-32)*2,("-"-32)*2,("B"-32)*2,("O"-32)*2,("U"-32)*2,("N"-32)*2,("T"-32)*2,("Y"-32)*2   ; 'BIO-BOUNTY' (10)
-pt_s_tab2 .byte ("S"-32)*2,("H"-32)*2,("I"-32)*2,("P"-32)*2,("Y"-32)*2,("A"-32)*2,("R"-32)*2,("D"-32)*2   ; 'SHIPYARD' (8)
+pt_s_title .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0   ; 'STARPORT ' (9)
 pt_s_c0 .byte ("F"-32)*2,("U"-32)*2,("E"-32)*2,("L"-32)*2,0,("O"-32)*2,("R"-32)*2,("E"-32)*2,0   ; 'FUEL ORE ' (9)
 pt_s_c1 .byte ("O"-32)*2,("R"-32)*2,("G"-32)*2,("A"-32)*2,("N"-32)*2,("I"-32)*2,("C"-32)*2,("S"-32)*2,0   ; 'ORGANICS ' (9)
 pt_s_c2 .byte ("E"-32)*2,("Q"-32)*2,("U"-32)*2,("I"-32)*2,("P"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2   ; 'EQUIPMENT' (9)
@@ -1162,7 +1180,6 @@ pt_m10 .byte ("S"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,0,("O"-32)*2,("U"-32)*2
 pt_m11 .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,("Y"-32)*2,0,("W"-32)*2,("A"-32)*2,("N"-32)*2,("T"-32)*2,0,("N"-32)*2,("O"-32)*2,0,("M"-32)*2,("O"-32)*2,("R"-32)*2,("E"-32)*2   ; 'THEY WANT NO MORE' (17)
 pt_s_left .byte 0,("L"-32)*2,("E"-32)*2,("F"-32)*2,("T"-32)*2   ; ' LEFT' (5)
 pt_s_wants .byte ("W"-32)*2,("A"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2,0   ; 'WANTS ' (6)
-pt_s_tab3 .byte ("B"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2   ; 'BANK' (4)
 pt_s_sav .byte ("S"-32)*2,("A"-32)*2,("V"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,("S"-32)*2,0   ; 'SAVINGS ' (8)
 pt_s_safe .byte ("S"-32)*2,("A"-32)*2,("F"-32)*2,("E"-32)*2,0,("I"-32)*2,("F"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("A"-32)*2,("R"-32)*2,("K"-32)*2,0,("I"-32)*2,("S"-32)*2,0,("L"-32)*2,("O"-32)*2,("S"-32)*2,("T"-32)*2   ; 'SAFE IF THE ARK IS LOST' (23)
 pt_s_bk0 .byte ("D"-32)*2,("E"-32)*2,("P"-32)*2,("O"-32)*2,("S"-32)*2,("I"-32)*2,("T"-32)*2,0,("1"-32)*2,("0"-32)*2,("0"-32)*2,0   ; 'DEPOSIT 100 ' (12)

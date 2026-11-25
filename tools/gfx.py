@@ -488,46 +488,56 @@ def font():
 # Page p holds glyph line 15 - p (MARIA counts a zone's lines down). Written
 # as assembly (src/asm/font320.asm, page-aligned in the map's bank).
 # After the text (codes 0-126): the star chart's tiles (codes 128 on, see
-# CH_N* / CH_L* in sector.asm: a node 128 + 4 symbol + 2 down, a link
-# 160 + 2 (1 across, 2 down-right, 4 down-left), so they combine by OR), 16 lines each: a node (its symbol in lines
-# 1-6, its link down in lines 8-15) and a link (across in line 3, the
-# diagonals down in lines 8-15).
+# ch_* in sector.asm). The chart puts a node every 3 characters, 2 link
+# characters (A, B) between: a node 128 + 4 symbol + 2 down (its symbol in
+# lines 0-6, centred at x 3.5, line 3; its link down in lines 7-15); link A
+# 160 + 2k, link B CH_LINKB[k] (k: 1 across, 2 down-right, 4 down-left), so
+# A's combine by OR and B follows A. The diagonals run from one node's centre
+# to the next row's, 24 pixels across and 16 lines down, over A and B.
 NODE_SYMS = [
-    ["..##....", ".#..#...", "....#...", "...#....", "........", "...#...."],   # ? unknown
-    ["........", "........", "..##....", "..##....", "........", "........"],   # . empty
-    ["######..", "#....#..", "#.##.#..", "#.##.#..", "#....#..", "######.."],   # port
-    ["..##....", ".####...", "######..", "######..", ".####...", "..##...."],   # planet
-    ["#.#.#...", ".#.#.#..", "#.#.#...", ".#.#.#..", "#.#.#...", ".#.#.#.."],   # nebula
+    ["..####..", ".##..##.", ".....##.", "....##..", "...##...", "........", "...##..."],   # ? unknown
+    ["........", "..####..", ".##..##.", ".##..##.", ".##..##.", "..####..", "........"],   # empty: a ring
+    ["########", "##....##", "##.##.##", "##.##.##", "##.##.##", "##....##", "########"],   # port
+    ["..####..", ".######.", "########", "########", "########", ".######.", "..####.."],   # planet
+    ["#.#.#.#.", ".#.#.#.#", "#.#.#.#.", ".#.#.#.#", "#.#.#.#.", ".#.#.#.#", "#.#.#.#."],   # nebula
 ]
+CH_LINKB = [None, 148, 150, 152, 154, 156, 158, 246]    # (sector.asm's ch_linkb)
+
+
+def chart_link(k, part):
+    """Link character A (part 0, pixels 8-15 after the node) or B (1, 16-23)."""
+    g = [["."] * 8 for _ in range(16)]
+    if k & 1:
+        g[3] = ["#"] * 8
+    for y in range(5, 16):
+        for bit, x in ((2, 3.5 + 1.5 * (y - 3)), (4, 27.5 - 1.5 * (y - 3))):
+            if k & bit:
+                for px in (int(x - 0.5), int(x - 0.5) + 1):
+                    lx = px - 8 - 8 * part
+                    if 0 <= lx < 8:
+                        g[y][lx] = "#"
+    return ["".join(r) for r in g]
 
 
 def chart_tiles():
     t = {}
     for sym, rows in enumerate(NODE_SYMS):
         for down in (0, 1):
-            g = ["........"] + rows + ["........"] * 9
+            g = rows + ["........"] * 9
             if down:
                 for y in range(7, 16):
-                    g[y] = "..##...."
+                    g[y] = "...##..."
             t[64 + sym * 2 + down] = g
-    for k in range(8):                       # 1 across, 2 down-right, 4 down-left
-        g = ["........"] * 16
-        if k & 1:
-            g[3] = "########"
-        for y in range(8, 16):
-            r = list(g[y])
-            if k & 2:
-                r[min(7, (y - 8))] = "#"
-            if k & 4:
-                r[max(0, 7 - (y - 8))] = "#"
-            g[y] = "".join(r)
-        t[80 + k] = g
-    # 88: the marker round the Ark's sector (drawn over its node)
-    t[88] = ["########", "#......#", "#......#", "#......#", "#......#", "#......#",
-             "#......#", "########"] + ["........"] * 8
-    # 89: the cursor ">"
-    t[89] = ["#.......", "##......", "###.....", "####....", "###.....", "##......",
-             "#.......", "........"] + ["........"] * 8
+    for k in range(8):
+        t[80 + k] = chart_link(k, 0)
+        if k:
+            t[CH_LINKB[k] // 2] = chart_link(k, 1)
+    # 88: the Ark's node, blinking: a solid block over its symbol
+    t[88] = ["########"] * 7 + ["........"] * 9
+    # 124, 125 (codes 248, 250): a node drawn on top in colour (a port, a
+    # planet, a nebula, the Ark's): no symbol in the grey text, just the link down
+    t[124] = ["........"] * 16
+    t[125] = ["........"] * 7 + ["...##..."] * 9
     return t
 
 # Achievement icons (the achievements screen, bank 6): 16 x 16 in the
@@ -897,7 +907,15 @@ def font320():
         glyphs[i] = rows + ["........"] * 8
     glyphs.update(chart_tiles())
     glyphs.update(icon_glyphs())
+    # 122 (code 244): the star chart's cursor, corner brackets round a node
+    glyphs[122] = ["###..###", "#......#", "#......#", "........", "........", "#......#",
+                   "#......#", "###..###"] + ["........"] * 8
     odd = cz_glyphs()
+    # the text's inverse (code + 1: odd codes 1-127): a bar over lines 0-7
+    # with the letter cut out, for the tab bars and the selected line
+    for i in range(64):
+        odd[2 * i + 1] = ["".join("." if c == "#" else "#" for c in r) for r in glyphs[i][:8]] + \
+            ["........"] * 8
     n = 128
     out = ["; Generated by tools/gfx.py (font320). Do not edit.",
            "; The 40-column font: page p holds glyph line 15 - p; glyph n at byte 2n.",

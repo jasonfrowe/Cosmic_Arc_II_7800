@@ -24,7 +24,7 @@ step(5, nil, function() local m = mem()
   m:write_u8(0x2680, 2)                                         -- home: a planet (safe), barren
   m:write_u8(0x25FA, 0); m:write_u8(0x25FB, 0); m:write_u8(0x25D5, 0x04)
   m:write_u8(0x22FB, 0); m:write_u8(0x27F7, 1) end)
-step(20, nil, function() check("RELIC SIGNAL on the sector view", txt(1):find("RELIC SIGNAL") ~= nil, txt(1)) end)
+step(20, nil, function() check("RELIC SIGNAL on the sector view", txt(2):find("RELIC SIGNAL") ~= nil, txt(2)) end)
 step(40, "P1 Button 1", nil)                                   -- land
 step(260, nil, function() local m = mem()
   check("down on the barren planet, the relic there", m:read_u8(0x27C0) == 1 and m:read_u8(0x2717) == 1, string.format("relic %d, creatures %d", m:read_u8(0x27C0), m:read_u8(0x2717))) end)

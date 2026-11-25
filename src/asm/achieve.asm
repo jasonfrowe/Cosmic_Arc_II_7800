@@ -104,7 +104,7 @@ ac_f_p
     lsr
     lsr
     asl
-    adc #2                  ; row 2 + 2 x its row
+    adc #1                  ; row 1 + 2 x its row
     sta temp5
     jsr plotcharacters
     ldx ac_i
@@ -196,34 +196,13 @@ ac_i_r
 ; takes; the help
 ac_build
     jsr sv_cls
+    lda #3                  ; the frame
     ldx #0
-    lda #1
-    jsr sv_at
-    lda #<ac_s_title
-    ldy #>ac_s_title
-    ldx #12
-    jsr sv_puts
-    ldx #0                  ; (how many)
-    stx sv_t3
-ac_b_cn
-    jsr ac_has
-    bcc ac_b_cn2
-    inc sv_t3
-ac_b_cn2
-    inx
-    cpx #16
-    bne ac_b_cn
-    ldx #0
-    lda #28
-    jsr sv_at
-    lda sv_t3
-    jsr sv_dec2
-    lda #<ac_s_of16
-    ldy #>ac_s_of16
-    ldx #6
-    jsr sv_puts
-    ; the names: row 3 + 2 x its row, column 10 x its column (the cursor
-    ; first)
+    ldy #4
+    jsr sv_tabbar
+    jsr sv_status
+    ; the names: row 2 + 2 x its row, column 10 x its column (earned white,
+    ; not yet grey; the selected one a gold bar)
     ldx #15
 ac_b_n
     stx ac_i
@@ -231,22 +210,33 @@ ac_b_n
     and #3
     tay
     lda ac_col,y
-    pha
+    sta cz_wc               ; (its column)
     txa
     lsr
     lsr
     asl
-    adc #3
-    tax
-    pla
-    jsr sv_at
-    lda #0
+    adc #2
+    sta cz_wr               ; (its row)
+    ldx ac_i
+    jsr ac_has
+    lda #P_GREY
+    bcc ac_b_g
+    lda #P_WHITE
+ac_b_g
     ldx ac_i
     cpx sv_sel
     bne ac_b_c
-    lda #178
+    lda #P_GOLD
 ac_b_c
-    jsr sv_putc
+    tay
+    ldx cz_wr
+    lda cz_wc
+    jsr sv_ink
+    ldx cz_wr
+    lda cz_wc
+    clc
+    adc #1
+    jsr sv_at
     lda ac_i                ; ac_names + 9 x
     asl
     asl
@@ -261,10 +251,18 @@ ac_b_c
     ldx #9
     jsr sv_puts
     ldx ac_i
+    cpx sv_sel
+    bne ac_b_nx
+    ldx cz_wr
+    lda cz_wc
+    ldy #10
+    jsr sv_inv
+ac_b_nx
+    ldx ac_i
     dex
     bpl ac_b_n
-    ; row 10: what the selected one takes, and how far along
-    ldx #10
+    ; row 9: what the selected one takes, and how far along
+    ldx #9
     lda #1
     jsr sv_at
     ldx sv_sel
@@ -289,15 +287,9 @@ ac_b_c
     jsr sv_putc
     ldx sv_sel
     lda ac_max,x
-    jsr sv_dec2
+    jmp sv_dec2
 ac_b_h
-    ldx #11
-    lda #1
-    jsr sv_at
-    lda #<ac_s_help
-    ldy #>ac_s_help
-    ldx #30
-    jmp sv_puts
+    rts
 ac_col    .byte 0, 10, 20, 30
 
 ; how far along (A: ac_prog's kind): 1 kinds with a pair, 2 kinds with one,
@@ -403,9 +395,6 @@ ac_d12 .byte ("S"-32)*2,("E"-32)*2,("L"-32)*2,("L"-32)*2,0,("5"-32)*2,("0"-32)*2
 ac_d13 .byte ("S"-32)*2,("A"-32)*2,("V"-32)*2,("E"-32)*2,0,("5"-32)*2,("0"-32)*2,("0"-32)*2,("0"-32)*2,0,("I"-32)*2,("N"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("B"-32)*2,("A"-32)*2,("N"-32)*2,("K"-32)*2   ; 'SAVE 5000 IN THE BANK' (21)
 ac_d14 .byte ("F"-32)*2,("I"-32)*2,("L"-32)*2,("L"-32)*2,0,("2"-32)*2,("0"-32)*2,0,("H"-32)*2,("O"-32)*2,("L"-32)*2,("D"-32)*2,("S"-32)*2   ; 'FILL 20 HOLDS' (13)
 ac_d15 .byte ("G"-32)*2,("E"-32)*2,("T"-32)*2,0,("H"-32)*2,("O"-32)*2,("M"-32)*2,("E"-32)*2,0,("I"-32)*2,("N"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("E"-32)*2,("S"-32)*2,("C"-32)*2,("A"-32)*2,("P"-32)*2,("E"-32)*2,0,("P"-32)*2,("O"-32)*2,("D"-32)*2   ; 'GET HOME IN THE ESCAPE POD' (26)
-ac_s_title .byte ("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'ACHIEVEMENTS' (12)
-ac_s_of16 .byte 0,("O"-32)*2,("F"-32)*2,0,("1"-32)*2,("6"-32)*2   ; ' OF 16' (6)
-ac_s_help .byte ("S"-32)*2,("T"-32)*2,("I"-32)*2,("C"-32)*2,("K"-32)*2,(":"-32)*2,0,("C"-32)*2,("H"-32)*2,("O"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2   ; 'STICK: CHOOSE   BUTTON 2: BACK' (30)
 
 ; ---------------------------------------------------------------------------
 ; the close-up chart's text
@@ -426,17 +415,22 @@ CZ_ROWS   = 5
 
 cz_build
     jsr sv_cls
-    ldx #0                  ; row 0: CLOSE UP   SECTOR nn
-    lda #1
-    jsr sv_at
-    lda #<cz_s_title
-    ldy #>cz_s_title
-    ldx #18
-    jsr sv_puts
-    lda gs_sec
-    clc
-    adc #1
-    jsr sv_dec2
+    lda #2                  ; the frame
+    ldx #0
+    ldy #4
+    jsr sv_tabbar
+    jsr sv_status
+    ldx #2                  ; the lanes' rows: cyan
+cz_b_lr
+    stx cz_k
+    lda #0
+    ldy #P_CYAN
+    jsr sv_ink
+    ldx cz_k
+    inx
+    inx
+    cpx #10
+    bcc cz_b_lr
     ldx gs_sec              ; the window: the Ark 3 cells in, 2 down
     lda gx_cell,x
     and #15
@@ -494,13 +488,7 @@ cz_b_s
 cz_b_sn
     dec cz_x
     bpl cz_b_s
-    ldx #11
-    lda #1
-    jsr sv_at
-    lda #<cz_s_help
-    ldy #>cz_s_help
-    ldx #35
-    jmp sv_puts
+    rts
 
 ; sector cz_x's place in the window: cz_wc, cz_wr (out of it: big, either
 ; way)
@@ -527,11 +515,32 @@ cz_box
     lda cz_wr
     asl
     adc #1
-    tax
+    sta sv_t0               ; (its row)
     lda cz_wc
     asl
     asl
     adc cz_wc               ; x 5
+    sta sv_t1               ; (its column)
+    ldx cz_x                ; its colour: its kind's (not yet visited: grey),
+    lda #P_GOLD             ;  the Ark's gold
+    cpx gs_sec
+    beq cz_bx_cl
+    lda gx_flag,x
+    lsr
+    lda #4
+    bcc cz_bx_ck
+    lda gx_info,x
+    and #3
+cz_bx_ck
+    tay
+    lda cz_kcol,y
+cz_bx_cl
+    tay
+    ldx sv_t0
+    lda sv_t1
+    jsr sv_ink
+    ldx sv_t0
+    lda sv_t1
     jsr sv_at
     lda #0
     ldx cz_x
@@ -578,6 +587,7 @@ cz_bx_r
     clc
     adc #CZ_RIGHT
     jmp sv_putc
+cz_kcol   .byte P_GREY, P_CYAN, P_GREEN, P_BLUE, P_GREY   ; empty, port, planet, nebula, unknown
 ; a digit's code, inverted for the Ark's (the inverted digits are 20 on)
 cz_putk
     ldx cz_k
@@ -603,7 +613,9 @@ cz_lk_r_far592
     lda cz_wr
     adc cz_lr,y
     cmp #CZ_ROWS
-    bcs cz_lk_r
+    bcc cz_lk_r_far616
+    jmp cz_lk_r
+cz_lk_r_far616
     asl
     adc #1
     sta sv_t0               ; (its box's row)
@@ -623,6 +635,9 @@ cz_lk_r_far592
     lda #CZ_ACROSS
     jmp sv_putc
 cz_lk_d
+    ldx sv_t0               ; (from the bottom row: the status panel's there)
+    cpx #9
+    bcs cz_lk_r
     cmp #4
     bne cz_lk_g
     ldx sv_t0               ; down: the row below, between the digits
@@ -677,5 +692,3 @@ cz_lk_r
 cz_lc     .byte 0, 1, 0, 0, 0, 0, -1, -1
 cz_lr     .byte -1, -1, 0, 0, 0, 0, 0, -1
 cz_lk     .byte 4, 5, 2, 3, 4, 5, 2, 3
-cz_s_title .byte ("C"-32)*2,("L"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,("U"-32)*2,("P"-32)*2,0,0,0,("S"-32)*2,("E"-32)*2,("C"-32)*2,("T"-32)*2,("O"-32)*2,("R"-32)*2,0   ; 'CLOSE UP   SECTOR ' (18)
-cz_s_help .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("A"-32)*2,("C"-32)*2,("H"-32)*2,("I"-32)*2,("E"-32)*2,("V"-32)*2,("E"-32)*2,("M"-32)*2,("E"-32)*2,("N"-32)*2,("T"-32)*2,("S"-32)*2   ; 'FIRE: BACK   BUTTON 2: ACHIEVEMENTS' (35)

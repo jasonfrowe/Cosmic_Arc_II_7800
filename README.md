@@ -39,8 +39,11 @@ Controls:
 - **The storm:** when the klaxon sounds, get back aboard: docked, the stick
   fires the Ark's laser up, left or right at the rock coming in.
 - **The sector map:** the stick picks a choice (a warp, landing, docking),
-  fire goes; button 2 shows the star chart.
-- **A starport:** button 2 changes tab (commodities, bio-bounty, shipyard),
+  fire goes; button 2 steps through the pages (sector, star chart, close-up,
+  achievements). On the star chart the stick moves the cursor and fire
+  warps to the sector under it when it's one jump away. A red `>` on a
+  warp: there's no way back.
+- **A starport:** button 2 changes tab (trade, bounty, shipyard, bank),
   the stick picks a line, fire trades; on bio-bounty, left keeps one for the
   manifest.
 - On the title, button 2 opens the hardware check; Select goes straight to a

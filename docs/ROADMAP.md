@@ -64,8 +64,21 @@ then link them together.
 - [x] Sector view, star chart (what's been seen), fuel, stardate
 - [x] Encounter roll → deep space (a wave for the tier); planet sector → land; back to the map; `test_journey.sh`
 - [x] Encounters leaving a planet or port; an encounter's strength from the jumps back to safe space; `test_depart.sh`
-- [ ] Density / holo scanners, a chart cursor, one-way warps shown
+- [ ] Density / holo scanners (the chart cursor and one-way warps: M4b)
 - [ ] The star's collapse (the stardate deadline)
+
+## M4b: Map and menu UI (from the RP6502 port's review, 2026-11-24; DESIGN §3.6b) ✅ (2026-11-24)
+- [x] Room: bank 4 had 4.7K free before the font (the build's figure counts only after the port code); no move needed
+- [x] Colour in the 40-column screens: up to 10 colour changes a row (`sv_ink`), rows drawn only to their last character; inverse text (the font's odd codes) for bars; a cursor glyph
+- [x] A tab bar on every map page (SECTOR / CHART / CLOSE UP / ACHIEVE); button 2 steps through it
+- [x] A status panel on every map page (credits, bank, energy coloured by level, holds, manifest) and a help line
+- [x] Sector view: each warp's way (N, NE...) and what's known there; one-way warps marked `>` in red; the selected item a gold bar
+- [x] Star chart: seen sectors only (a bug showed `?` everywhere: the seen test read the jumps-to-safe bits), each kind in its colour, the Ark gold
+- [x] Star chart: a cursor (repeats when held), a panel for the sector under it, fire warps to a sector one jump away (and stays on the chart)
+- [x] Close-up chart: boxes in their kind's colour, the Ark's gold, cyan lanes
+- [x] Starports in the same frame: a tab bar (TRADE, BOUNTY, SHIPYARD, BANK), the selected line a gold bar, messages in gold
+- [x] `test_chart.sh` (ways, one-way, the cursor, chart warps, round the pages); the other map tests pass unchanged
+- [ ] Check on hardware: MARIA's time on the 40-column rows (more objects a row now), and how the colours read on a TV
 
 ## Music
 - [x] Six voices (lead, bass, harmony, pad, drums, hats) on the two POKEYs; the music in its own bank (5)
@@ -93,4 +106,7 @@ then link them together.
 - [ ] Full soundtrack
 - [ ] Ending, rank, high scores
 - [ ] Balancing pass
-- [ ] Manual, browser build (js7800_astrocart) on GitHub Pages
+- [ ] The new story ("After the Ark", DESIGN §1) on the title or in an intro
+- [ ] Quick Deep Space and Quick Planet Run on the title (practice; nothing saved)
+- [ ] Our own manual, laid out like the RP6502 port's: story, controls for two buttons, numbered HUD callouts, threats, species, achievements, strategy guide, Captain's Log
+- [ ] Browser build (js7800_astrocart) on GitHub Pages

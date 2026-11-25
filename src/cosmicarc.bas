@@ -439,7 +439,7 @@ mappal
   P1C1 = $1C : P1C2 = $1C : P1C3 = $1C
   P2C1 = $9C : P2C2 = $9C : P2C3 = $9C
   rem (the achievements' icons: P3 not yet earned, P4-P7 earned, by column)
-  P3C1 = $04 : P3C2 = $04 : P3C3 = $04
+  P3C1 = $06 : P3C2 = $06 : P3C3 = $06
   P4C1 = $1C : P4C2 = $1C : P4C3 = $1C
   P5C1 = $CA : P5C2 = $CA : P5C3 = $CA
   P6C1 = $4A : P6C2 = $4A : P6C3 = $4A

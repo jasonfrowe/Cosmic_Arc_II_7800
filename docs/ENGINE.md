@@ -46,7 +46,7 @@ mapper is `a78_p450_ta` in the emulator):
 | 1 | $4000, fixed | the BASIC (game flow, the escape scene), banks.asm, text, text40 (the 40-column screens' rows and helpers; the achievements' checks), the sound player, effects, the SaveKey, the hardware check |
 | 2 | $8000, switched | deep space: space, fighter, pirates, vec, draw |
 | 3 | $8000, switched | the planet: surface.asm and its map (MARIA reads the map as it draws) |
-| 4 | $8000, switched | the map: sector.asm; the 40-column font at $A000; port.asm |
+| 4 | $8000, switched | the map: sector.asm; the 40-column font at $A000; port.asm (the build's "bytes left" counts only after port.asm: about 4.7K more is free before the font) |
 | 5 | $8000, switched | the music (gen/music.asm) |
 | 6 | $8000, switched | the close-up chart and the achievements (achieve.asm); a copy of the 40-column font at $A000 (`font320b.asm`) |
 | 7-16 | $8000, switched | to come |
@@ -107,9 +107,26 @@ every `drawscreen`, so `sv_enter` sets them ($43, the 40-column font) and
 from `tools/gfx.py`) is in bank 4 at $A000 (the same 4K pattern as the
 game's font at $C000, safe from holey DMA), glyph n at byte 2n so the text
 codes are the game's. Each glyph line is a page; page p is line 15 - p.
-Text is 12 rows of 40 in the planet's RAM ($2200, $2700: free on the map),
-two 20-character objects a row (`plotcharacters` from asm). Every colour of
-a palette is set the same (320A).
+Text is 12 rows of 40 in the planet's RAM ($2200, $2700: free on the map).
+Every colour of a palette is set the same (320A), so an object is one
+colour: `text40.asm` draws each row as segments split where the colour
+changes (`sv_ink`: a column and a palette, up to 10 a row, sorted;
+`sv_pen` at the write position), each at most 32 wide, and only as far as
+the row's last character (blank rows cost MARIA nothing). Inverse text is
+the font's odd codes (code + 1: an 8-line bar with the letter cut out;
+`sv_inv`). The palettes (`mappal`): 0 white, 1 gold, 2 cyan, 3 grey, 5
+green, 6 red, 7 blue (4-7 also the achievements' icons). Every map page has
+the tab bar (`sv_tabbar`) and the status panel (`sv_status`), both in bank 1.
+
+The star chart (`ch_build`): a node every 3 characters (column 2 + 3x, row
+1 + y), then two lane characters, A and B. A lane's bits (1 across, 2
+down-right, 4 down-left) are OR'd into A (codes 160 + 2k); `ch_fillb` then
+sets B from A (`ch_linkb`). The diagonals run from node centre to node
+centre over A, B and the lower half of the row. The text is all grey; the
+visited ports, planets and nebulae and the Ark's sector are one-character
+objects on top in their colour (`ch_nodes`, each frame), their cells in the
+text blank (248, or 250 with the lane down). So the chart needs no colour
+changes in its rows, and a node's lane down stays grey.
 
 ## Graphics blocks
 
@@ -137,6 +154,8 @@ bytes of a line; the creatures come straight after it.
 | $22E0-$22F1 | surface.asm: the planet scanner's line (18 characters, its ends included; the map's text there otherwise) |
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
+| $2300-$2377, $2410-$24A0 | text40.asm: the 40-column screens' colour changes and row lengths (deep space's rocks, bolts, shots, pirates: cleared when an encounter starts) |
+| $237C-$237F, $24AA, $24B5-$24BF | sector.asm: the chart's cursor, the sector view's items' ways (deep space's too) |
 | $2585-$258A | sector.asm: aboard: fuel ore, organics, equipment; upgrade levels (laser, holds, tanks) |
 | $256B-$2570 | sector.asm: creatures in stasis by kind (6) |
 | $2572, $258E | sector.asm: the planet being landed on: its creatures (`gs_pop`), its level (`gs_plevel`) |
@@ -218,6 +237,8 @@ tools/test_level.sh    # planet levels: L5 far out (rare kinds), L1 at home (com
 tools/test_leave.sh    # leaving a planet early: button 2 held docked, a countdown
 tools/test_cargo.sh    # ore beamed up halves the speed across; button 2 drops it
 tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
+tools/test_chart.sh    # the map's pages: warps' ways (one-way >), the chart's cursor,
+                       # a warp from the chart, round the tab bar
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane
 tools/test_spaceend.sh # the Ark waits for the saucer before leaving a wave; pirates
                        # leave when the Ark is lost

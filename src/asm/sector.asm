@@ -12,8 +12,10 @@
 ;
 ; The screens are 320A, 1-byte characters, 40 columns (sv_enter switches
 ; 7800basic's saved CTRL and CHARBASE: drawscreen puts them in each frame;
-; sv_leave puts the game's back). Text in RAM, 12 rows of 40, drawn as two
-; 20-character objects a row.
+; sv_leave puts the game's back). Text in RAM, 12 rows of 40, in colour
+; (text40.asm). Every page has the same frame: a tab bar on row 0 (button 2
+; steps through SECTOR, CHART, CLOSE UP, ACHIEVE) and the status panel on
+; rows 10-11 (DESIGN.md 3.6b).
 ;
 ; The BASIC: newgame calls gx_new; the sector loop calls sv_frame each
 ; frame; sv_frame sets gs_go: 1 deep space (an encounter on the way), 2 land
@@ -100,6 +102,15 @@ sv_mx     = $27F5   ; the chart's marker: x, row
 sv_my     = $27F6
 sv_dirty  = $27F7   ; rebuild the text
 sv_t4     = $27F8
+; (more, in deep space's RAM: free on the map; text40.asm)
+sv_itr    = $24AA   ; the sector view's item being written: its row, column
+sv_itc    = $24BE
+sv_idir   = $24B5   ; [9] each item's way (a warp: 0 up, clockwise)
+ch_rep    = $24BF   ; the chart's cursor: frames to its next step (held)
+sv_dg     = $237C   ; sv_dirto: the sector, the way being tried
+sv_dk     = $237D
+ch_cx     = $237E   ; the chart's cursor: its cell's column, row
+ch_cy     = $237F
 ; the generator's (cell-indexed: row * 16 + column, 128)
 gc_w      = $2200   ; [128] warp bits
 gc_s      = $2280   ; [128] $FF free, else the sector (or $FE: taken)
@@ -887,10 +898,30 @@ sv_f_nd
     lda sp_fire2
     sta sv_pf2
     jsr sv_rows
-    ; the chart's marker on the Ark's sector (blinking)
     lda sv_view
     cmp #1
     bne sv_f_r
+    jsr ch_nodes
+    ; the chart's cursor (white brackets), and the marker on the Ark's
+    ; sector (gold, blinking)
+    lda #<ch_curs
+    sta temp1
+    lda #>ch_curs
+    sta temp2
+    lda #(P_WHITE << 5) | 31 ; (1 wide)
+    sta temp3
+    lda ch_cx
+    asl
+    adc ch_cx
+    adc #2                  ; (its column: 2 + 3 x)
+    asl
+    asl                     ; (4 units a character)
+    sta temp4
+    lda ch_cy
+    clc
+    adc #1
+    sta temp5
+    jsr plotcharacters
     lda sv_tick
     and #16
     bne sv_f_r
@@ -898,7 +929,7 @@ sv_f_nd
     sta temp1
     lda #>ch_mark
     sta temp2
-    lda #(1 << 5) | 31      ; palette 1, 1 wide
+    lda #(P_GOLD << 5) | 31
     sta temp3
     lda sv_mx
     sta temp4
@@ -908,18 +939,27 @@ sv_f_nd
 sv_f_r
     rts
 ch_mark   .byte 176
+ch_curs   .byte 244
 
 ; ---------------------------------------------------------------------------
 ; The sector view
-;   0  SECTOR 12  CORE                STARDATE 0034
-;   1  STARPORT  CLASS BSB
-;   2  (a message)
-;   3-8 the items, two a row: LAND / DOCK, then the warps:  > 12 PLANET
-;   10 FUEL 20  CREDITS 000500   ENERGY 96
-;   11 FIRE: GO   BUTTON 2: STAR CHART
+;   0  the tab bar (SECTOR)
+;   1  SECTOR 12  CORE                STARDATE 0034
+;   2  STARPORT  CLASS BSB
+;   3  (a message)
+;   4-8 the items, two a row: LAND / DOCK, then the warps, each its way
+;      from here, a red > if there's no way back, its number, what's known
+;      there:  NE >12  VERDA L3
+;   9  the help
+;   10-11 the status panel
 sv_build
     jsr sv_cls
-    ; the items: what's here, then the warps
+    lda #0                  ; the frame
+    ldx #0
+    ldy #4
+    jsr sv_tabbar
+    jsr sv_status
+    ; the items: what's here, then the warps (and the way each goes)
     ldy #0
     ldx gs_sec
     lda gx_info,x
@@ -945,6 +985,8 @@ sv_b_w
     ldy sv_t4
     bcs sv_b_wn
     sta sv_items,y
+    lda sv_t3
+    sta sv_idir,y
     iny
 sv_b_wn
     ldx sv_t3
@@ -952,14 +994,18 @@ sv_b_wn
     cpx #8
     bne sv_b_w
     sty sv_nitems
-    ; row 0
-    ldx #0
+    ; row 1: the sector, its tier; the stardate
+    ldx #1
     lda #1
     jsr sv_at
+    lda #P_CYAN
+    jsr sv_pen
     lda #<tx_sector
     ldy #>tx_sector
     ldx #7
     jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
     lda gs_sec
     clc
     adc #1
@@ -968,25 +1014,29 @@ sv_b_wn
     jsr sv_skip
     ldx gs_sec
     jsr sv_tier
-    ldx #0
+    ldx #1
     lda #26
     jsr sv_at
+    lda #P_CYAN
+    jsr sv_pen
     lda #<tx_date
     ldy #>tx_date
     ldx #9
     jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
     lda gs_date
     sta sv_t0
     lda gs_date+1
     sta sv_t1
     jsr sv_dec4
-    ; row 1: what's here
-    ldx #1
+    ; row 2: what's here
+    ldx #2
     lda #1
     jsr sv_at
     ldx gs_sec
     jsr sv_what
-    ; row 2: a message (or, with none, a new achievement)
+    ; row 3: a message (or, with none, a new achievement), in gold
     lda gs_msg
     bne sv_b_na
     jsr ac_new
@@ -998,9 +1048,11 @@ sv_b_wn
 sv_b_na
     lda gs_msg
     beq sv_b_nm
-    ldx #2
+    ldx #3
     lda #1
     jsr sv_at
+    lda #P_GOLD
+    jsr sv_pen
     lda gs_msg
     cmp #MSG_ACH
     bne sv_b_mm
@@ -1033,61 +1085,104 @@ sv_b_mm
     pla
     jsr sv_puts
 sv_b_nm
-    ; the items
+    ; the items: rows 4-8, two a row (20 columns each, its bar 19 wide)
     ldx #0
 sv_b_it
     cpx sv_nitems
-    bcc sv_b_itd_far791
+    bcc sv_b_it1
     jmp sv_b_itd
-sv_b_itd_far791
+sv_b_it1
     stx sv_t3
     txa
     lsr
     clc
-    adc #4                  ; row 4 on
-    tax
+    adc #4
+    sta sv_itr               ; (its row)
     lda sv_t3
     and #1
     beq sv_b_c0
     lda #20
 sv_b_c0
+    sta sv_itc               ; (its column)
+    ldx sv_t3               ; the selected one: a gold bar, all one colour
+    cpx sv_sel
+    bne sv_b_ns
+    ldx sv_itr
+    lda sv_itc
+    ldy #P_GOLD
+    jsr sv_ink
+    lda #1
+    sta sv_lock
+sv_b_ns
+    ldx sv_itr
+    lda sv_itc
     clc
     adc #1
     jsr sv_at
-    ldx sv_t3               ; the cursor
-    lda #0
-    cpx sv_sel
-    bne sv_b_cu
-    lda #178
-sv_b_cu
-    jsr sv_putc
-    lda #1
-    jsr sv_skip
     ldx sv_t3
     lda sv_items,x
     bmi sv_b_act
+    ; a warp: its way, one-way or not, its number, what's known there
     sta sv_t2
-    lda #<tx_warp
-    ldy #>tx_warp
-    ldx #5
+    lda #P_CYAN
+    jsr sv_pen
+    ldx sv_t3
+    lda sv_idir,x
+    asl
+    adc #<tx_dirs
+    pha
+    lda #>tx_dirs
+    adc #0
+    tay
+    pla
+    ldx #2
     jsr sv_puts
+    lda #1
+    jsr sv_skip
+    ldx sv_t3               ; no way back: >
+    lda sv_idir,x
+    eor #4
+    tax
+    ldy sv_t2
+    lda gx_warp,y
+    and gx_bit,x
+    bne sv_b_2w
+    lda #P_RED
+    jsr sv_pen
+    lda #(">"-32)*2
+    jsr sv_putc
+    jmp sv_b_num
+sv_b_2w
+    lda #1
+    jsr sv_skip
+sv_b_num
+    lda #P_WHITE
+    jsr sv_pen
     lda sv_t2
     clc
     adc #1
     jsr sv_dec2
-    lda #1
+    lda #2
     jsr sv_skip
-    ldx sv_t2               ; known? what's there
+    ldx sv_t2               ; known (visited)? what's there
     lda gx_flag,x
     and #1
     beq sv_b_unk
-    jsr sv_short
+    jsr sv_brief
     jmp sv_b_itn
 sv_b_unk
-    lda #("?"-32)*2
-    jsr sv_putc
+    lda #P_GREY
+    jsr sv_pen
+    lda #<tx_qqq
+    ldy #>tx_qqq
+    ldx #3
+    jsr sv_puts
     jmp sv_b_itn
 sv_b_act
+    pha
+    lda #P_WHITE
+    jsr sv_pen
+    pla
     and #1
     bne sv_b_dock
     lda #<tx_land
@@ -1101,50 +1196,49 @@ sv_b_dock
     ldx #14
     jsr sv_puts
 sv_b_itn
+    ldx sv_t3               ; the selected one: inverse, white after it
+    cpx sv_sel
+    bne sv_b_nx
+    lda #0
+    sta sv_lock
+    ldx sv_itr
+    lda sv_itc
+    ldy #19
+    jsr sv_inv
+    ldx sv_itr
+    lda sv_itc
+    clc
+    adc #19
+    ldy #P_WHITE
+    jsr sv_ink
+sv_b_nx
     ldx sv_t3
     inx
-    beq sv_b_it_far855
     jmp sv_b_it
-sv_b_it_far855
 sv_b_itd
-    ; row 10: credits, energy
-    ldx #10
+    ; row 9: the help
+    ldx #9
     lda #1
     jsr sv_at
-    lda #<tx_credits
-    ldy #>tx_credits
-    ldx #8
-    jsr sv_puts
-    lda gs_cred
-    jsr sv_bcd
-    lda gs_cred+1
-    jsr sv_bcd
-    lda gs_cred+2
-    jsr sv_bcd
-    lda #3
-    jsr sv_skip
-    lda #<tx_energy
-    ldy #>tx_energy
-    ldx #7
-    jsr sv_puts
-    lda sp_energy
-    jsr sv_dec3
-    ; row 11
-    ldx #11
-    lda #1
-    jsr sv_at
+    lda #P_GREY
+    jsr sv_pen
     lda #<tx_svhelp
     ldy #>tx_svhelp
     ldx #36
     jmp sv_puts
 
-; the tier of sector X, in words
+; the tier of sector X, in words, in its colour
 sv_tier
     lda gx_info,x
     rol
     rol
     rol
     and #3
+    pha
+    tax
+    lda sv_tiercol,x
+    jsr sv_pen
+    pla
     tax
     lda sv_tierlo,x
     pha
@@ -1153,11 +1247,21 @@ sv_tier
     lda sv_tierlen,x
     tax
     pla
-    jmp sv_puts
+    jsr sv_puts
+    lda #P_WHITE
+    jmp sv_pen
+sv_tiercol .byte P_GREEN, P_WHITE, P_GOLD, P_RED     ; safe, core, mid, outer
+sv_tycol   .byte P_GREY, P_CYAN, P_GREEN, P_BLUE     ; empty, port, planet, nebula
 
-; what's in sector X, in full (row 1)
+; what's in sector X, in full (row 2)
 sv_what
     stx sv_t2
+    lda gx_info,x
+    and #3
+    tax
+    lda sv_tycol,x
+    jsr sv_pen
+    ldx sv_t2
     lda gx_info,x
     and #3
     tax
@@ -1169,45 +1273,28 @@ sv_what
     tax
     pla
     jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
     ldx sv_t2
     lda gx_info,x
     and #3
     cmp #GT_PORT
-    bne sv_w_port_far1171
-    jmp sv_w_port
-sv_w_port_far1171
-    cmp #GT_PLANET
-    beq sv_w_r_far1141
-    jmp sv_w_r
-sv_w_r_far1141
-    lda #2                  ; a planet: its world's name
-    jsr sv_skip
-    ldx sv_t2
-    lda gx_info,x
-    lsr
-    lsr
-    and #7
-    sta sv_t0
-    asl
-    asl
-    adc sv_t0               ; * 5
-    clc
-    adc #<tx_worlds
-    pha
-    lda #>tx_worlds
-    adc #0
-    tay
-    ldx #5
-    pla
+    bne sv_w_np
+    lda #2                  ; a port: its class (B buys, S sells: ore,
+    jsr sv_skip             ;  organics, equipment)
+    lda #<tx_class
+    ldy #>tx_class
+    ldx #6
     jsr sv_puts
-    lda #1                  ; its level: Ln
-    jsr sv_skip
-    lda #("L"-32)*2
-    jsr sv_putc
     ldx sv_t2
-    jsr gx_plevel
-    jsr tx_digit
-    jsr sv_putc
+    jmp sv_class
+sv_w_np
+    cmp #GT_PLANET
+    bne sv_w_r
+    lda #2                  ; a planet: its world, its level
+    jsr sv_skip
+    ldx sv_t2
+    jsr sv_world
     lda #2                  ; ... and its life: LIFE n, or BARREN (taken)
     jsr sv_skip
     ldx sv_t2
@@ -1235,39 +1322,41 @@ sv_w_rel
     bne sv_w_r
     lda #2
     jsr sv_skip
+    lda #P_GOLD
+    jsr sv_pen
     lda #<tx_relsig
     ldy #>tx_relsig
     ldx #12
     jmp sv_puts
-sv_w_port
-    lda #2                  ; a port: its class (B buys, S sells: ore,
-    jsr sv_skip             ;  organics, equipment)
-    lda #<tx_class
-    ldy #>tx_class
-    ldx #6
-    jsr sv_puts
-    ldx sv_t2
-    lda gx_info,x
-    lsr
-    lsr
-    sta sv_t0
-    ldx #3
-sv_w_cl
-    lsr sv_t0
-    lda #("B"-32)*2
-    bcc sv_w_b
-    lda #("S"-32)*2
-sv_w_b
-    jsr sv_putc
-    dex
-    bne sv_w_cl
 sv_w_r
     rts
 
-; what's in sector X, short (a warp's line)
-sv_short
+; what's in sector X, short, in its colour (a warp's line, the chart's
+; panel: 8 characters at most): PORT BSB, VERDA L3, NEBULA, EMPTY
+sv_brief
+    stx sv_t2
     lda gx_info,x
     and #3
+    tax
+    lda sv_tycol,x
+    jsr sv_pen
+    ldx sv_t2
+    lda gx_info,x
+    and #3
+    cmp #GT_PORT
+    bne sv_br_np
+    lda #<tx_portw
+    ldy #>tx_portw
+    ldx #5
+    jsr sv_puts
+    ldx sv_t2
+    jmp sv_class
+sv_br_np
+    cmp #GT_PLANET
+    bne sv_br_o
+    ldx sv_t2
+    jmp sv_world
+sv_br_o
     tax
     lda sv_shlo,x
     pha
@@ -1277,9 +1366,81 @@ sv_short
     pla
     jmp sv_puts
 
+; sector X's port class: three letters, B buys, S sells (ore, organics,
+; equipment)
+sv_class
+    lda gx_info,x
+    lsr
+    lsr
+    sta sv_t0
+    ldx #3
+sv_cl_c
+    lsr sv_t0
+    lda #("B"-32)*2
+    bcc sv_cl_b2
+    lda #("S"-32)*2
+sv_cl_b2
+    jsr sv_putc
+    dex
+    bne sv_cl_c
+    rts
+
+; sector X's planet: its world's name and its level (VERDA L3)
+sv_world
+    stx sv_t0
+    lda gx_info,x
+    lsr
+    lsr
+    and #7
+    sta sv_t1
+    asl
+    asl
+    adc sv_t1               ; (x 5)
+    clc
+    adc #<tx_worlds
+    pha
+    lda #>tx_worlds
+    adc #0
+    tay
+    pla
+    ldx #5
+    jsr sv_puts
+    lda #1
+    jsr sv_skip
+    lda #("L"-32)*2
+    jsr sv_putc
+    ldx sv_t0
+    jsr gx_plevel
+    jsr tx_digit
+    jmp sv_putc
+
+; the way from the Ark's sector to sector A: X (C = 0), or C = 1 (no warp
+; there)
+sv_dirto
+    sta sv_dg
+    ldx #0
+sv_dt_l
+    stx sv_dk
+    lda gs_sec
+    jsr gx_warpto
+    bcs sv_dt_n
+    cmp sv_dg
+    beq sv_dt_y
+sv_dt_n
+    ldx sv_dk
+    inx
+    cpx #8
+    bne sv_dt_l
+    sec
+    rts
+sv_dt_y
+    ldx sv_dk
+    clc
+    rts
+
 ; ---- the sector view's input ----
 sv_input
-    ; button 2 (fresh): the star chart
+    ; button 2 (fresh): the star chart, its cursor on the Ark
     lda sp_fire2
     beq sv_i_nc
     lda sv_pf2
@@ -1287,7 +1448,9 @@ sv_input
     lda #1
     sta sv_view
     sta sv_dirty
-    rts
+    lda #SFX_BEEP
+    jsr sfx
+    jmp ch_home
 sv_i_nc
     ; the stick (fresh pushes): up/down a row, left/right a column
     ldx sp_joy
@@ -1495,25 +1658,28 @@ sv_wb_d
 sv_encodds .byte 0, 30, 45, 60
 
 ; ---------------------------------------------------------------------------
-; The star chart: the grid (rows 1-8, columns 8-31: a node and a link a
-; cell), what's been seen; the Ark's sector marked
-;   0  STAR CHART
-;   10 the legend
-;   11 BUTTON 2: BACK
+; The star chart: the grid (rows 1-8, columns 2-37: a node and two link
+; characters a cell, so a diagonal runs node centre to node centre), the
+; sectors seen (visited, or next to a visited one), each node in its kind's
+; colour, the lanes grey; the visited ones' warps; the Ark's sector marked; a
+; cursor (the stick) and, on row 9, the sector under it: fire warps there
+; when it's one jump away.
+;   0  the tab bar (CHART)
+;   9  SEC 12  MID-RIM  VERDA L3       FIRE: WARP
+;   10-11 the status panel
 ch_build
     jsr sv_cls
+    lda #1                  ; the frame
     ldx #0
-    lda #15
-    jsr sv_at
-    lda #<tx_chart
-    ldy #>tx_chart
-    ldx #10
-    jsr sv_puts
+    ldy #4
+    jsr sv_tabbar
+    jsr sv_status
     ; the sectors seen: their nodes; the visited ones' warps
     ldx #63
 ch_b_s
     stx sv_t3
     lda gx_flag,x
+    and #3                  ; (bits 2-7: the jumps back to safe space)
     bne ch_b_s1
     jmp ch_b_sn
 ch_b_s1
@@ -1523,6 +1689,9 @@ ch_b_s1
     lda gx_flag,x
     and #1
     beq ch_b_unk
+    lda #248                ; (the Ark's: on top, in gold)
+    cpx gs_sec
+    beq ch_b_sym
     lda gx_info,x
     and #3
     tay
@@ -1564,66 +1733,49 @@ ch_b_n
     sta (sv_dst),y
     ldx sv_t3
 ch_b_e
-    lda gx_cell,x
-    jsr ch_cellat           ; its node again; links at +1 (right), -1 (left)
+    ; E, SE: this node's link; W, SW: the left one's; NE: the one above's;
+    ; NW: the one above-left's (the diagonals drawn down from the row above)
     lda sv_t2
     and #4                  ; E
     beq ch_b_se
-    ldy #1
     lda #160+2
-    ora (sv_dst),y
-    sta (sv_dst),y
+    ldy #0
+    jsr ch_orlink
 ch_b_se
     lda sv_t2
     and #8                  ; SE: from here down to the right
-    beq ch_b_sw
-    ldy #1
+    beq ch_b_w
     lda #160+4
-    ora (sv_dst),y
-    sta (sv_dst),y
-ch_b_sw
+    ldy #0
+    jsr ch_orlink
+ch_b_w
     lda sv_t2
-    and #64                 ; W: the link to its left
-    beq ch_b_w2
-    jsr ch_left
+    and #64                 ; W
+    beq ch_b_sw
     lda #160+2
-    ora (sv_dst),y
-    sta (sv_dst),y
-ch_b_w2
+    ldy #1
+    jsr ch_orlink
+ch_b_sw
     lda sv_t2
     and #32                 ; SW: from here down to the left
     beq ch_b_ne
-    jsr ch_left
     lda #160+8
-    ora (sv_dst),y
-    sta (sv_dst),y
-ch_b_ne
-    ; NE and NW: the row above's links (a diagonal down from there)
-    lda sv_t2
-    and #2                  ; NE: the link above-right, down-left
-    beq ch_b_nw
-    ldx sv_t3
-    lda gx_cell,x
-    sec
-    sbc #16
-    jsr ch_cellat
     ldy #1
+    jsr ch_orlink
+ch_b_ne
+    lda sv_t2
+    and #2                  ; NE: up to the right (down-left from above)
+    beq ch_b_nw
     lda #160+8
-    ora (sv_dst),y
-    sta (sv_dst),y
+    ldy #16
+    jsr ch_orlink
 ch_b_nw
     lda sv_t2
-    and #128                ; NW: the link above-left, down-right
+    and #128                ; NW: up to the left (down-right from above-left)
     beq ch_b_sn
-    ldx sv_t3
-    lda gx_cell,x
-    sec
-    sbc #16
-    jsr ch_cellat
-    jsr ch_left
     lda #160+4
-    ora (sv_dst),y
-    sta (sv_dst),y
+    ldy #17
+    jsr ch_orlink
 ch_b_sn
     ldx sv_t3
     dex
@@ -1634,9 +1786,10 @@ ch_b_done
     ldx gs_sec
     lda gx_cell,x
     and #15
+    sta sv_t0
     asl
-    clc
-    adc #8
+    adc sv_t0
+    adc #2                  ; (its column: 2 + 3 x)
     asl
     asl                     ; (a 320A character: 4 of the 160-pixel x)
     sta sv_mx
@@ -1648,30 +1801,242 @@ ch_b_done
     clc
     adc #1
     sta sv_my
-    ; the legend, the help
-    ldx #10
-    lda #1
-    jsr sv_at
-    lda #<tx_legend
-    ldy #>tx_legend
-    ldx #38
-    jsr sv_puts
-    ldx #11
-    lda #1
-    jsr sv_at
-    lda #<tx_chhelp
-    ldy #>tx_chhelp
-    ldx #31
-    jmp sv_puts
-ch_sym    .byte 128+4, 128+8, 128+12, 128+16   ; empty, port, planet, nebula
+    jsr ch_fillb
+    jsr ch_paint
+    jmp ch_info
+ch_sym    .byte 128+4, 248, 248, 248   ; empty (a ring); port, planet, nebula on top
+ch_ovsym  .byte 128+4, 128+8, 128+12, 128+16   ; the nodes on top: empty, port, planet, nebula
+ch_ovpal  .byte (P_GOLD << 5) | 31, (P_CYAN << 5) | 31, (P_GREEN << 5) | 31, (P_BLUE << 5) | 31
+ch_linkb  .byte 0, 148, 150, 152, 154, 156, 158, 246   ; link B by k (tools/gfx.py CH_LINKB)
 
-; sv_dst = cell A's node (row 1 + its row, column 8 + 2 * its column)
+; the nodes' colours: along each row a change only where the colour does
+; (the links take the colour of the node to their left), the Ark's gold
+; the chart's text all grey (the coloured nodes are drawn on top: ch_nodes)
+ch_paint
+    ldx #8
+ch_p_r
+    stx sv_t0
+    lda #0
+    ldy #P_GREY
+    jsr sv_ink
+    ldx sv_t0
+    dex
+    bne ch_p_r
+    rts
+
+; Each frame: the visited ports, planets and nebulae, one character each in
+; their colour, and the Ark's sector (whatever it is) in gold, over the
+; grey chart (one object a node: no colour changes in the text's rows)
+ch_nodes
+    ldx #63
+ch_nd_l
+    stx sv_t4
+    lda gx_flag,x
+    and #1
+    beq ch_nd_n
+    lda gx_info,x
+    and #3
+    tay
+    cpx gs_sec
+    beq ch_nd_p
+    tya
+    beq ch_nd_n             ; (empty: a grey ring, in the text)
+ch_nd_p
+    tya
+    clc
+    adc #<ch_ovsym
+    sta temp1
+    lda #>ch_ovsym
+    adc #0
+    sta temp2
+    lda ch_ovpal,y
+    cpx gs_sec
+    bne ch_nd_c
+    lda ch_ovpal            ; (gold)
+ch_nd_c
+    sta temp3
+    lda gx_cell,x
+    and #15
+    sta temp4
+    asl
+    adc temp4
+    adc #2
+    asl
+    asl
+    sta temp4
+    lda gx_cell,x
+    lsr
+    lsr
+    lsr
+    lsr
+    clc
+    adc #1
+    sta temp5
+    jsr plotcharacters
+ch_nd_n
+    ldx sv_t4
+    dex
+    bpl ch_nd_l
+    rts
+
+; each link B (the second character of a lane) as its link A says
+ch_fillb
+    lda #1
+    sta sv_t0
+ch_fb_r
+    ldx sv_t0
+    lda sv_rowlo,x
+    sta sv_src
+    lda sv_rowhi,x
+    sta sv_src+1
+    ldy #3                  ; (link A: column 3 + 3 x)
+ch_fb_c
+    lda (sv_src),y
+    beq ch_fb_n
+    sec
+    sbc #160
+    lsr
+    tax
+    lda ch_linkb,x
+    iny
+    sta (sv_src),y
+    dey
+ch_fb_n
+    iny
+    iny
+    iny
+    cpy #37
+    bcc ch_fb_c
+    inc sv_t0
+    lda sv_t0
+    cmp #9
+    bne ch_fb_r
+    rts
+
+ch_info
+    jsr ch_atcur
+    bcc ch_in_r_far1888
+    jmp ch_in_r
+ch_in_r_far1888
+    sta sv_t3
+    tax
+    lda gx_flag,x
+    and #3
+    bne ch_in_r_far1893
+    jmp ch_in_r
+ch_in_r_far1893
+    lda sv_t3               ; one jump away? (sv_t4: the way, or $FF)
+    jsr sv_dirto
+    lda #$FF
+    bcs ch_in_w
+    txa
+ch_in_w
+    sta sv_t4
+    ldx #9
+    lda #1
+    jsr sv_at
+    lda #P_CYAN
+    jsr sv_pen
+    lda #<tx_sec
+    ldy #>tx_sec
+    ldx #4
+    jsr sv_puts
+    lda #P_WHITE
+    jsr sv_pen
+    lda sv_t3
+    clc
+    adc #1
+    jsr sv_dec2
+    lda #2
+    jsr sv_skip
+    ldx sv_t3
+    jsr sv_tier
+    lda #2
+    jsr sv_skip
+    ldx sv_t3
+    lda gx_flag,x
+    and #1
+    beq ch_in_u
+    jsr sv_brief
+    jmp ch_in_h
+ch_in_u
+    lda #P_GREY
+    jsr sv_pen
+    lda #<tx_qqq
+    ldy #>tx_qqq
+    ldx #3
+    jsr sv_puts
+ch_in_h
+    lda sv_t3               ; the Ark's: ARK HERE; a jump away: FIRE: WARP
+    cmp gs_sec
+    bne ch_in_j
+    ldx #9
+    lda #31
+    jsr sv_at
+    lda #P_GOLD
+    jsr sv_pen
+    lda #<tx_here
+    ldy #>tx_here
+    ldx #8
+    jmp sv_puts
+ch_in_j
+    lda sv_t4
+    bmi ch_in_r
+    ldx #9
+    lda #29
+    jsr sv_at
+    lda #P_GOLD
+    jsr sv_pen
+    lda #<tx_fwarp
+    ldy #>tx_fwarp
+    ldx #10
+    jmp sv_puts
+ch_in_r
+    rts
+
+; the sector under the cursor: A (C = 0), or C = 1 (none in that cell)
+ch_atcur
+    lda ch_cy
+    asl
+    asl
+    asl
+    asl
+    ora ch_cx
+    ldx #63
+ch_ac_l
+    cmp gx_cell,x
+    beq ch_ac_y
+    dex
+    bpl ch_ac_l
+    sec
+    rts
+ch_ac_y
+    txa
+    clc
+    rts
+
+; the cursor onto the Ark's sector
+ch_home
+    ldx gs_sec
+    lda gx_cell,x
+    and #15
+    sta ch_cx
+    lda gx_cell,x
+    lsr
+    lsr
+    lsr
+    lsr
+    sta ch_cy
+    rts
+
+; sv_dst = cell A's node (row 1 + its row, column 2 + 3 x its column)
 ch_cellat
     sta sv_t0
     and #15
+    sta sv_t1
     asl
-    clc
-    adc #8
+    adc sv_t1
+    adc #2
     sta sv_t1
     lda sv_t0
     lsr
@@ -1683,18 +2048,25 @@ ch_cellat
     tax
     lda sv_t1
     jmp sv_at
-; sv_dst back one (the link left of a node); Y = 0
-ch_left
-    lda sv_dst
-    bne ch_l1
-    dec sv_dst+1
-ch_l1
-    dec sv_dst
-    ldy #0
+; OR A into the link (A: the character after the node) of the cell Y before
+; sector sv_t3's (0 its own, 1 left, 16 above, 17 above-left); X = sv_t3
+ch_orlink
+    sta sv_t4
+    sty sv_t1
+    ldx sv_t3
+    lda gx_cell,x
+    sec
+    sbc sv_t1
+    jsr ch_cellat
+    ldy #1
+    lda sv_t4
+    ora (sv_dst),y
+    sta (sv_dst),y
+    ldx sv_t3
     rts
 
 ch_input
-    ; button 2 (fresh): the close-up chart (the BASIC: bank 6); fire: back
+    ; button 2 (fresh): the close-up chart (the BASIC: bank 6)
     lda sp_fire2
     beq ch_i_f
     lda sv_pf2
@@ -1703,15 +2075,71 @@ ch_input
     sta gs_go
     rts
 ch_i_f
+    ; fire (fresh): warp to the sector under the cursor, if it's a jump
+    ; away; on the Ark's own: back to the sector view
     lda sp_fire
-    beq ch_i_r
+    beq ch_i_s
     lda sv_pf
+    bne ch_i_s
+    jsr ch_atcur
+    bcs ch_i_no
+    cmp gs_sec
+    beq ch_i_back
+    tax
+    lda gx_flag,x           ; (never seen: not a known way)
+    and #3
+    beq ch_i_no
+    txa
+    jsr sv_dirto
+    bcs ch_i_no
+    lda #0
+    sta gs_msg
+    lda sv_dg
+    jsr sv_warp
+    lda gs_go               ; (an encounter: deep space)
     bne ch_i_r
+    jmp ch_home             ; there: the cursor on the Ark again
+ch_i_no
+    lda #SFX_HIT
+    jmp sfx
 ch_i_back
     lda #0
     sta sv_view
     lda #1
     sta sv_dirty
+    rts
+ch_i_s
+    ; the stick: the cursor a cell (a fresh push, then again every few
+    ; frames while it's held)
+    ldx sp_joy
+    cpx #8
+    beq ch_i_r
+    cpx sv_pjoy
+    beq ch_i_hold
+    lda #16
+    sta ch_rep
+    bne ch_i_mv
+ch_i_hold
+    dec ch_rep
+    bne ch_i_r
+    lda #5
+    sta ch_rep
+ch_i_mv
+    lda ch_cx
+    clc
+    adc gx_dcol,x
+    cmp #12
+    bcs ch_i_r              ; (off the grid: negative reads as big)
+    sta sv_t0
+    lda ch_cy
+    clc
+    adc gx_drow,x
+    cmp #8
+    bcs ch_i_r
+    sta ch_cy
+    lda sv_t0
+    sta ch_cx
+    inc sv_dirty
 ch_i_r
     rts
 
@@ -1723,16 +2151,13 @@ tx_land    .byte ("L"-32)*2,("A"-32)*2,("N"-32)*2,("D"-32)*2,0,("O"-32)*2,("N"-3
 tx_dock    .byte ("D"-32)*2,("O"-32)*2,("C"-32)*2,("K"-32)*2,0,("A"-32)*2,("T"-32)*2,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,0
 tx_credits .byte ("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2,0
 tx_class   .byte ("C"-32)*2,("L"-32)*2,("A"-32)*2,("S"-32)*2,("S"-32)*2,0
-tx_chart   .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-32)*2,("A"-32)*2,("R"-32)*2,("T"-32)*2
-tx_svhelp  .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("G"-32)*2,("O"-32)*2,0,0,0,0,0,0,0,0
-           .byte ("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0
-           .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,0,("C"-32)*2,("H"-32)*2,("A"-32)*2,("R"-32)*2,("T"-32)*2
-tx_chhelp .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("B"-32)*2,("A"-32)*2,("C"-32)*2,("K"-32)*2,0,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("C"-32)*2,("L"-32)*2,("O"-32)*2,("S"-32)*2,("E"-32)*2,0,("U"-32)*2,("P"-32)*2   ; 'FIRE: BACK   BUTTON 2: CLOSE UP' (31)
-; the legend: a node glyph, then its word
-tx_legend  .byte 128+8,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0,0
-           .byte 128+12,0,("P"-32)*2,("L"-32)*2,("A"-32)*2,("N"-32)*2,("E"-32)*2,("T"-32)*2,0,0
-           .byte 128+16,0,("N"-32)*2,("E"-32)*2,("B"-32)*2,("U"-32)*2,("L"-32)*2,("A"-32)*2,0,0
-           .byte 128,0,("U"-32)*2,("N"-32)*2,("K"-32)*2,("N"-32)*2,("O"-32)*2,("W"-32)*2,("N"-32)*2,0
+tx_svhelp .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("G"-32)*2,("O"-32)*2,0,0,("B"-32)*2,("U"-32)*2,("T"-32)*2,("T"-32)*2,("O"-32)*2,("N"-32)*2,0,("2"-32)*2,(":"-32)*2,0,("P"-32)*2,("A"-32)*2,("G"-32)*2,("E"-32)*2,("S"-32)*2,0,0,(">"-32)*2,0,("O"-32)*2,("N"-32)*2,("E"-32)*2,0,("W"-32)*2,("A"-32)*2,("Y"-32)*2   ; 'FIRE: GO  BUTTON 2: PAGES  > ONE WAY' (36)
+tx_qqq .byte ("?"-32)*2,("?"-32)*2,("?"-32)*2   ; '???' (3)
+tx_sec .byte ("S"-32)*2,("E"-32)*2,("C"-32)*2,0   ; 'SEC ' (4)
+tx_fwarp .byte ("F"-32)*2,("I"-32)*2,("R"-32)*2,("E"-32)*2,(":"-32)*2,0,("W"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2   ; 'FIRE: WARP' (10)
+tx_here .byte ("A"-32)*2,("R"-32)*2,("K"-32)*2,0,("H"-32)*2,("E"-32)*2,("R"-32)*2,("E"-32)*2   ; 'ARK HERE' (8)
+tx_portw .byte ("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0   ; 'PORT ' (5)
+tx_dirs .byte ("N"-32)*2,0,("N"-32)*2,("E"-32)*2,("E"-32)*2,0,("S"-32)*2,("E"-32)*2,("S"-32)*2,0,("S"-32)*2,("W"-32)*2,("W"-32)*2,0,("N"-32)*2,("W"-32)*2   ; 'N NEE SES SWW NW' (16)
 ; tiers
 tx_tsafe   .byte ("S"-32)*2,("A"-32)*2,("F"-32)*2,("E"-32)*2,0,("S"-32)*2,("P"-32)*2,("A"-32)*2,("C"-32)*2,("E"-32)*2
 tx_tcore   .byte ("C"-32)*2,("O"-32)*2,("R"-32)*2,("E"-32)*2

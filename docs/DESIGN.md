@@ -15,14 +15,23 @@ classes, fuel, cargo and upgrades.
 
 ## 1. Story frame
 
-The sun of Alpha Ro is failing (from the first game). The Ark has to
-cross the Alpha Ro cluster, 64 sectors, and fill its **manifest**, one
-specimen of every species, before the star collapses. Ports trade with the
-Ark and pirates hunt it. The further you go from the core, the rarer the
-creatures and the richer the ports.
+*After the Ark* (adopted 2026-11-24 from the RP6502 port's manual).
+Generations ago the Cosmic Ark finished its rescue. It was powered down,
+stripped of its beacons and sealed in a forgotten asteroid vault on the rim
+of the Alpha Ro cluster. Then you found it. You're a black-market salvager:
+you cracked the vault, hotwired the warp core and fired up the tractor
+beam. Collectors, menageries and frontier barons pay fortunes for rare
+alien fauna, so the Ark isn't a museum piece. It's the ultimate poaching rig.
 
-The fading star doubles as the game's clock (see §6.4). It gives the
-trading layer urgency, so the player can't grind forever.
+Chart the 64 sectors, raid worlds for creatures and ore, outrun the
+pirates, trade at the starports, hunt the rumoured Relic, and build a
+fortune or fill the Ark's **manifest** with a pair of every species. The
+further you go from the core, the rarer the creatures and the richer the
+ports.
+
+The sun of Alpha Ro is still failing (from the first game). Its worlds are
+doomed, and this is the last chance to strip them. The fading star stays
+the game's clock (see §6.4), so the player can't grind forever.
 
 ---
 
@@ -159,6 +168,36 @@ Fuel Ore, sells Organics, buys Equipment.
   with the joystick, like TradeWars' "Warps to: 4 - 7 - 12".
 - **Galactic chart** (button 2 on the sector view): the full grid, the
   cursor scrolls over it, revealed sectors only.
+
+### 3.6b The map and menu UI (built 2026-11-24)
+
+Taken from the RP6502 port's map and menu screens, on two buttons, in 12
+rows of 40 (the RP6502 has 30):
+
+- **Pages**: the sector view, the star chart, the close-up chart and
+  achievements, with button 2 stepping through them. A **tab bar** across
+  the top names every page and shows the current one.
+- **Status panel** on rows 10-11 of every map page: credits, bank, energy
+  (gold under half, red under a quarter), holds and manifest, its labels an
+  inverse cyan bar. The sector view has a **help line** above it.
+- **Sector view warps**: each warp line gives its direction and what's
+  known about where it leads (`NE  02  VERDA L3`, `SW >04  ???`). A
+  one-way warp is marked `>` in red. The selected item is a gold bar.
+- **Star chart**: only the sectors visited or seen next door; a node every
+  3 characters so diagonal lanes run node centre to node centre (crossings
+  an X between sectors). The lanes all grey; a symbol per kind: port (cyan
+  box), planet (green disc), nebula (blue check), empty (grey ring),
+  unknown (grey ?); the Ark's sector gold, blinking.
+  A **cursor** moves over the chart and an info panel describes the sector
+  under it (number, tier, planet name and level, port class). **Fire warps
+  there** when it's one jump away (the Ark stays on the chart); fire on the
+  Ark's own sector goes back to the sector view.
+- **Close-up chart**: the sectors drawn as boxes in their kind's colour (the
+  Ark's gold), the lanes cyan, including those to unexplored sectors.
+- **Starports**: the same frame. A tab bar (TRADE, BOUNTY, SHIPYARD, and
+  BANK in safe space), the selected line a gold bar, messages in gold.
+- Bars are inverse text (the font's odd codes), not box-drawing: 12 rows
+  leave no room for frame lines.
 
 ---
 
@@ -791,6 +830,13 @@ Fighter and pirate art from Spacewar.
 | 7 | Seed | From the timing of the New Game button press; no seed entry |
 | 8 | Saves | SaveKey first; fall back to the High Score Cart if the data fits (§7.3) |
 | 9 | Name | "Arc", as in the RP6502 game |
+| 10 | Story (2026-11-24) | The RP6502 port's "After the Ark": a salvager poaching with the old Ark (§1). The fading star stays as the clock |
+| 11 | Map and menu UI (2026-11-24) | The RP6502 port's layout (§3.6b): tab bar, status panel, chart cursor and chart warps, warp directions, one-way markers |
+| 12 | Pirates (2026-11-24) | Our own raiders and gunships; no borrowed designs (the port's TIE fighters are not used) |
+| 13 | Economy (2026-11-24) | The 7800's (§6.1c) is the reference; the RP6502 port's older economy is not taken |
+| 14 | Saving (2026-11-24) | On docking only, not continuous: SaveKey writes are slow and wear the chip |
+| 15 | Practice modes (2026-11-24) | Quick Deep Space and Quick Planet Run on the title, later |
+| 16 | Manual (2026-11-24) | Our own manual, laid out like the RP6502 port's (numbered HUD callouts, strategy guide, Captain's Log) |
 
 ## Open questions
 
