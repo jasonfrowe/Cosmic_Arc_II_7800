@@ -110,7 +110,7 @@ then link them together.
 - [x] One-way warps' lanes red on the star chart and the close-up
 - [x] Planets two in every five sectors (a playtest had none in sectors 1-30); `test_galaxy.sh` checks it
 - [x] A planet's guns: a gentler climb by level (level 5 as fast as level 2 was)
-- [ ] Our manual (from the RP6502 port's: our economy, gameplay, the 7800's controls, screenshots)
+- [x] Our manual (`docs/manual/`: the RP6502 port's booklet rewritten for ours; `tools/make_manual.py` takes the screenshots and prints the PDF)
 - [ ] js7800_astrocart: two POKEYs on banked carts (and anything else the AstroCart needs); a browser build; GitHub CI (as Super Mega Pinball 7800)
 - [ ] a7800 fork: headless runs without a window or focus grab on the Mac (App Nap throttled a test to 1.5% CPU)
 
@@ -121,5 +121,5 @@ then link them together.
 - [ ] Balancing pass
 - [ ] The new story ("After the Ark", DESIGN §1) on the title or in an intro
 - [ ] Quick Deep Space and Quick Planet Run on the title (practice; nothing saved)
-- [ ] Our own manual, laid out like the RP6502 port's: story, controls for two buttons, numbered HUD callouts, threats, species, achievements, strategy guide, Captain's Log
+- [x] Our own manual, laid out like the RP6502 port's: story, controls for two buttons, numbered HUD callouts, threats, species, achievements, strategy guide, Captain's Log (2026-11-27; keep it up to date as the game changes)
 - [ ] Browser build (js7800_astrocart) on GitHub Pages

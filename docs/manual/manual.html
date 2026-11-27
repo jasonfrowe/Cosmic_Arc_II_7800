@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cosmic Arc II — Game Manual (Atari 7800)</title>
+<!--
+  20-page 5 x 7 inch pocket booklet for Cosmic Arc II (Atari 7800 + AstroCart),
+  laid out like the RP6502 port's. tools/make_manual.py makes its images and
+  docs/manual/Cosmic_Arc_II_Manual_5x7.pdf.
+-->
+<style>
+:root {
+  --page-w: 5in; --page-h: 7in; --base: 8.8pt; --pad: 0.36in 0.38in 0.40in;
+  --ink: #14151c; --paper: #fffdf7; --muted: #545662;
+  --navy: #0a1026; --cyan: #1ea8cc; --gold: #e8a81c; --red: #d43828;
+  --green: #229454; --purple: #9e42b8; --blue: #2d6ad4;
+}
+@page { size: 5in 7in; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #666; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: var(--base); line-height: 1.32; color: var(--ink); }
+.page {
+  width: var(--page-w); height: var(--page-h); padding: var(--pad);
+  background: var(--paper); position: relative; overflow: hidden;
+  page-break-after: always; break-after: page; margin: 0 auto;
+}
+@media screen { .page { margin: 0.25in auto; box-shadow: 0 2px 14px rgba(0,0,0,.45); } }
+.folio {
+  position: absolute; bottom: 0.16in; left: 0; right: 0; text-align: center;
+  font-family: Futura, "Avenir Next", sans-serif; font-size: 0.8em;
+  color: var(--muted); letter-spacing: .1em;
+}
+
+h1, h2, h3 { font-family: Futura, "Avenir Next", "Helvetica Neue", sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin: 0; }
+h2 { font-size: 1.48em; line-height: 1.1; margin-bottom: 0.14em; color: var(--navy); }
+h2 + .stripes { margin-bottom: 0.75em; }
+h3 { font-size: 1.0em; margin: 0.8em 0 0.25em; letter-spacing: .07em; color: var(--navy); }
+.stripes { height: 0.48em; display: grid; grid-template-rows: 1fr 1fr 1fr; gap: 0.10em; width: 100%; }
+.stripes i { display: block; }
+.stripes i:nth-child(1) { background: var(--cyan); }
+.stripes i:nth-child(2) { background: var(--gold); }
+.stripes i:nth-child(3) { background: var(--red); }
+
+p { margin: 0 0 0.52em; }
+ul, ol { margin: 0 0 0.55em; padding-left: 1.2em; }
+li { margin-bottom: 0.22em; }
+b, strong { font-weight: 700; }
+.caps { font-family: Futura, "Avenir Next", sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+
+.shot { display: block; width: 100%; image-rendering: pixelated; border: 0.08em solid #1a2238; border-radius: 0.12em; }
+.shot.sm { width: 82%; margin: 0 auto; }
+.px { image-rendering: pixelated; }
+.cap { font-size: 0.80em; color: var(--muted); margin: 0.22em 0 0.62em; text-align: center; }
+.note { border-left: 0.3em solid var(--gold); padding: 0.35em 0.6em; background: #fbf3de; margin: 0.5em 0; font-size: 0.94em; }
+.warn { border-left: 0.3em solid var(--red); padding: 0.35em 0.6em; background: #fbe8e6; margin: 0.5em 0; font-size: 0.94em; }
+
+table { border-collapse: collapse; width: 100%; margin: 0.25em 0 0.6em; font-size: 0.93em; }
+td, th { padding: 0.20em 0.28em; vertical-align: middle; text-align: left; border-bottom: 0.06em solid #d8d3c6; }
+th { font-family: Futura, "Avenir Next", sans-serif; text-transform: uppercase; font-size: 0.80em; letter-spacing: .07em; color: var(--muted); }
+td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55em; align-items: start; }
+
+/* Cover */
+.cover { background: var(--navy); color: #fff; padding: 0; }
+.cover .band {
+  background: #000; color: #dbe8ff; font-family: Futura, "Avenir Next", sans-serif;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .22em; font-size: 0.88em;
+  padding: 0.6em 0 0.5em; text-align: center;
+}
+.cover .band + .stripes { height: 0.65em; gap: 0; }
+.cover .title-block { text-align: center; padding: 1.2em 0.4in 0.5em; }
+.cover .title-main {
+  font-family: Futura, "Avenir Next", sans-serif; font-weight: 800; font-size: 2.8em;
+  letter-spacing: .14em; line-height: 1.05; color: var(--gold);
+  text-shadow: 0 3px 0 #704000, 0 0 18px rgba(240,184,40,.35);
+}
+.cover .title-sub {
+  font-family: Futura, "Avenir Next", sans-serif; font-weight: 700; font-size: 0.95em;
+  letter-spacing: .28em; text-transform: uppercase; color: var(--cyan);
+  margin-top: 0.4em;
+}
+.cover .tagline {
+  text-align: center; font-size: 0.88em; color: #b8c6e8; margin: 0.45em 0.5in 0.85em;
+  font-style: italic;
+}
+.cover .art { display: block; width: 100%; image-rendering: pixelated; border-top: 2px solid #1c2c58; border-bottom: 2px solid #1c2c58; }
+.cover .foot {
+  position: absolute; bottom: 0; left: 0; right: 0; background: #000; text-align: center;
+  padding: 0.6em 0 0.65em; font-family: Futura, "Avenir Next", sans-serif;
+  font-size: 0.80em; letter-spacing: .12em; text-transform: uppercase; color: #d2dcf0;
+}
+.cover .foot b { color: var(--gold); }
+
+/* TOC */
+.toc { list-style: none; padding: 0; margin: 0.25em 0 0; }
+.toc li { display: flex; align-items: baseline; margin-bottom: 0.34em; font-size: 0.98em; }
+.toc li span:first-child { font-family: Futura, "Avenir Next", sans-serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.toc li .dots { flex: 1; border-bottom: 0.1em dotted #999; margin: 0 0.4em; transform: translateY(-0.22em); }
+
+/* Controls badges */
+.keys { display: grid; grid-template-columns: 7.4em 1fr; gap: 0.38em 0.6em; align-items: center; margin: 0.4em 0 0.65em; }
+.key {
+  background: var(--navy); color: #fff; font-family: Futura, "Avenir Next", sans-serif;
+  font-weight: 700; text-transform: uppercase; font-size: 0.78em; letter-spacing: .04em;
+  text-align: center; padding: 0.32em 0.25em; border-radius: 0.3em;
+}
+.key.a { background: var(--green); }
+.key.b { background: var(--red); }
+.key.x { background: var(--blue); }
+.key.sh { background: var(--cyan); color: #05131e; }
+.key.st { background: #444858; }
+
+/* HUD callouts */
+.hud { position: relative; margin: 0.35em 0 1.55em; }
+.hud img { width: 100%; display: block; image-rendering: pixelated; border: 0.08em solid #1a2238; }
+.hud .tag {
+  position: absolute; top: 100%; transform: translateX(-50%); margin-top: 0.16em;
+  width: 1.38em; height: 1.38em; border-radius: 50%; background: var(--gold); color: #000;
+  font-family: Futura, "Avenir Next", sans-serif; font-weight: 700; font-size: 0.82em;
+  text-align: center; line-height: 1.38em; border: 0.08em solid #222;
+}
+.legend { display: grid; grid-template-columns: 1.6em 1fr; gap: 0.26em 0.42em; font-size: 0.93em; }
+.legend .n {
+  width: 1.38em; height: 1.38em; border-radius: 50%; background: var(--gold); color: #000;
+  font-family: Futura, "Avenir Next", sans-serif; font-weight: 700; font-size: 0.82em;
+  text-align: center; line-height: 1.38em; border: 0.08em solid #222;
+}
+
+/* Sprite Dossiers */
+.foe { display: grid; grid-template-columns: 5.0em 1fr; gap: 0.6em; align-items: center; padding: 0.42em 0; border-bottom: 0.06em solid #d8d3c6; }
+.foe:last-of-type { border-bottom: 0; }
+.foe .pic {
+  background: var(--navy); border-radius: 0.28em; height: 3.6em;
+  display: flex; align-items: center; justify-content: center; padding: 0.25em;
+  border: 0.06em solid #1d2b4f;
+}
+.foe .pic img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.foe h3 { margin: 0 0 0.1em; font-size: 0.95em; display: flex; justify-content: space-between; }
+.foe h3 .pts { color: var(--muted); font-weight: 400; font-size: 0.88em; letter-spacing: .02em; }
+.foe p { margin: 0; font-size: 0.90em; line-height: 1.26; }
+
+/* Compact 2-col species grid */
+.bio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45em 0.55em; margin: 0.35em 0 0.5em; }
+.bio-card {
+  display: grid; grid-template-columns: 3.1em 1fr; gap: 0.45em; align-items: center;
+  padding: 0.32em; background: #f6f3ea; border: 0.06em solid #dcd6c4; border-radius: 0.25em;
+}
+.bio-card .pic {
+  background: var(--navy); border-radius: 0.22em; height: 3.0em;
+  display: flex; align-items: center; justify-content: center; padding: 0.2em;
+}
+.bio-card .pic img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.bio-card b { font-family: Futura, "Avenir Next", sans-serif; font-size: 0.88em; letter-spacing: .05em; display: block; color: var(--navy); }
+.bio-card span { font-size: 0.82em; color: var(--ink); line-height: 1.22; display: block; }
+
+/* Compact achievements table */
+.ach-tbl { font-size: 0.80em; margin: 0.3em 0 0; }
+.ach-tbl td, .ach-tbl th { padding: 0.14em 0.24em; }
+
+/* Ruled notes */
+.lines { margin-top: 0.5em; }
+.lines div { border-bottom: 0.06em solid #c9c3b4; height: 1.78em; }
+
+/* Back Cover */
+.back { background: var(--navy); color: #e8ebf5; }
+.back h2 { color: var(--gold); }
+.back .grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45em; margin: 0.55em 0 0.8em; }
+.back .grid4 img { width: 100%; image-rendering: pixelated; display: block; border: 0.08em solid #000; }
+.back p { color: #cfd8f2; }
+.back li { color: #dce4fa; }
+.back .small { font-size: 0.80em; color: #8fa0c8; margin-top: 1.1em; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 1. COVER ==================== -->
+<section class="page cover">
+  <div class="band">For the Atari 7800 &middot; AstroCart</div>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <div class="title-block">
+    <div class="title-main">COSMIC ARC II</div>
+    <div class="title-sub">Alpha Ro Cluster</div>
+  </div>
+  <div class="tagline">The Ark's ancient mission is over. Now the black market begins.</div>
+  <img class="art" src="img/planet_beam.png" alt="The shuttle's beam lifting a creature on Verda">
+  <img class="art" src="img/space_raid.png" alt="Raiders and a gunship round the Ark" style="border-top:0">
+  <div class="foot"><b>Game Manual</b> &nbsp;&middot;&nbsp; 1 Player &nbsp;&middot;&nbsp; Two-Button Joystick &nbsp;&middot;&nbsp; SaveKey</div>
+</section>
+
+<!-- ==================== 2. CONTENTS ==================== -->
+<section class="page">
+  <h2>Contents</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <ul class="toc">
+    <li><span>The Story: After the Ark</span><span class="dots"></span><span>3</span></li>
+    <li><span>Getting Started &amp; Voyages</span><span class="dots"></span><span>4</span></li>
+    <li><span>Controls</span><span class="dots"></span><span>5</span></li>
+    <li><span>The Galaxy &amp; Sector View</span><span class="dots"></span><span>6</span></li>
+    <li><span>Star Chart &amp; Close-Up</span><span class="dots"></span><span>7</span></li>
+    <li><span>Starports: Trade &amp; Bank</span><span class="dots"></span><span>8</span></li>
+    <li><span>Starports: Bounty &amp; Shipyard</span><span class="dots"></span><span>9</span></li>
+    <li><span>Deep Space: The Screen</span><span class="dots"></span><span>10</span></li>
+    <li><span>Deep Space: Ark &amp; Fighter</span><span class="dots"></span><span>11</span></li>
+    <li><span>Deep Space Threats &amp; Escape Pod</span><span class="dots"></span><span>12</span></li>
+    <li><span>Planets: The Screen</span><span class="dots"></span><span>13</span></li>
+    <li><span>Planets: Shuttle &amp; Beam</span><span class="dots"></span><span>14</span></li>
+    <li><span>Worlds, Defences &amp; Storms</span><span class="dots"></span><span>15</span></li>
+    <li><span>Wildlife &amp; The Relic</span><span class="dots"></span><span>16</span></li>
+    <li><span>Achievements</span><span class="dots"></span><span>17</span></li>
+    <li><span>Salvager's Strategy Guide</span><span class="dots"></span><span>18</span></li>
+    <li><span>Captain's Log</span><span class="dots"></span><span>19</span></li>
+  </ul>
+  <div class="note" style="margin-top:0.75em">
+    <b>Saving:</b> With a SaveKey or AtariVox in the second joystick port, your voyage is saved whenever you dock at a Starport or leave one, when a voyage begins, and when the Ark is lost. There's no need to save by hand.
+  </div>
+  <div class="folio">2</div>
+</section>
+
+<!-- ==================== 3. THE STORY ==================== -->
+<section class="page">
+  <h2>After the Ark</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Generations ago, the legendary <b>Cosmic Ark</b> finished its desperate rescue among the dying worlds of the old frontier. Its purpose fulfilled, the great ship was powered down, stripped of its beacons, and sealed inside a forgotten asteroid vault on the rim of the <b>Alpha Ro Cluster</b>.</p>
+  <p>It was supposed to rest there forever.</p>
+  <p>Then <b>you</b> found it.</p>
+  <p>A black-market salvager with more nerve than scruples, you cracked the vault, hotwired the Ark's warp core and fired up its tractor beam. Collectors, menageries and frontier barons pay fortunes for rare alien fauna, and Alpha Ro's failing sun means its worlds won't last. The Ark isn't a museum piece&mdash;it's the ultimate poaching rig.</p>
+  <img class="shot sm" src="img/planet_orbit.png" alt="The Ark in orbit over Verda">
+  <div class="cap">The Ark settling into orbit over Verda, its docking tunnel lowered.</div>
+  <p>Chart <b>64 sectors</b>, raid alien worlds for creatures and ore, fight off pirate raiders and gunships, trade at <b>11 Starports</b>, and hunt down the rumoured <b>Relic</b>. Build a fortune&mdash;or fill the Ark's manifest with a pair of every species.</p>
+  <div class="folio">3</div>
+</section>
+
+<!-- ==================== 4. GETTING STARTED ==================== -->
+<section class="page">
+  <h2>Getting Started</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Cosmic Arc II runs on an <b>AstroCart</b> cartridge, whose math unit and two POKEY sound chips the game needs. Plug a <b>two-button joystick</b> into the left port, and a <b>SaveKey</b> or <b>AtariVox</b> into the right one to keep your voyages. Switch on, and press <b>fire</b> on the title screen.</p>
+  <div class="two">
+    <div>
+      <img class="shot" src="img/title.png" alt="The title screen">
+      <div class="cap">The title screen.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/voyages.png" alt="The voyage screen">
+      <div class="cap">The voyage screen: three save slots.</div>
+    </div>
+  </div>
+  <h3>The Voyage Screen</h3>
+  <ul>
+    <li>Each slot shows its voyage's <b>sector</b>, <b>stardate</b>, <b>credits</b> and <b>achievements</b>. Move up and down to pick one; the cursor starts on your first saved voyage.</li>
+    <li><b>Fire</b> on a saved voyage carries on where you left it. Fire on <b>NEW VOYAGE</b> builds a fresh galaxy in that slot and starts you at Sector 01, home, with <b>500 credits</b> and <b>100 energy</b>.</li>
+    <li><b>Button 2</b> on a saved voyage asks to clear it: <b>fire</b> to clear, <b>button 2</b> to keep it.</li>
+    <li>A slot marked <b>DAMAGED</b> couldn't be read back; fire starts a new voyage there.</li>
+  </ul>
+  <div class="note">
+    <b>No SaveKey?</b> The title says <b>NO SAVEKEY: NO SAVES</b>, and fire goes straight into a new voyage that isn't kept. <b>Button 2</b> on the title runs a check of the cartridge and SaveKey.
+  </div>
+  <div class="folio">4</div>
+</section>
+
+<!-- ==================== 5. CONTROLS ==================== -->
+<section class="page">
+  <h2>Controls</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Everything is played with the joystick and its <b>two buttons</b>. <b>Button 1</b> is fire (the button a one-button joystick has); <b>button 2</b> is the other.</p>
+
+  <h3>The Map &amp; Starports</h3>
+  <div class="keys">
+    <div class="key">Joystick</div><div>Move the gold bar to a choice, or the cursor round the Star Chart. On the Bounty tab, <b>left</b> keeps a creature for the manifest.</div>
+    <div class="key a">Button 1</div><div><b>Choose:</b> land, dock, warp (on the Star Chart too), buy, sell, upgrade, leave port.</div>
+    <div class="key b">Button 2</div><div><b>Next page:</b> Sector &rarr; Chart &rarr; Close Up &rarr; Achieve, and round again. At a Starport, the next tab.</div>
+  </div>
+
+  <h3>Deep Space</h3>
+  <div class="keys">
+    <div class="key">Joystick</div><div>Aim the Ark's laser (8 ways); with the fighter out, fly it.</div>
+    <div class="key a">Button 1</div><div>Fire the laser (hold for steady fire), or the fighter's twin blasters.</div>
+    <div class="key b">Button 2</div><div><b>Launch</b> the fighter, and again to <b>recall</b> it.</div>
+  </div>
+
+  <h3>Planets</h3>
+  <div class="keys">
+    <div class="key">Joystick</div><div><b>Hold down</b> while docked to drop the shuttle out of the Ark; fly it; <b>push straight up</b> under the Ark's doorway to dock. During a storm, docked: aim and fire the Ark's laser up, left or right.</div>
+    <div class="key a">Button 1</div><div>The <b>tractor beam</b> (the shuttle flying low).</div>
+    <div class="key b">Button 2</div><div><b>Drop</b> what the shuttle carries. Docked, <b>hold</b> it to leave the planet early.</div>
+  </div>
+  <div class="folio">5</div>
+</section>
+
+<!-- ==================== 6. GALAXY & SECTOR VIEW ==================== -->
+<section class="page">
+  <h2>The Galaxy &amp; Sector View</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Every voyage builds a new <b>Alpha Ro Cluster</b>: 64 sectors on a 12&times;8 grid, joined by warps. Sectors are numbered by their distance from home, and the further out you go, the higher the stakes:</p>
+  <table>
+    <tr><th>Tier</th><th>Sectors</th><th>Encounters</th><th>Notes</th></tr>
+    <tr><td><b>Safe Space</b></td><td>01&ndash;10</td><td class="num">none</td><td>Home; ports with the Bank</td></tr>
+    <tr><td><b>Core</b></td><td>11&ndash;15</td><td class="num">30%</td><td>Light raids</td></tr>
+    <tr><td><b>Mid-Rim</b></td><td>16&ndash;40</td><td class="num">45%</td><td>Better prices, rarer creatures</td></tr>
+    <tr><td><b>Outer Rim</b></td><td>41&ndash;64</td><td class="num">60%</td><td>The richest ports, the Relic</td></tr>
+  </table>
+  <img class="shot sm" src="img/sector.png" alt="The sector view">
+  <div class="cap">The Sector View: where you are, what's here, the way to each warp, your status.</div>
+  <ul>
+    <li><b>What's here:</b> a Starport and its class, or a planet: its world, its level (<b>L1</b>&ndash;<b>L5</b>) and how many creatures are left (<b>LIFE 4</b>, or <b>BARREN</b> until they come back).</li>
+    <li><b>Warps</b> show their direction, the sector, and what's there once known (<code>???</code> before). A red <b>&gt;</b> is a <b>one-way warp</b>: there's no warp straight back.</li>
+    <li>Every warp moves the <b>stardate</b> on by one. An encounter may come on the way in, or as you leave a planet or port. Nebulae add 25% to the odds.</li>
+  </ul>
+  <div class="folio">6</div>
+</section>
+
+<!-- ==================== 7. STAR CHART & CLOSE-UP ==================== -->
+<section class="page">
+  <h2>Star Chart &amp; Close-Up</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Press <b>button 2</b> from the Sector View for the <b>Star Chart</b>: every sector you've visited and every one next to them. Press it again for the <b>Close-Up</b>, a closer look at the sectors round the Ark.</p>
+  <div class="two">
+    <div>
+      <img class="shot" src="img/chart.png" alt="The star chart">
+      <div class="cap">Star Chart: the cursor on sector 34, one jump away.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/closeup.png" alt="The close-up chart">
+      <div class="cap">Close-Up: the sectors round the Ark, with their numbers.</div>
+    </div>
+  </div>
+  <h3>Star Chart Symbols</h3>
+  <div class="two" style="font-size:0.92em;margin-bottom:0.55em">
+    <div>
+      <b>Gold, blinking:</b> the Ark<br>
+      <b>Cyan box:</b> Starport<br>
+      <b>Green disc:</b> planet
+    </div>
+    <div>
+      <b>Blue check:</b> nebula<br>
+      <b>Grey ring:</b> empty sector<br>
+      <b>?</b>&nbsp; seen, not yet visited
+    </div>
+  </div>
+  <p>Grey lanes are warps both ways; <b>red lanes are one-way warps</b>. On the Close-Up, each box is a sector's number in its kind's colour, the Ark's in gold.</p>
+  <div class="note">
+    <b>Warp from the chart:</b> move the cursor onto a sector one jump from the Ark. The panel under the chart describes it and says <b>FIRE: WARP</b>; press fire to go. Fire on the Ark's own sector goes back to the Sector View.
+  </div>
+  <div class="folio">7</div>
+</section>
+
+<!-- ==================== 8. STARPORTS: TRADE & BANK ==================== -->
+<section class="page">
+  <h2>Starports: Trade &amp; Bank</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Eleven <b>Starports</b> lie across the cluster. Each has a three-letter <b>class</b> (such as <code>BSB</code>) saying whether it <b>B</b>uys or <b>S</b>ells each of three goods, in order: <b>Fuel Ore</b>, <b>Organics</b>, <b>Equipment</b>. Home, Sector 01, buys everything (<code>BBB</code>); another port in Safe Space sells everything (<code>SSS</code>).</p>
+  <div class="two">
+    <div>
+      <img class="shot" src="img/port_trade.png" alt="The trade tab">
+      <div class="cap">Trade: what you hold, the price, the port's stock.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/port_bank.png" alt="The bank tab">
+      <div class="cap">The Bank, at Safe Space's ports.</div>
+    </div>
+  </div>
+  <ul>
+    <li><b>Buy where it's made, sell where it's needed.</b> A port that sells a good asks about three quarters of its value; one that buys it pays a quarter more, and more again the further out it is. Equipment pays best.</li>
+    <li><b>Stock:</b> each one you buy puts the price up, and a port can sell out; each one you sell brings its price down until it <b>WANTS NO MORE</b>. Ports recover a step every warp.</li>
+    <li>Goods, ore crates and creatures in stasis all take <b>holds</b>: 10 to start.</li>
+    <li>The <b>rumour</b> on the Trade tab points the way to the Relic.</li>
+    <li><b>The Bank</b> (Safe Space only): deposit or withdraw 100 at a time, or all. Savings are <b>safe if the Ark is lost</b>.</li>
+  </ul>
+  <div class="folio">8</div>
+</section>
+
+<!-- ==================== 9. STARPORTS: BOUNTY & SHIPYARD ==================== -->
+<section class="page">
+  <h2>Bounty &amp; Shipyard</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Creatures your shuttle brings aboard wait in <b>stasis</b>, a hold each. On the <b>Bounty</b> tab, decide what each is worth to you:</p>
+  <div class="two">
+    <div>
+      <img class="shot" src="img/port_bounty.png" alt="The bounty tab">
+      <div class="cap">Bounty: in stasis, the bounty, kept for the manifest.</div>
+    </div>
+    <div>
+      <img class="shot" src="img/port_yard.png" alt="The shipyard tab">
+      <div class="cap">Shipyard: repairs and upgrades.</div>
+    </div>
+  </div>
+  <ul>
+    <li><b>Fire sells one</b> for its bounty. Rarer kinds pay more, and ports further out pay up to two and a half times as much. A port that's bought many lately pays less: sell around.</li>
+    <li><b>Left keeps one</b> for the Ark's <b>manifest</b>: a pair of each of the six kinds, 12 in all. Kept creatures leave the holds for the Ark's own bays.</li>
+  </ul>
+  <h3>The Shipyard</h3>
+  <ul>
+    <li><b>Repair energy</b> to full: 4 credits a point in Safe Space, up to 8 in the Outer Rim.</li>
+    <li><b>Hull:</b> +5 most energy, ready filled (from 1,000 credits, 200 more each time), up to <b>200</b>.</li>
+    <li><b>Holds:</b> 10 &rarr; 15 (3,000) &rarr; 20 (6,000).</li>
+  </ul>
+  <div class="folio">9</div>
+</section>
+
+<!-- ==================== 10. DEEP SPACE: THE SCREEN ==================== -->
+<section class="page">
+  <h2>Deep Space: The Screen</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Outside Safe Space, a warp&mdash;or leaving a planet or port&mdash;can run into an <b>encounter</b>: asteroids and pirates closing on the Ark. Its <b>wave</b> is as strong as the jumps back to Safe Space, from 1 to 10. Clear everything to go on.</p>
+  <img class="shot" src="img/space_pirates.png" alt="Deep space">
+  <div class="cap">PIRATES! Rocks come in along the Ark's eight lanes; the pirates don't.</div>
+
+  <div class="hud">
+    <img src="img/space_hud_top.png" alt="The top of the screen">
+    <span class="tag" style="left:13%">1</span>
+    <span class="tag" style="left:82%">2</span>
+  </div>
+  <div class="hud">
+    <img src="img/space_hud_bot.png" alt="The bottom of the screen">
+    <span class="tag" style="left:20%">3</span>
+    <span class="tag" style="left:72%">4</span>
+  </div>
+  <div class="legend">
+    <div class="n">1</div><div><b>Credits</b> aboard. Pirates pay a bounty when destroyed.</div>
+    <div class="n">2</div><div><b>Wave</b>: the encounter's strength.</div>
+    <div class="n">3</div><div><b>A: the Ark's energy</b>&mdash;its shields and its laser's power. Gold under half, red under a quarter. At zero, the Ark is lost.</div>
+    <div class="n">4</div><div><b>F: the fighter's tether</b>, or <b>REPAIR</b> while the Ark builds a new fighter.</div>
+  </div>
+  <div class="folio">10</div>
+</section>
+
+<!-- ==================== 11. DEEP SPACE: ARK & FIGHTER ==================== -->
+<section class="page">
+  <h2>Ark &amp; Fighter</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <h3>The Ark's Laser</h3>
+  <p>The joystick aims the Ark's laser along one of <b>eight lanes</b>, and fire sends bolts down it. Rocks only ever come in along those lanes. Each bolt costs <b>1 energy</b> and each kill pays 1 back, so careful shooting breaks even; misses and hits on the hull are what cost you.</p>
+  <p>Large rocks break into two medium, and medium into two small, all carrying on down the same lane.</p>
+
+  <h3>The Fighter</h3>
+  <p>Pirates keep off the lanes, so <b>button 2</b> launches the <b>fighter</b>, a fast little saucer:</p>
+  <ul>
+    <li>It flies the way you push and fires <b>twin blasters</b>, free of charge. It wraps round the screen's edges.</li>
+    <li>The Ark's <b>auto-turret</b> takes over while it's out, firing in the eight directions at the nearest threat.</li>
+    <li>The fighter runs on its <b>tether</b> (about 13 seconds); hits come off it too. Press <b>button 2</b> to recall it: it flies itself home, and <b>nothing can touch it on the way</b>. Docked, it recharges in about 3 seconds.</li>
+    <li>Only the fighter can collect <b>salvage pods</b>.</li>
+  </ul>
+  <img class="shot sm" src="img/space_fighter.png" alt="The fighter out" style="width:66%">
+  <div class="cap">The fighter out among the rocks.</div>
+  <div class="note">
+    <b>Tip:</b> A rock destroys the fighter outright, and the fighter's blasters need two hits for a rock. Leave rocks to the Ark; the fighter is for pirates.
+  </div>
+  <div class="folio">11</div>
+</section>
+
+<!-- ==================== 12. DEEP SPACE THREATS ==================== -->
+<section class="page">
+  <h2>Deep Space Threats</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+
+  <div class="foe">
+    <div class="pic"><img src="img/spr_rock_l.png" alt="Asteroids"></div>
+    <div><h3>Asteroids (L / M / S) <span class="pts">16 / 12 / 8 damage</span></h3>
+    <p>Tumble in along the eight lanes, faster each wave. A rock hurts whatever it hits: the Ark, the fighter, even pirates.</p></div>
+  </div>
+
+  <div class="foe">
+    <div class="pic"><img src="img/spr_raider.png" alt="Raider"></div>
+    <div><h3>Raider <span class="pts">10 credits</span></h3>
+    <p>Fast and nimble: circles the Ark and shoots, and sidesteps rocks. Send out the fighter.</p></div>
+  </div>
+
+  <div class="foe">
+    <div class="pic"><img src="img/spr_gunship.png" alt="Gunship"></div>
+    <div><h3>Gunship <span class="pts">25 credits</span></h3>
+    <p>From wave 2: parks between the Ark's lanes, out of the laser's reach, and launches missiles.</p></div>
+  </div>
+
+  <div class="foe">
+    <div class="pic"><img src="img/spr_missile.png" alt="Missile"></div>
+    <div><h3>Missile <span class="pts">12 damage</span></h3>
+    <p>Homes in on the Ark. Shoot it down on the way.</p></div>
+  </div>
+
+  <div class="foe">
+    <div class="pic"><img src="img/spr_pod.png" alt="Salvage pod"></div>
+    <div><h3>Salvage Pod <span class="pts">+16 energy</span></h3>
+    <p>One pirate in four leaves one behind. Fly the fighter through it before it drifts away.</p></div>
+  </div>
+
+  <div class="note">
+    <b>PIRATES!</b> When a wave's pirates arrive, only small rocks come for the next 20 seconds: your chance to launch the fighter. Then the big rocks return.
+  </div>
+  <div class="warn">
+    <b>Escape Pod:</b> If the Ark's energy runs out (in deep space or on a planet), the pod gets you home to Sector 01 in a new Ark with a tenth of your credits. Lost: cargo, creatures, kept specimens, upgrades. Kept: the Bank, the chart, your achievements.
+  </div>
+  <div class="folio">12</div>
+</section>
+
+<!-- ==================== 13. PLANETS: THE SCREEN ==================== -->
+<section class="page">
+  <h2>Planets: The Screen</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Choose <b>LAND ON PLANET</b> in a planet's sector and the Ark drops into orbit, hanging over one spot of a world that wraps all the way round. Its creatures roam below, and its defence towers stand guard.</p>
+  <img class="shot sm" src="img/planet_pulse.png" alt="A planet's pulse">
+  <div class="cap">The towers' guns fire a pulse right across the screen. Don't be at its height.</div>
+
+  <div class="hud">
+    <img src="img/planet_hud_top.png" alt="The top of the planet screen">
+    <span class="tag" style="left:13%">1</span>
+    <span class="tag" style="left:36%">2</span>
+    <span class="tag" style="left:55%">3</span>
+    <span class="tag" style="left:82%">4</span>
+  </div>
+  <div class="legend" style="margin-bottom:0.65em">
+    <div class="n">1</div><div><b>Credits</b> aboard.</div>
+    <div class="n">2</div><div><b>The world</b>'s name.</div>
+    <div class="n">3</div><div><b>The scanner</b> (the second row): the whole planet, the Ark, the towers, the creatures, the shuttle and the storm's rock.</div>
+    <div class="n">4</div><div><b>Creatures</b>: one icon each, filled in yellow once caught.</div>
+  </div>
+
+  <div class="hud">
+    <img src="img/planet_hud_bot.png" alt="The bottom of the planet screen">
+    <span class="tag" style="left:18%">5</span>
+    <span class="tag" style="left:57%">6</span>
+    <span class="tag" style="left:73%">7</span>
+  </div>
+  <div class="legend">
+    <div class="n">5</div><div><b>The Ark's energy.</b></div>
+    <div class="n">6</div><div><b>The shuttle</b> (a red cross while a new one is built).</div>
+    <div class="n">7</div><div><b>The shuttle's bay</b>: empty, a creature, or ore.</div>
+  </div>
+  <div class="folio">13</div>
+</section>
+
+<!-- ==================== 14. PLANETS: SHUTTLE & BEAM ==================== -->
+<section class="page">
+  <h2>Shuttle &amp; Tractor Beam</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <ol>
+    <li><b>Launch:</b> docked inside the Ark, <b>hold down</b> and the shuttle drops out of the tunnel by itself.</li>
+    <li><b>Find them:</b> the scanner shows where the creatures are. The shuttle stays in the middle of the screen while the ground scrolls under it.</li>
+    <li><b>Beam:</b> fly low over a creature and hold <b>button 1</b>. The shuttle stops dead and the beam reaches the ground.</li>
+    <li><b>Hold on:</b> a creature in the beam struggles to slip out sideways. Keep it under you until it's aboard.</li>
+    <li><b>Dock:</b> get under the Ark's doorway and <b>push straight up</b>: the shuttle flies itself up the tunnel. Each creature delivered gives the Ark <b>12 energy</b>.</li>
+  </ol>
+  <img class="shot sm" src="img/planet_beam.png" alt="The beam">
+  <div class="cap">The beam lifting a creature on Verda.</div>
+  <ul>
+    <li><b>Ore crates</b> are heavy: the shuttle crosses at half speed while carrying one. Each holds <b>5 fuel ore</b> for your holds. <b>Button 2</b> drops a load.</li>
+    <li>The shuttle carries one thing at a time, and the beam won't lift a creature when the holds are full.</li>
+    <li><b>Leaving early:</b> docked, <b>hold button 2</b>. The count goes LEAVING IN 3, 2, 1; fire or the joystick stops it. Not once a storm is coming.</li>
+  </ul>
+  <div class="folio">14</div>
+</section>
+
+<!-- ==================== 15. WORLDS, DEFENCES & STORMS ==================== -->
+<section class="page">
+  <h2>Worlds, Defences &amp; Storms</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <h3>Six Worlds, Five Levels</h3>
+  <p>Planets come in six kinds of world&mdash;<b>VERDA</b>, <b>RUBRA</b>, <b>GLACI</b>, <b>UMBRA</b>, <b>ARENA</b> and <b>TOXIS</b>&mdash;and at levels <b>L1</b> to <b>L5</b>. Two sectors in every five have a planet, so there are some at every stage of a voyage. Level rises with the distance from home: harder defences, rarer and better-paid creatures.</p>
+  <p>Every creature you take is one fewer on that world; one returns every 3 warps. A world with none left is <b>BARREN</b> and can't be landed on.</p>
+
+  <h3>The Towers</h3>
+  <p>A tower stands every so often round the planet, its gun riding up and down. All the guns move as one, covering the whole band the shuttle flies in. Before each pulse they <b>flash</b>; then a pulse crosses the screen at their height. A shuttle it touches is destroyed, its cargo falls, and the Ark loses 12 energy while it builds another. Pulses come at no fixed rhythm: watch the flash.</p>
+
+  <h3>The Storm</h3>
+  <ul>
+    <li>About 45 seconds after you arrive, a klaxon sounds: <b>STORM COMING</b>. Ten seconds later a rock comes for the Ark, from above, the left or the right (<b>!</b> on the scanner).</li>
+    <li>Get the shuttle home. Docked, the joystick and fire aim the <b>Ark's laser</b> up, left or right: shoot the rock down for <b>ALL CLEAR</b>.</li>
+    <li>If it hits, the Ark loses 16 energy, and a shuttle still outside is lost with its cargo. Either way, the planet is done.</li>
+  </ul>
+  <div class="note">
+    <b>All caught:</b> catch every creature on a planet and dock for <b>PLANET CLEAR</b>.
+  </div>
+  <div class="folio">15</div>
+</section>
+
+<!-- ==================== 16. WILDLIFE & THE RELIC ==================== -->
+<section class="page">
+  <h2>Wildlife &amp; The Relic</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>Six kinds of creature live in Alpha Ro, two to four on a planet. The low-level worlds near home have the common kinds; the rarer, better-paid ones live out in the rim. Each reacts when the shuttle comes low overhead:</p>
+
+  <div class="bio-grid">
+    <div class="bio-card">
+      <div class="pic"><img src="img/spr_c0.png" alt="Walker"></div>
+      <div><b>WALKER</b><span>Turns about and hurries off. Bounty from 30.</span></div>
+    </div>
+    <div class="bio-card">
+      <div class="pic"><img src="img/spr_c1.png" alt="Hopper"></div>
+      <div><b>HOPPER</b><span>Jumps away from the shuttle. From 38.</span></div>
+    </div>
+    <div class="bio-card">
+      <div class="pic"><img src="img/spr_c2.png" alt="Runner"></div>
+      <div><b>RUNNER</b><span>Sprints for it. From 46.</span></div>
+    </div>
+    <div class="bio-card">
+      <div class="pic"><img src="img/spr_c3.png" alt="Burrower"></div>
+      <div><b>BURROWER</b><span>Dashes away along the ground. From 54.</span></div>
+    </div>
+    <div class="bio-card">
+      <div class="pic"><img src="img/spr_c4.png" alt="Glider"></div>
+      <div><b>GLIDER</b><span>Floats above the ground, bobbing up and down. From 62.</span></div>
+    </div>
+    <div class="bio-card">
+      <div class="pic"><img src="img/spr_c5.png" alt="Blinker"></div>
+      <div><b>BLINKER</b><span>Always quick and twitchy. Outer rim only. From 70.</span></div>
+    </div>
+  </div>
+  <p style="font-size:0.9em">Bounties shown are Safe Space's; the further out you sell, the more they pay.</p>
+
+  <div class="foe">
+    <div class="pic"><img src="img/spr_crate.png" alt="Ore crate"></div>
+    <div><h3>Ore Crate <span class="pts">5 fuel ore</span></h3>
+    <p>Sits on the ground waiting. Heavy in the beam; sell the ore where a port buys it.</p></div>
+  </div>
+  <div class="foe">
+    <div class="pic"><img src="img/spr_relic.png" alt="The Relic"></div>
+    <div><h3>The Relic <span class="pts">2,000 credits</span></h3>
+    <p>Somewhere in the Outer Rim. Every port's rumour names a sector next to it, and its own sector shows a <b>RELIC SIGNAL</b>. It shimmers in the beam and is <b>very</b> heavy. Bring it to any port; lose the Ark and it's back where you found it.</p></div>
+  </div>
+  <div class="folio">16</div>
+</section>
+
+<!-- ==================== 17. ACHIEVEMENTS ==================== -->
+<section class="page">
+  <h2>Achievements</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p>There's no single way to win: the voyage goes on as long as you like. Instead there are <b>16 achievements</b>, on the <b>ACHIEVE</b> page (button 2 from the Close-Up). Earned ones light up in colour; the joystick picks one to see what it takes and how far along you are. Each voyage keeps its own.</p>
+  <img class="shot sm" src="img/achieve.png" alt="The achievements" style="width:70%">
+  <table class="ach-tbl">
+    <tr><th>Name</th><th>Takes</th><th>Name</th><th>Takes</th></tr>
+    <tr><td><b>PAIRS</b></td><td>A pair of every kind kept</td><td><b>SWEEP</b></td><td>Catch all on a planet, none lost</td></tr>
+    <tr><td><b>SURVEY</b></td><td>One of each kept by stardate 150</td><td><b>STORMS</b></td><td>Shoot down 5 storm rocks</td></tr>
+    <tr><td><b>ACE</b></td><td>Destroy 50 pirates</td><td><b>FAR SHORE</b></td><td>Reach Sector 64</td></tr>
+    <tr><td><b>CHARTED</b></td><td>Visit every sector</td><td><b>DEEP RAID</b></td><td>Survive a wave 10 encounter</td></tr>
+    <tr><td><b>TYCOON</b></td><td>10,000 credits aboard</td><td><b>MERCHANT</b></td><td>Sell 50 goods at ports</td></tr>
+    <tr><td><b>REFIT</b></td><td>Every hull and hold upgrade</td><td><b>BANKER</b></td><td>5,000 in the Bank</td></tr>
+    <tr><td><b>RELIC</b></td><td>Bring the Relic to a port</td><td><b>LOADED</b></td><td>Fill 20 holds</td></tr>
+    <tr><td><b>UNTOUCHED</b></td><td>Clear an encounter without a hit</td><td><b>LIFEBOAT</b></td><td>Get home in the escape pod</td></tr>
+  </table>
+  <div class="folio">17</div>
+</section>
+
+<!-- ==================== 18. STRATEGY GUIDE ==================== -->
+<section class="page">
+  <h2>Salvager's Strategy Guide</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <ul>
+    <li><b>Start with a trade run.</b> Buy at the Safe Space port that sells everything and sell at home, which buys everything. It's safe money while you learn.</li>
+    <li><b>Carry goods outward.</b> Ports further out pay more for what they need. Fill your holds before heading for the rim and the trip pays for itself.</li>
+    <li><b>Bank before you go deep.</b> Lose the Ark and you keep only a tenth of the credits aboard, but every credit in the Bank.</li>
+    <li><b>Buy hull early.</b> More energy means more mistakes survived, in deep space and in storms.</li>
+    <li><b>The fighter is for pirates.</b> The Ark's laser handles rocks. Launch when PIRATES! flashes, recall when the tether runs low&mdash;a recalled fighter is untouchable.</li>
+    <li><b>Count the pulse.</b> On a planet, beam between pulses, and when the guns flash, change height.</li>
+    <li><b>Watch the clock in orbit.</b> When STORM COMING sounds, head home: a docked shuttle can't be lost, and the Ark's laser can save the day.</li>
+    <li><b>Sell around.</b> A port that's bought many creatures lately pays less. Spread your sales, and remember to keep a pair of each for the manifest.</li>
+    <li><b>Mind the red lanes.</b> One-way warps on the charts (and <b>&gt;</b> in the Sector View) have no way straight back. Check the Close-Up for another route home.</li>
+  </ul>
+  <div class="note">
+    <b>Manifest tip:</b> on the Bounty tab, push <b>left</b> to keep a creature; fire sells it.
+  </div>
+  <div class="folio">18</div>
+</section>
+
+<!-- ==================== 19. CAPTAIN'S LOG ==================== -->
+<section class="page">
+  <h2>Captain's Log</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p style="font-size:0.88em;color:var(--muted)">Record good trade runs, the Relic's whereabouts, and your favourite hunting worlds:</p>
+  <div class="lines">
+    <div></div><div></div><div></div><div></div><div></div>
+    <div></div><div></div><div></div><div></div><div></div>
+    <div></div><div></div><div></div><div></div><div></div>
+    <div></div><div></div><div></div><div></div>
+  </div>
+  <div class="folio">19</div>
+</section>
+
+<!-- ==================== 20. BACK COVER ==================== -->
+<section class="page back">
+  <h2>Cosmic Arc II</h2>
+  <div class="stripes"><i></i><i></i><i></i></div>
+  <p><b>The Ark was built to save the galaxy. You found a more profitable use for it.</b></p>
+  <div class="grid4">
+    <img src="img/space_raid.png" alt="Deep space">
+    <img src="img/planet_beam.png" alt="A planet">
+    <img src="img/chart.png" alt="The star chart">
+    <img src="img/port_trade.png" alt="A starport">
+  </div>
+  <ul>
+    <li><b>A new 64-sector galaxy</b> every voyage, with a Star Chart and Close-Up</li>
+    <li><b>Deep space battles</b> against asteroids, raiders and gunships, with the Ark's laser and the fighter</li>
+    <li><b>Six worlds and six kinds of creature</b> to beam aboard, defence towers and meteor storms</li>
+    <li><b>11 Starports</b>: trade, bounties, the shipyard and the Bank</li>
+    <li><b>Three saved voyages</b> on a SaveKey, 16 achievements, music on two POKEYs</li>
+  </ul>
+  <p class="small">
+    <b>COSMIC ARC II: ALPHA RO CLUSTER</b><br>
+    For the Atari 7800 with the AstroCart (math unit, two POKEYs). Two-button joystick; SaveKey or AtariVox for saves.<br>
+    Inspired by Rob Fulop's 1982 <i>Cosmic Ark</i>.
+  </p>
+</section>
+
+</body>
+</html>

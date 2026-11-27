@@ -32,6 +32,15 @@ file's path into a symbol name, so a `/` breaks it), runs the vendored
 The 7800 BIOS runs first, so the game starts about 200 frames in. In MAME,
 "P1 Button 1" is 7800basic's `joy0fire1`.
 
+**The manual** (`docs/manual/manual.html`, a 5 x 7 inch booklet):
+`.venv/bin/python tools/make_manual.py` crops the screenshots into
+`docs/manual/img/`, draws the sprites in the game's colours (the
+emulator's palette, read off the screen) and prints the PDF with headless
+Chrome; `--shots` takes the screenshots again first (`tools/emu/manualshots.lua`
+for the map and ports on a SaveKey, `snap.lua` with fixed inputs for deep
+space and a planet: the emulation is deterministic, so the frames are the
+same pictures each time). Retake them when a screen changes.
+
 `tools/gfx.py` makes the PNGs in `src/gfx/` from ASCII art (run it with
 `.venv/bin/python`; it needs Pillow). The PNGs are committed, so the build
 doesn't need it.

@@ -27,6 +27,9 @@ tools/build.sh     # -> build/cosmicarc.a78
 tools/play.sh      # run it in the a7800 fork (SaveKey in port 2)
 ```
 
+The manual: [docs/manual/Cosmic_Arc_II_Manual_5x7.pdf](docs/manual/Cosmic_Arc_II_Manual_5x7.pdf)
+(a 5 x 7 inch booklet; `.venv/bin/python tools/make_manual.py [--shots]` rebuilds it).
+
 Controls:
 - **The Ark:** the joystick aims, button 1 fires, button 2 launches the fighter.
 - **The fighter:** it flies the way the joystick points, button 1 fires,
