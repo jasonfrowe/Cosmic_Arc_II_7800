@@ -66,6 +66,8 @@
   dim gs_test = $259F
   dim gs_go = $259B
   dim gs_seed = $2597
+  dim gs_slot = $2591
+  dim hw_sk = $2595
   dim twtick2 = $2579
   rem the escape pod's scene
   dim esct = $2573
@@ -86,6 +88,7 @@
   rem zero page
   dim fireheld = a
   dim fire2held = b
+  dim skok = c
   rem i, t, f, x, y: 7800basic's own one-letter variables
   rem Buttons: joy0fire1 is button 1 (fire; a one-button stick's too),
   rem joy0fire0 button 2 (as Gamma Force and Spacewar).
@@ -108,6 +111,10 @@
   jsr mu_switch
 end
   fireheld = 1 : fire2held = 1
+  rem a SaveKey that passed the boot check: the voyage screen after the
+  rem title (hw_sk's byte is the voyage's later)
+  skok = 0
+  if hw_sk = 1 then skok = 1
   if hw_math = 0 then goto hwcheck
 
   rem ======================================================================
@@ -123,16 +130,20 @@ titleloop
   plotchars 'COSMIC ARC II' 0 28 2
   plotchars 'PRESS FIRE' 0 40 8
   plotchars 'BUTTON 2: HW CHECK' 3 8 10
+  if !skok then plotchars 'NO SAVEKEY: NO SAVES' 3 0 11
   drawscreen
   gosub twinkle
   if !joy0fire0 then fire2held = 0
-  if joy0fire0 && !fire2held then fire2held = 1 : goto hwcheck
+  if joy0fire0 && !fire2held then fire2held = 1 : goto hwagain
   if switchselect then goto planettest
   if !joy0fire1 then fireheld = 0 : goto titleloop
   if fireheld then goto titleloop
   fireheld = 1
   rem (tests: gs_test set, straight into deep space, waves and planets)
-  if gs_test = 0 then goto newgame
+  if gs_test then goto game
+  gs_slot = 0
+  if skok then goto voyages
+  goto newgame
 
   rem ======================================================================
   rem Deep space (space.asm)
@@ -313,6 +324,7 @@ escapeloop
   lda #BANK_MAP
   jsr bank_in
   jsr gx_lost
+  jsr sl_save
 end
   goto sector
   rem a new blast somewhere on the hull, while it lasts
@@ -356,6 +368,7 @@ newgame
   lda #BANK_MAP
   jsr bank_in
   jsr gx_new
+  jsr sl_save
 end
 sector
   asm
@@ -390,6 +403,52 @@ end
   if gs_go = 2 then goto landplanet
   if gs_go = 3 then goto achieve
   goto sectorloop
+  rem the voyage screen (voyages.asm, bank 6): the SaveKey's three slots
+voyages
+  asm
+  lda #BANK_ACH
+  jsr bank_in
+  jsr vs_enter
+end
+  if gs_go = 1 then goto newgame
+  gosub mappal
+vsloop
+  t = 8
+  if joy0up then t = 0
+  if joy0down then t = 4
+  sp_joy = t
+  sp_fire = 0
+  if joy0fire1 then sp_fire = 1
+  sp_fire2 = 0
+  if joy0fire0 then sp_fire2 = 1
+  clearscreen
+  asm
+  jsr vs_frame
+end
+  drawscreen
+  if gs_go = 0 then goto vsloop
+  if gs_go = 1 then goto newgame
+  if gs_go = 2 then goto continue
+  rem back to the title (160A, the game's font)
+  asm
+  lda #%01010000
+  sta sCTRL
+  lda #>font
+  sta sCHARBASE
+end
+  gosub spacepal
+  fireheld = 1 : fire2held = 1
+  goto title
+  rem a saved voyage, on: deep space reset, the voyage read back (save.asm)
+continue
+  asm
+  lda #BANK_SPACE
+  jsr bank_in
+  jsr sp_new
+  jsr sl_resume
+end
+  goto sector
+
   rem the achievements (achieve.asm, bank 6: 320A, its own copy of the font)
 achieve
   asm
@@ -549,7 +608,13 @@ plotstar
   return
 
   rem ======================================================================
-  rem The hardware check (hwtest.asm): fire solos a POKEY, button 2 leaves
+  rem The hardware check (hwtest.asm): fire solos a POKEY, button 2 leaves.
+  rem From the title, it runs again first (the voyage screen reads saves into
+  rem the RAM its lines and results use)
+hwagain
+  asm
+  jsr hw_init
+end
 hwcheck
   clearscreen
   plotchars 'HARDWARE CHECK' 0 24 0
@@ -609,6 +674,7 @@ end
   inline sound.asm
   inline sfx.asm
   inline savekey.asm
+  inline save.asm
   inline hwtest.asm
 
   rem ======================================================================
@@ -682,6 +748,7 @@ end
   .byte "CA",6
 end
   inline achieve.asm
+  inline voyages.asm
   asm
   if . > $A000
   echo "bank 6: the code reaches the font's place ($A000)"

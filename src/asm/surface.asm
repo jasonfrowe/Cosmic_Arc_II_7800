@@ -492,6 +492,15 @@ pl_new_lv
     lda #>ROCK_SPDMAX
     sta sr_spdh
 pl_new_rs
+    lda gs_test             ; from the map: the planet's level's pace (a gentle
+    bne pl_new_rt           ;  climb: level 5's guns as fast as level 2's were)
+    ldx gs_plevel
+    lda pl_lvstep-1,x
+    sta df_step
+    sta df_tick
+    lda pl_lvper-1,x
+    jmp pl_new_dp2
+pl_new_rt
     lda #DF_STEP1           ; frames a line: DF_STEP1 - stages after, >= 1
     sec
     sbc pl_t0
@@ -548,6 +557,10 @@ pl_new_w2
     sta pl_msgtm
     lda #SFX_ARRIVE
     jmp sfx
+
+; a planet's guns by its level (1-5): frames a line, frames between pulses
+pl_lvstep  .byte 4, 4, 3, 3, 2
+pl_lvper   .byte 150, 135, 120, 110, 100
 
 ; quarters of the planet (x 0-1023) for the creatures, lo and hi
 pl_spread  .byte $80, $40, $C0, $00

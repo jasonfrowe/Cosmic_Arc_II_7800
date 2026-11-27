@@ -43,12 +43,12 @@ mapper is `a78_p450_ta` in the emulator):
 
 | Bank | Where | Holds |
 |---|---|---|
-| 1 | $4000, fixed | the BASIC (game flow, the escape scene), banks.asm, text, text40 (the 40-column screens' rows and helpers; the achievements' checks), the sound player, effects, the SaveKey, the hardware check |
+| 1 | $4000, fixed | the BASIC (game flow, the escape scene), banks.asm, text, text40 (the 40-column screens' rows and helpers; the achievements' checks), the sound player, effects, the SaveKey, saved voyages (save.asm), the hardware check |
 | 2 | $8000, switched | deep space: space, fighter, pirates, vec, draw |
 | 3 | $8000, switched | the planet: surface.asm and its map (MARIA reads the map as it draws) |
 | 4 | $8000, switched | the map: sector.asm; the 40-column font at $A000; port.asm (the build's "bytes left" counts only after port.asm: about 4.7K more is free before the font) |
 | 5 | $8000, switched | the music (gen/music.asm) |
-| 6 | $8000, switched | the close-up chart and the achievements (achieve.asm); a copy of the 40-column font at $A000 (`font320b.asm`) |
+| 6 | $8000, switched | the close-up chart and the achievements (achieve.asm), the voyage screen (voyages.asm); a copy of the 40-column font at $A000 (`font320b.asm`) |
 | 7-16 | $8000, switched | to come |
 | 17 | $C000, fixed | graphics (MARIA reads them at any time), 7800basic's runtime |
 
@@ -80,7 +80,9 @@ Header (`tools/a78header.py` over what 7800basic writes):
   or pots, and no register can be read back to detect them.
 - **SaveKey** (`src/asm/savekey.asm`): `sk_read` / `sk_write` over
   7800basic's `i2c7800.inc`. Writes stay inside one 64-byte page and poll
-  the chip until its write cycle ends.
+  the chip until its write cycle ends. The voyages (`save.asm`): `sl_save`,
+  `sl_load`, `sl_clear`, `sl_resume` (DESIGN.md 7.5b). The boot check uses
+  the byte at `$7FC0`; the slots `$7400-$79FF`.
 
 ## Sound
 
@@ -154,6 +156,9 @@ bytes of a line; the creatures come straight after it.
 | $22E0-$22F1 | surface.asm: the planet scanner's line (18 characters, its ends included; the map's text there otherwise) |
 | $2575-$2577 | the stars' twinkle counter; the dim and bright stars' glyph cells (BASIC; plotchars draws from RAM: these must never be reused) |
 | $2580-$2584 | savekey.asm |
+| $2591 | save.asm: the voyage's slot + 1 (`gs_slot`; 0 not saved) |
+| $23D0-$23D8 | save.asm: the header, scratch (deep space's message: unused on the map) |
+| $23A0-$23B7, $27F9-$27FE | voyages.asm: the slots' summaries (deep space's HUD line), scratch (the port's) |
 | $2300-$2377, $2410-$24A0 | text40.asm: the 40-column screens' colour changes and row lengths (deep space's rocks, bolts, shots, pirates: cleared when an encounter starts) |
 | $237C-$237F, $24AA, $24B5-$24BF | sector.asm: the chart's cursor, the sector view's items' ways (deep space's too) |
 | $2585-$258A | sector.asm: aboard: fuel ore, organics, equipment; upgrade levels (laser, holds, tanks) |
@@ -168,8 +173,8 @@ bytes of a line; the creatures come straight after it.
 | $2600-$26FF | sector.asm: the galaxy by sector (warps, cells, info, flags: visited, seen, jumps to safe space) (the boot check's before a game) |
 | $1880-$1FFF | 7800basic's display lists (8-line zones, 192 lines) |
 
-7800basic leaves $2200-$27FF free. The save block (DESIGN.md 7.5) will go
-at $2200.
+7800basic leaves $2200-$27FF free. A saved voyage is copied straight from
+where it lives (save.asm's chunks, DESIGN.md 7.5b).
 
 ## Display
 
@@ -237,6 +242,7 @@ tools/test_level.sh    # planet levels: L5 far out (rare kinds), L1 at home (com
 tools/test_leave.sh    # leaving a planet early: button 2 held docked, a countdown
 tools/test_cargo.sh    # ore beamed up halves the speed across; button 2 drops it
 tools/test_journey.sh  # New Game, a warp into an encounter, back on the map, land, back
+tools/test_save.sh     # four runs, one SaveKey: saved on docking; Continue; damaged; cleared
 tools/test_chart.sh    # the map's pages: warps' ways (one-way >), the chart's cursor,
                        # a warp from the chart, round the tab bar
 tools/test_arrival.sh  # rocks reach the Ark in the same time from every lane

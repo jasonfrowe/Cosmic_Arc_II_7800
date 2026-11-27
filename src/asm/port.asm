@@ -56,9 +56,16 @@ pt_enter
     lda #0
     sta pt_vl
     jsr pt_add
+    jsr sl_save             ; (saved, the relic paid for)
     lda #15
     jmp pt_say
 pt_en_r
+    jsr sl_save             ; docked: the voyage saved (save.asm)
+    cmp #1
+    bcc pt_en_d
+    adc #16-1-1             ; (C set: 1 -> 16 VOYAGE SAVED, 2 -> 17)
+    jmp pt_say
+pt_en_d
     lda #SFX_DOCK
     jmp sfx
 
@@ -953,7 +960,9 @@ pt_i_r
     rts
 
 pt_leave
+    jsr sl_save             ; (what was traded here kept)
     lda #0
+    sta pt_msg
     sta sv_view
     sta sv_sel
     lda #SFX_LAUNCH
@@ -1134,10 +1143,10 @@ pt_y2_m
 pt_repc   .byte 4, 5, 6, 8
 
 ; messages
-pt_msglo  .byte <pt_m1, <pt_m2, <pt_m3, <pt_m4, <pt_m5, <pt_m6, <pt_m7, <pt_m8, <pt_m9, <pt_m10, <pt_m11, <pt_m12, <pt_m13, <pt_m14, <pt_m15
-pt_msghi  .byte >pt_m1, >pt_m2, >pt_m3, >pt_m4, >pt_m5, >pt_m6, >pt_m7, >pt_m8, >pt_m9, >pt_m10, >pt_m11, >pt_m12, >pt_m13, >pt_m14, >pt_m15
-pt_msglen .byte 4, 6, 18, 18, 12, 21, 12, 8, 22, 8, 17, 9, 9, 15, 37
-pt_msgsfx .byte SFX_POD, SFX_POD, SFX_HIT, SFX_HIT, SFX_HIT, SFX_DELIVER, SFX_BEEP, SFX_CLEAR, SFX_BEEP, SFX_HIT, SFX_HIT, SFX_POD, SFX_POD, SFX_HIT, SFX_CLEAR
+pt_msglo  .byte <pt_m1, <pt_m2, <pt_m3, <pt_m4, <pt_m5, <pt_m6, <pt_m7, <pt_m8, <pt_m9, <pt_m10, <pt_m11, <pt_m12, <pt_m13, <pt_m14, <pt_m15, <pt_m16, <pt_m17
+pt_msghi  .byte >pt_m1, >pt_m2, >pt_m3, >pt_m4, >pt_m5, >pt_m6, >pt_m7, >pt_m8, >pt_m9, >pt_m10, >pt_m11, >pt_m12, >pt_m13, >pt_m14, >pt_m15, >pt_m16, >pt_m17
+pt_msglen .byte 4, 6, 18, 18, 12, 21, 12, 8, 22, 8, 17, 9, 9, 15, 37, 12, 26
+pt_msgsfx .byte SFX_POD, SFX_POD, SFX_HIT, SFX_HIT, SFX_HIT, SFX_DELIVER, SFX_BEEP, SFX_CLEAR, SFX_BEEP, SFX_HIT, SFX_HIT, SFX_POD, SFX_POD, SFX_HIT, SFX_CLEAR, SFX_DOCK, SFX_HIT
 
 ; ---- strings ----
 pt_s_title .byte ("S"-32)*2,("T"-32)*2,("A"-32)*2,("R"-32)*2,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2,0   ; 'STARPORT ' (9)
@@ -1190,4 +1199,6 @@ pt_m12 .byte ("D"-32)*2,("E"-32)*2,("P"-32)*2,("O"-32)*2,("S"-32)*2,("I"-32)*2,(
 pt_m13 .byte ("W"-32)*2,("I"-32)*2,("T"-32)*2,("H"-32)*2,("D"-32)*2,("R"-32)*2,("A"-32)*2,("W"-32)*2,("N"-32)*2   ; 'WITHDRAWN' (9)
 pt_m14 .byte ("N"-32)*2,("O"-32)*2,("T"-32)*2,("H"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,0,("T"-32)*2,("O"-32)*2,0,("M"-32)*2,("O"-32)*2,("V"-32)*2,("E"-32)*2   ; 'NOTHING TO MOVE' (15)
 pt_m15 .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("R"-32)*2,("E"-32)*2,("L"-32)*2,("I"-32)*2,("C"-32)*2,(":"-32)*2,0,("2"-32)*2,("0"-32)*2,("0"-32)*2,("0"-32)*2,0,("C"-32)*2,("R"-32)*2,("E"-32)*2,("D"-32)*2,("I"-32)*2,("T"-32)*2,("S"-32)*2,0,("F"-32)*2,("R"-32)*2,("O"-32)*2,("M"-32)*2,0,("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("P"-32)*2,("O"-32)*2,("R"-32)*2,("T"-32)*2   ; 'THE RELIC: 2000 CREDITS FROM THE PORT' (37)
+pt_m16 .byte ("V"-32)*2,("O"-32)*2,("Y"-32)*2,("A"-32)*2,("G"-32)*2,("E"-32)*2,0,("S"-32)*2,("A"-32)*2,("V"-32)*2,("E"-32)*2,("D"-32)*2   ; 'VOYAGE SAVED' (12)
+pt_m17 .byte ("T"-32)*2,("H"-32)*2,("E"-32)*2,0,("S"-32)*2,("A"-32)*2,("V"-32)*2,("E"-32)*2,("K"-32)*2,("E"-32)*2,("Y"-32)*2,0,("D"-32)*2,("I"-32)*2,("D"-32)*2,0,("N"-32)*2,("O"-32)*2,("T"-32)*2,0,("A"-32)*2,("N"-32)*2,("S"-32)*2,("W"-32)*2,("E"-32)*2,("R"-32)*2   ; 'THE SAVEKEY DID NOT ANSWER' (26)
 pt_s_rumour .byte ("R"-32)*2,("U"-32)*2,("M"-32)*2,("O"-32)*2,("U"-32)*2,("R"-32)*2,(":"-32)*2,0,("S"-32)*2,("T"-32)*2,("R"-32)*2,("A"-32)*2,("N"-32)*2,("G"-32)*2,("E"-32)*2,0,("R"-32)*2,("E"-32)*2,("A"-32)*2,("D"-32)*2,("I"-32)*2,("N"-32)*2,("G"-32)*2,("S"-32)*2,0,("N"-32)*2,("E"-32)*2,("A"-32)*2,("R"-32)*2,0,("S"-32)*2,("E"-32)*2,("C"-32)*2,("T"-32)*2,("O"-32)*2,("R"-32)*2,0   ; 'RUMOUR: STRANGE READINGS NEAR SECTOR ' (37)

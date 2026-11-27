@@ -104,9 +104,12 @@ saving. The galaxy itself is rebuilt from the seed on Continue.
   random spanning tree from home (every sector reachable, both ways), 60
   tries at extra warps between neighbours, the first 5 of those one-way;
   sectors numbered breadth-first from home (so by distance); tiers by number
-  (1-10 safe, 11-15 core, 16-40 mid-rim, 41-64 outer rim). Planets 40%
-  (a world each, the planet palettes), nebulae 12% (not in safe space), the
-  rest empty; ports at home, one more in safe space, one in the core, two
+  (1-10 safe, 11-15 core, 16-40 mid-rim, 41-64 outer rim). **Planets: two
+  in every five sectors** (placed after the ports, anywhere but a port: so
+  every stretch of the voyage, and every planet level, has them; a world
+  each, the planet palettes; from 2026-11-27, after a playtest found none
+  in sectors 1-30 with 40% each), nebulae 20% of the rest (not in safe
+  space), the rest empty; ports at home, one more in safe space, one in the core, two
   mid-rim, two outer rim, a random class each. Seed: the frames to the New
   Game press (16 bits), `rand`, the RIOT timer. `tools/test_galaxy.sh`
   checks the rules for 8 seeds.
@@ -187,7 +190,8 @@ rows of 40 (the RP6502 has 30):
   3 characters so diagonal lanes run node centre to node centre (crossings
   an X between sectors). The lanes all grey; a symbol per kind: port (cyan
   box), planet (green disc), nebula (blue check), empty (grey ring),
-  unknown (grey ?); the Ark's sector gold, blinking.
+  unknown (grey ?); the Ark's sector gold, blinking. **One-way warps' lanes
+  red** (on the close-up chart too; 2026-11-27).
   A **cursor** moves over the chart and an info panel describes the sector
   under it (number, tier, planet name and level, port class). **Fire warps
   there** when it's one jump away (the Ark stays on the chart); fire on the
@@ -460,7 +464,7 @@ and **half the top speed across**.
    tension.
 3. **Shipyard**: repair the hull, buy fuel, buy upgrades.
 
-Docking at a port also **saves the game** (SaveKey).
+Docking at a port also **saves the game** (SaveKey; §7.5b).
 
 ### 6.1b As built (M5, first slice)
 
@@ -525,8 +529,12 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
   shows it (VERDA L3). A planet's creatures come from a band of three
   kinds from level - 1 (level 1: walkers, hoppers, runners; level 5:
   gliders, blinkers), so the rarer, better-paid kinds are out in the rim;
-  its defences' pace and the storm rock's speed are those of the old
-  global level 0, 2, 4, 6, 8. `tools/test_level.sh`.
+  the storm rock's speed is the old global level 0, 2, 4, 6, 8's. **The
+  guns' pace** (2026-11-27, from playtesting: level 4 was too hard) is a
+  gentler table (`pl_lvstep`, `pl_lvper` in surface.asm): frames a line
+  4, 4, 3, 3, 2 and frames between pulses 150, 135, 120, 110, 100 for
+  levels 1-5 (it was 4, 2, 1, 1, 1 and 150, 120, 90, 60, 45).
+  `tools/test_level.sh`.
 - **After playtesting (2026-11-23)**:
   - **The hull** replaces the laser's upgrade (too strong: the fire rate's
     fixed at a bolt every 8 frames). The Ark's most energy is its hull:
@@ -567,7 +575,7 @@ Docking opens the port (`port.asm`, bank 4, 40 columns): three tabs
   (as many as there's room for).
 - **Upgrades ten times dearer**: the hull 1000 + 200 a level (58,000 for
   all 20), the holds 3000 then 6000.
-- Not yet: saves (M6).
+- Saved on docking and on leaving (§7.5b).
 
 ### 6.2 Resources
 
@@ -642,7 +650,7 @@ with progress where it counts. A new one is announced on the map
 
 Most are worked out from the voyage's state (`ac_check`, text40.asm, bank
 1); UNTOUCHED, DEEP RAID, SWEEP, ON FUMES and LIFEBOAT are set where they
-happen (`ac_set`). Each save slot (M6) will keep its own.
+happen (`ac_set`). Each save slot keeps its own (§7.5b).
 `tools/test_ach.sh`.
 
 ---
@@ -714,13 +722,9 @@ Gaps in our tools, to close in M0:
 2. **SaveKey in the emulator.** The fork supports the High Score Cart
    (`hiscore.cpp`) but logs "SaveKey ... not supported". Add a 24LC256 SaveKey
    on joystick port 2 to the fork. A save slot of about 350 bytes (§7.5) needs its
-   own reserved range in the SaveKey address map. **Fallback** for players
-   without a SaveKey: the High Score Cart (the AstroCart has one built in).
-   It has 2K in all, shared with every other HSC game through the HSC
-   ROM's table directory. M6 checks whether a save of about 290 bytes fits
-   there without disturbing other games' tables. If it doesn't, the save
-   gets cut down to what fits (seed, ship, manifest, stardate, with the
-   galaxy's changes reset), or Continue needs a SaveKey.
+   own reserved range in the SaveKey address map. (No High Score Cart
+   fallback: decided 2026-11-27, not worth it. Without a SaveKey a voyage
+   isn't saved.)
 3. **MathUnit docs.** `Spacewar_7800/docs/MATHUNIT.md` lists offsets that
    don't match version 2. Use the FPGA repo's `docs/MATHUNIT.md` and write
    one register include file (`src/asm/mathunit.inc`) for this project.
@@ -759,6 +763,29 @@ MARIA's per-zone DMA early with Gamma Force's `dmalog.py`.
 
 The 7800 has 4K of RAM, so this fits. It lives in one block that saves
 and loads whole.
+
+### 7.5b Saved voyages (M6, as built 2026-11-27)
+
+- **Three slots** on the SaveKey (`save.asm`), each a whole voyage with its
+  own achievements: 384 bytes copied straight from RAM in chunks (the
+  voyage's bytes at `$2590`, what's aboard, the stasis bays, energy and
+  score, the long-lived block, the galaxy's 256 bytes). The warps are saved,
+  not rebuilt from the seed; the hull's most energy comes from the upgrades.
+  A header ("CA", a layout version, a checksum) is written last, so a save
+  cut short, or from another layout, reads as **damaged**.
+- **Where**: `$7400`, `$7600`, `$7800` (a slot every 512 bytes, room to
+  grow). Still to be reserved in AtariAge's SaveKey list.
+- **When**: docking (the port says VOYAGE SAVED, or THE SAVEKEY DID NOT
+  ANSWER), leaving a port, a new voyage, the Ark lost. About 11 frames (the
+  screen holds still meanwhile).
+- **The voyage screen** (`voyages.asm`, bank 6), after the title: each slot's
+  sector, stardate, credits and achievements; fire plays one (an empty or
+  damaged slot starts a new voyage there), button 2 clears one (fire to
+  confirm), the last line goes back to the title. The cursor starts on the
+  first saved voyage.
+- **No SaveKey** (none at boot, or none answering): the title says NO
+  SAVEKEY: NO SAVES, and fire starts a voyage that isn't saved.
+- No High Score Cart fallback (decision 8).
 
 ### 7.6 MathUnit uses
 
@@ -828,13 +855,13 @@ Fighter and pirate art from Spacewar.
 | 5 | Controller | Two-button joystick required |
 | 6 | Manifest | About 24 species to start; adjust for ROM, sprites and balance. Art from the RP6502 game |
 | 7 | Seed | From the timing of the New Game button press; no seed entry |
-| 8 | Saves | SaveKey first; fall back to the High Score Cart if the data fits (§7.3) |
+| 8 | Saves | SaveKey only (§7.5b); no High Score Cart fallback (2026-11-27: not worth the effort) |
 | 9 | Name | "Arc", as in the RP6502 game |
 | 10 | Story (2026-11-24) | The RP6502 port's "After the Ark": a salvager poaching with the old Ark (§1). The fading star stays as the clock |
 | 11 | Map and menu UI (2026-11-24) | The RP6502 port's layout (§3.6b): tab bar, status panel, chart cursor and chart warps, warp directions, one-way markers |
 | 12 | Pirates (2026-11-24) | Our own raiders and gunships; no borrowed designs (the port's TIE fighters are not used) |
 | 13 | Economy (2026-11-24) | The 7800's (§6.1c) is the reference; the RP6502 port's older economy is not taken |
-| 14 | Saving (2026-11-24) | On docking only, not continuous: SaveKey writes are slow and wear the chip |
+| 14 | Saving (2026-11-24) | At ports only (docking, leaving), not continuous: SaveKey writes are slow and wear the chip. Also when a voyage starts and when the Ark's lost, so losing it can't be undone by switching off (2026-11-27) |
 | 15 | Practice modes (2026-11-24) | Quick Deep Space and Quick Planet Run on the title, later |
 | 16 | Manual (2026-11-24) | Our own manual, laid out like the RP6502 port's (numbered HUD callouts, strategy guide, Captain's Log) |
 

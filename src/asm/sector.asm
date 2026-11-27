@@ -370,28 +370,12 @@ gx_n_t
     ror
     ror                     ; (tier to bits 6-7)
     sta sv_t0
-    ; what's there: planets 40%, nebulae 12% (not in safe space), else empty
+    ; what's there: nebulae 20% (not in safe space), else empty; planets
+    ; come after the ports (below: two in every five sectors)
     lda #100
     jsr gx_rand
     ldy #GT_EMPTY
-    cmp #40
-    bcs gx_n_nb
-    ldy #GT_PLANET
-    lda #6                  ; its world
-    jsr gx_rand
-    asl
-    asl
-    ora #GT_PLANET
-    tay
-    lda #2                  ; half of them a level easier (bit 5: gx_plevel)
-    jsr gx_rand
-    beq gx_n_ty
-    tya
-    ora #$20
-    tay
-    bne gx_n_ty
-gx_n_nb
-    cmp #52
+    cmp #20
     bcs gx_n_ty
     cpx #10
     bcc gx_n_ty
@@ -488,6 +472,57 @@ gx_n_pt2
     iny
     cpy #PT_NPORTS-1
     bne gx_n_pt
+    ; planets: two in every five sectors (the last four too), anywhere but a
+    ; port (a nebula can go): spread evenly from home out to the rim, every
+    ; level of planet found along the way. A world each; half a level easier
+    lda #0
+    sta sv_t3               ; the five's first sector
+gx_n_pb
+    lda #2
+    sta sv_t4               ; planets still to place in them
+gx_n_pp
+    lda #64
+    sec
+    sbc sv_t3
+    cmp #5
+    bcc gx_n_pw
+    lda #5
+gx_n_pw
+    jsr gx_rand
+    clc
+    adc sv_t3
+    tax
+    lda gx_info,x
+    and #3
+    cmp #GT_PORT
+    beq gx_n_pp
+    cmp #GT_PLANET
+    beq gx_n_pp
+    lda #6                  ; its world
+    jsr gx_rand
+    asl
+    asl
+    ora #GT_PLANET
+    sta sv_t0
+    lda #2                  ; half of them a level easier (bit 5: gx_plevel)
+    jsr gx_rand
+    beq gx_n_pe
+    lda sv_t0
+    ora #$20
+    sta sv_t0
+gx_n_pe
+    lda gx_info,x
+    and #$C0
+    ora sv_t0
+    sta gx_info,x
+    dec sv_t4
+    bne gx_n_pp
+    lda sv_t3
+    clc
+    adc #5
+    sta sv_t3
+    cmp #64
+    bcc gx_n_pb
     ; the voyage
     lda #0
     sta gs_sec
@@ -1803,6 +1838,7 @@ ch_b_done
     sta sv_my
     jsr ch_fillb
     jsr ch_paint
+    jsr ch_oneway
     jmp ch_info
 ch_sym    .byte 128+4, 248, 248, 248   ; empty (a ring); port, planet, nebula on top
 ch_ovsym  .byte 128+4, 128+8, 128+12, 128+16   ; the nodes on top: empty, port, planet, nebula
@@ -1823,6 +1859,76 @@ ch_p_r
     dex
     bne ch_p_r
     rts
+
+; One-way warps (a visited sector's, with no warp back): their lanes red. A
+; lane is in the upper (or left) end's row: a node's character (N, S: the
+; lane down) or the two after a node (across, the diagonals)
+ch_oneway
+    ldx #63
+ch_ow_s
+    stx sv_t3
+    lda gx_flag,x
+    and #1
+    beq ch_ow_sn
+    ldx #7
+ch_ow_d
+    stx sv_t4
+    lda sv_t3
+    jsr gx_warpto           ; (X kept)
+    bcs ch_ow_dn
+    tay
+    lda sv_t4
+    eor #4
+    tax
+    lda gx_warp,y
+    and gx_bit,x
+    bne ch_ow_dn            ; (a way back)
+    ldx sv_t3               ; its row: 1 + the cell's row + ch_owdr
+    lda gx_cell,x
+    lsr
+    lsr
+    lsr
+    lsr
+    sec
+    ldx sv_t4
+    adc ch_owdr,x
+    sta sv_dk
+    ldx sv_t3               ; its column: 3 x (the cell's + ch_owdc) + ch_owc
+    lda gx_cell,x
+    and #15
+    ldx sv_t4
+    clc
+    adc ch_owdc,x
+    sta sv_dg
+    asl
+    adc sv_dg
+    adc ch_owc,x
+    sta sv_dg
+    ldx sv_dk
+    ldy #P_RED
+    jsr sv_ink
+    ldx sv_t4
+    lda sv_dg
+    clc
+    adc ch_oww,x
+    ldx sv_dk
+    ldy #P_GREY
+    jsr sv_ink
+ch_ow_dn
+    ldx sv_t4
+    dex
+    bpl ch_ow_d
+ch_ow_sn
+    ldx sv_t3
+    dex
+    bpl ch_ow_s
+    rts
+; by the warp's way (0 N, clockwise): the lane's cell (row, column) from the
+; sector's, where in it (2 the node, 3 the link), how wide
+ch_owdr   .byte -1, -1, 0, 0, 0, 0, 0, -1
+ch_owdc   .byte 0, 0, 0, 0, 0, -1, -1, -1
+ch_owc    .byte 2, 3, 3, 3, 2, 3, 3, 3
+ch_oww    .byte 1, 2, 2, 2, 1, 2, 2, 2
 
 ; Each frame: the visited ports, planets and nebulae, one character each in
 ; their colour, and the Ark's sector (whatever it is) in gold, over the

@@ -75,6 +75,11 @@ emu.register_frame_done(function()
     if tierports[0] < 2 then table.insert(bad, "fewer than 2 ports in safe space") end
     for t = 1, 3 do if tierports[t] < 1 then table.insert(bad, "no port in tier " .. t) end end
     if nebsafe > 0 then table.insert(bad, "a nebula in safe space") end
+    for b = 0, 63, 5 do                                        -- planets: two in every five sectors
+      local n = 0
+      for k = b, math.min(b + 4, 63) do if info[k] & 3 == 2 then n = n + 1 end end
+      if n ~= 2 then table.insert(bad, string.format("%d planets in sectors %d-%d", n, b + 1, math.min(b + 5, 64))) break end
+    end
     if ports ~= 11 then table.insert(bad, ports .. " ports, not 11") end
     if (info[0] >> 2) & 7 ~= 0 then table.insert(bad, "home isn't BBB") end
     local sss = false

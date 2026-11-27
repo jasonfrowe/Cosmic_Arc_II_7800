@@ -600,6 +600,10 @@ cz_pk
 ; sector cz_x's warp cz_d: its line (from the cell whose line it is: cz_lc,
 ; cz_lr; which: cz_lk)
 cz_link
+    jsr cz_ow
+    lda #0
+    rol
+    sta sv_t3               ; (one way: drawn red, cz_red)
     ldy cz_d
     clc
     lda cz_wc
@@ -633,7 +637,13 @@ cz_lk_r_far616
     adc #4
     jsr sv_at
     lda #CZ_ACROSS
-    jmp sv_putc
+    jsr sv_putc
+    ldx sv_t0
+    lda sv_t1
+    clc
+    adc #4
+    ldy #1
+    jmp cz_red
 cz_lk_d
     ldx sv_t0               ; (from the bottom row: the status panel's there)
     cpx #9
@@ -649,7 +659,14 @@ cz_lk_d
     lda #CZ_DOWNL
     jsr sv_putc
     lda #CZ_DOWNR
-    jmp sv_putc
+    jsr sv_putc
+    ldx sv_t0
+    inx
+    lda sv_t1
+    clc
+    adc #1
+    ldy #2
+    jmp cz_red
 cz_lk_g
     ldx sv_t0               ; a diagonal: the row below, the column after
     inx                     ;  the box (\) or before it (/); X if the other
@@ -682,9 +699,74 @@ cz_lk_x
     pha
 cz_lk_w
     pla
-    jmp sv_putc
+    jsr sv_putc
+    lda sv_dst              ; (the column just written)
+    sec
+    sbc #1
+    ldx sv_row
+    sec
+    sbc sv_rowlo,x
+    ldy #1
+    jmp cz_red
 cz_lk_r
     rts
+
+; C = 1: sector cz_x's warp cz_d has no warp back (one way)
+cz_ow
+    ldx cz_x
+    ldy cz_d
+    lda gx_cell,x
+    clc
+    adc cz_cello,y
+    ldy #63
+cz_ow_l
+    cmp gx_cell,y
+    beq cz_ow_f
+    dey
+    bpl cz_ow_l
+    clc
+    rts
+cz_ow_f
+    lda cz_d
+    eor #4
+    tax
+    lda gx_warp,y
+    and ac_bit,x
+    cmp #1                  ; (a way back: C = 1)
+    rol                     ; ... turned round
+    eor #1
+    lsr
+    rts
+cz_cello  .byte -16, -15, 1, 17, 16, 15, -1, -17   ; a neighbour's cell, by way
+
+; a one-way link (sv_t3 set): row X, Y characters from column A red, then
+; back (a lanes' row cyan, a boxes' row grey)
+cz_red
+    pha
+    lda sv_t3
+    bne cz_rd_go
+    pla
+    rts
+cz_rd_go
+    sty sv_t1
+    stx sv_t0
+    pla
+    sta sv_t2
+    ldy #P_RED
+    jsr sv_ink
+    lda sv_t2
+    clc
+    adc sv_t1
+    pha
+    lda sv_t0
+    lsr
+    ldy #P_CYAN
+    bcc cz_rd_b
+    ldy #P_GREY
+cz_rd_b
+    ldx sv_t0
+    pla
+    jmp sv_ink
 
 ; by warp direction (0 up, clockwise): the cell whose line it is (column,
 ; row from the sector's), and which line (2 across, 3 down-right, 4 down,

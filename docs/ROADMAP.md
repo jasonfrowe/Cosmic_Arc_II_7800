@@ -97,9 +97,22 @@ then link them together.
 
 - [x] Trade rebalanced (makers sell cheap, takers pay; the rim more); no fuel; crates 5 ore; upgrades x10
 
-## M6: Save / continue
-- [ ] Three save slots on the SaveKey, each its own game and achievements; clear a slot; saved on docking; Continue on the title
-- [ ] HSC fallback: measure the free space; full or reduced save
+## M6: Save / continue (SaveKey ✅ 2026-11-27; DESIGN §7.5b)
+- [x] Three save slots on the SaveKey, each its own voyage and achievements (384 bytes, checksummed; damaged slots shown)
+- [x] Saved on docking (VOYAGE SAVED), leaving a port, a new voyage, the Ark lost
+- [x] The voyage screen after the title: Continue, a new voyage in a slot, clear a slot (confirmed), back to the title; no SaveKey: straight into an unsaved voyage
+- [x] `test_save.sh`: saved, power cycled, summary and Continue, a broken byte reads as damaged, cleared
+- [ ] Reserve $7400-$79FF in AtariAge's SaveKey address list
+- [x] ~~HSC fallback~~: dropped (2026-11-27), SaveKey only
+- [x] Checked on hardware (2026-11-27): saves work, no issues
+
+## Playtest round (2026-11-27)
+- [x] One-way warps' lanes red on the star chart and the close-up
+- [x] Planets two in every five sectors (a playtest had none in sectors 1-30); `test_galaxy.sh` checks it
+- [x] A planet's guns: a gentler climb by level (level 5 as fast as level 2 was)
+- [ ] Our manual (from the RP6502 port's: our economy, gameplay, the 7800's controls, screenshots)
+- [ ] js7800_astrocart: two POKEYs on banked carts (and anything else the AstroCart needs); a browser build; GitHub CI (as Super Mega Pinball 7800)
+- [ ] a7800 fork: headless runs without a window or focus grab on the Mac (App Nap throttled a test to 1.5% CPU)
 
 ## M7: Full game
 - [ ] All tiers, biomes, 24 species, carrier
