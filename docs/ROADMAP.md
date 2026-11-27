@@ -11,7 +11,7 @@ then link them together.
 - [x] `src/asm/mathunit.asm` from the FPGA repo's `docs/MATHUNIT.md`
 - [x] Boots to a hardware check and plays a dual-POKEY test tune (verified by soloing each POKEY)
 - [x] Run the M0 ROM on the real AstroCart (with and without a SaveKey): all OK, both POKEYs
-- [ ] js7800_astrocart: second POKEY on SuperGame carts (for the browser build)
+- [x] js7800_astrocart: second POKEY on SuperGame carts (for the browser build; 2026-11-27: the POKEY bit had made banked carts read as flat ones)
 
 ## M1: Deep space slice (Mothership) ✅ (2026-11-21)
 - [x] Art pipeline: `tools/gfx.py` (ASCII art → 160A PNGs), RP6502-styled Ark and rocks, 160A font from Spacewar's
@@ -111,7 +111,7 @@ then link them together.
 - [x] Planets two in every five sectors (a playtest had none in sectors 1-30); `test_galaxy.sh` checks it
 - [x] A planet's guns: a gentler climb by level (level 5 as fast as level 2 was)
 - [x] Our manual (`docs/manual/`: the RP6502 port's booklet rewritten for ours; `tools/make_manual.py` takes the screenshots and prints the PDF)
-- [ ] js7800_astrocart: two POKEYs on banked carts (and anything else the AstroCart needs); a browser build; GitHub CI (as Super Mega Pinball 7800)
+- [x] js7800_astrocart: banked carts with the second POKEY; a SaveKey kept in the browser's localStorage; the web page (`web/game.json`) and its GitHub Pages workflow, as Super Mega Pinball 7800's
 - [ ] a7800 fork: headless runs without a window or focus grab on the Mac (App Nap throttled a test to 1.5% CPU)
 
 ## M7: Full game
@@ -122,4 +122,4 @@ then link them together.
 - [ ] The new story ("After the Ark", DESIGN §1) on the title or in an intro
 - [ ] Quick Deep Space and Quick Planet Run on the title (practice; nothing saved)
 - [x] Our own manual, laid out like the RP6502 port's: story, controls for two buttons, numbered HUD callouts, threats, species, achievements, strategy guide, Captain's Log (2026-11-27; keep it up to date as the game changes)
-- [ ] Browser build (js7800_astrocart) on GitHub Pages
+- [x] Browser build (js7800_astrocart) on GitHub Pages (`.github/workflows/web.yml`)

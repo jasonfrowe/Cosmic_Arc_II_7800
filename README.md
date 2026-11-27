@@ -27,6 +27,8 @@ tools/build.sh     # -> build/cosmicarc.a78
 tools/play.sh      # run it in the a7800 fork (SaveKey in port 2)
 ```
 
+**[▶ Play it in your browser](https://jasonfrowe.github.io/Cosmic_Arc_II_7800/)** (keyboard or gamepad: the arrows, [Z] and [X]; voyages are kept in the browser). It runs in [js7800_astrocart](https://github.com/jasonfrowe/js7800_astrocart), an Atari 7800 emulator with the AstroCart's math unit and second POKEY.
+
 The manual: [docs/manual/Cosmic_Arc_II_Manual_5x7.pdf](docs/manual/Cosmic_Arc_II_Manual_5x7.pdf)
 (a 5 x 7 inch booklet; `.venv/bin/python tools/make_manual.py [--shots]` rebuilds it).
 

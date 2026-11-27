@@ -1,0 +1,24 @@
+{
+  "slug": "cosmicarc2",
+  "title": "Cosmic Arc II",
+  "title_accent": "II",
+  "tagline": "Poach rare creatures across a dying star cluster: an Atari 7800 game for the AstroCart",
+  "rom": "build/cosmicarc.a78",
+  "build": "tools/build.sh",
+  "ready": "Press Z to start. Click or press a key for sound.",
+  "controls": [
+    ["Joystick", "the arrow keys"],
+    ["Button 1: fire, choose, the tractor beam", "[Z]"],
+    ["Button 2: the fighter, the next page or tab, drop cargo", "[X]"],
+    ["Map", "[↑] [↓] [←] [→] move the bar or the chart's cursor, [Z] chooses, [X] the next page"],
+    ["Deep space", "aim with the arrows, [Z] fires, [X] launches or recalls the fighter"],
+    ["Planet", "hold [↓] to drop the shuttle, [Z] the beam, push [↑] under the Ark to dock"]
+  ],
+  "about": [
+    "Generations ago the Cosmic Ark finished its rescue and was sealed away. You found it. Now its tractor beam serves the black market: chart a new 64-sector galaxy every voyage, beam rare creatures off doomed worlds, defend the Ark from asteroids, raiders and gunships, and trade at eleven starports.",
+    "Built for the AstroCart: its math unit flies the ships and its two POKEY chips play the music. Your voyages are kept in the browser, as on a SaveKey.",
+    "The <a href=\"https://github.com/jasonfrowe/Cosmic_Arc_II_7800/blob/main/docs/manual/Cosmic_Arc_II_Manual_5x7.pdf\">manual</a> has the whole story."
+  ],
+  "repo": "https://github.com/jasonfrowe/Cosmic_Arc_II_7800",
+  "image": "docs/manual/img/planet_beam.png"
+}

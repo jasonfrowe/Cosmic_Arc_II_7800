@@ -384,5 +384,19 @@ them, which is in while MARIA draws them.
   controller pins as the RIOT drives them, from both the port A output
   and the data direction register, since the I2C code drives SDA through
   the direction register.
-- Still to do: the same dual-POKEY change in js7800_astrocart for the browser
-  build.
+
+## The browser build (~/Software/FPGA/js7800_astrocart)
+
+`web/game.json` describes the page; `.github/workflows/web.yml` calls
+js7800_astrocart's shared workflow, which builds the game and the emulator
+and deploys the page to GitHub Pages (Pages set to "GitHub Actions"). To try
+it locally: `player/bundle.sh`, then `player/make_site.py . OUT --bundle
+dist/js7800.min.js` and serve OUT. Changes made there for this game:
+
+- **Banked carts with the second POKEY**: byte 53's bit 2 (the POKEY at
+  $0440) made the type check read a 272K SuperGame cart as a flat one.
+  It's masked off for the type.
+- **A SaveKey** (`SaveKey.js`, the fork's model): on the second port's I2C
+  lines, SWCHA read live (js7800 otherwise sets it once a frame), its
+  contents in localStorage. Checked in headless Chrome: the voyage screen,
+  VOYAGE SAVED, and Continue after a reload.
