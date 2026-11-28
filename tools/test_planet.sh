@@ -8,4 +8,4 @@ cd "$(dirname "$A7800")"
 OUT=$("$A7800" a7800 -cart "$ROOT/build/cosmicarc.a78" -video none -sound none -nothrottle \
   -autoboot_script "$ROOT/tools/emu/planettest.lua" -skip_gameinfo -nomouse 2>&1 | grep -E "^caught|^result")
 echo "$OUT" | grep "^caught"
-echo "$OUT" | sed -n 's/^result //p' | awk '{ if ($1 >= 1 && $4 == 1 && $2 * 100 >= $3 * 97) { print "planet test: PASS"; exit 0 } print "planet test: FAIL"; exit 1 }'
+echo "$OUT" | sed -n 's/^result //p' | awk '{ if ($1 >= 1 && $4 == 1 && $2 * 100 >= $3 * 97) { print "planet test: PASS"; exit 0 } print "planet test: FAIL"; exit 1 } END { if (NR == 0) { print "planet test: FAIL (no results from the emulator)"; exit 1 } }'

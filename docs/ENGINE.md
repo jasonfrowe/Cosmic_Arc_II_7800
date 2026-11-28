@@ -378,6 +378,11 @@ them, which is in while MARIA draws them.
 
 - The second POKEY at $0440 now also works on SuperGame carts (`a78_p450_t2`,
   `_t6`, `_ta`), not only flat ones (`a78_slot.cpp`, `rom.cpp/h`).
+- **Headless on macOS** (2026-11-27): `-video none` uses SDL's dummy video
+  driver and an unshown software window, so test runs no longer open a black
+  window, take the focus or get throttled by App Nap (a run had sat at 1.5% CPU).
+  The tests that parse the emulator's output now fail if there is none (the
+  lanes test used to pass on empty output).
 - **SaveKey** controller (`-joy2 savekey`, `src/devices/bus/a7800_ctrl/savekey.cpp`):
   a 24LC256 with 2-byte addresses (MAME's `i2cmem` only does 8-bit),
   stored in `nvram/a7800/joy2_savekey` (32K). The driver now passes

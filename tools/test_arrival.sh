@@ -8,4 +8,4 @@ OUT=$("$A7800" a7800 -cart "$ROOT/build/cosmicarc.a78" -video none -sound none -
   -autoboot_script "$ROOT/tools/emu/arrivaltest.lua" -skip_gameinfo -nomouse 2>&1 | grep -E "^frames|^result")
 echo "$OUT" | grep -v result
 echo "$OUT" | sed -n 's/^result //p' | awk -v N="$(echo "$OUT" | grep -oE '\([0-9]+\)' | tr -d '()' | sort -n | head -1)"  '{ lo = $1; hi = $1; for (i = 2; i <= 3; i++) { if ($i < lo) lo = $i; if ($i > hi) hi = $i }
-  if (N >= 2 && lo > 0 && hi / lo <= 1.10) { print "arrival test: PASS"; exit 0 } print "arrival test: FAIL"; exit 1 }'
+  if (N >= 2 && lo > 0 && hi / lo <= 1.10) { print "arrival test: PASS"; exit 0 } print "arrival test: FAIL"; exit 1 } END { if (NR == 0) { print "arrival test: FAIL (no results from the emulator)"; exit 1 } }'

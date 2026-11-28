@@ -112,7 +112,7 @@ then link them together.
 - [x] A planet's guns: a gentler climb by level (level 5 as fast as level 2 was)
 - [x] Our manual (`docs/manual/`: the RP6502 port's booklet rewritten for ours; `tools/make_manual.py` takes the screenshots and prints the PDF)
 - [x] js7800_astrocart: banked carts with the second POKEY; a SaveKey kept in the browser's localStorage; the web page (`web/game.json`) and its GitHub Pages workflow, as Super Mega Pinball 7800's
-- [ ] a7800 fork: headless runs without a window or focus grab on the Mac (App Nap throttled a test to 1.5% CPU)
+- [x] a7800 fork: headless runs without a window or focus grab on the Mac (App Nap throttled a test to 1.5% CPU): `-video none` uses SDL's dummy driver
 
 ## M7: Full game
 - [ ] All tiers, biomes, 24 species, carrier

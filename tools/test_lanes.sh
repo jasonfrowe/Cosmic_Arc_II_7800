@@ -8,4 +8,4 @@ OUT=$("$A7800" a7800 -cart "$ROOT/build/cosmicarc.a78" -video none -sound none -
   -autoboot_script "$ROOT/tools/emu/lanetest.lua" -skip_gameinfo -nomouse 2>&1 | grep -E "^lane|^worst")
 echo "$OUT"
 W=$(echo "$OUT" | sed -n 's/^worst //p')
-awk -v w="$W" 'BEGIN { if (w <= 1.5) { print "lane test: PASS"; exit 0 } print "lane test: FAIL"; exit 1 }'
+awk -v w="$W" 'BEGIN { if (w == "") { print "lane test: FAIL (no results from the emulator)"; exit 1 } if (w <= 1.5) { print "lane test: PASS"; exit 0 } print "lane test: FAIL"; exit 1 }'
